@@ -1,0 +1,181 @@
+#include <doctest/doctest.h>
+#include <tci/tci.h>
+#include <cytnx.hpp>
+#include <cmath>
+
+TEST_CASE("TCI Advanced Tensor Operations") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("Tensor contraction with string notation") {
+        // Create test tensors: A(2,3,4) and B(4,3,5)
+        tci::shape_t<cytnx::Tensor> shape_a = {2, 3, 4};
+        tci::shape_t<cytnx::Tensor> shape_b = {4, 3, 5};
+
+        cytnx::Tensor a, b, c;
+        tci::zeros(ctx, shape_a, a);
+        tci::zeros(ctx, shape_b, b);
+
+        // Set some test values
+        tci::elem_coors_t<cytnx::Tensor> coord_a = {0, 0, 0};
+        tci::elem_coors_t<cytnx::Tensor> coord_b = {0, 0, 0};
+        tci::set_elem(ctx, a, coord_a, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, b, coord_b, cytnx::cytnx_complex128(2.0, 0.0));
+
+        // Contract: "ijk" × "kjl" → "il"
+        // This should produce C(2,5)
+        CHECK_NOTHROW(tci::contract(ctx, a, "ijk", b, "kjl", c, "il"));
+
+        auto c_shape = tci::shape(ctx, c);
+        CHECK(c_shape.size() == 2);
+        CHECK(c_shape[0] == 2);
+        CHECK(c_shape[1] == 5);
+    }
+
+    SUBCASE("SVD decomposition") {
+        // Create a simple 4x6 matrix (reshape from 2x2x2x3 tensor)
+        tci::shape_t<cytnx::Tensor> shape = {2, 2, 2, 3};
+        cytnx::Tensor a, u, v_dag;
+        tci::real_ten_t<cytnx::Tensor> s_diag;
+
+        tci::eye(ctx, 2, a);  // Start with 2x2 identity
+        tci::reshape(ctx, a, {2, 2, 1, 1}, a);  // Reshape to 4D
+
+        // Expand to desired shape by filling
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), a);
+
+        CHECK_NOTHROW(tci::svd(ctx, a, 2, u, s_diag, v_dag));
+
+        // Check dimensions
+        auto u_shape = tci::shape(ctx, u);
+        auto s_shape = tci::shape(ctx, s_diag);
+        auto v_shape = tci::shape(ctx, v_dag);
+
+        CHECK(u_shape.size() >= 2);  // Should have at least row bonds + singular value bond
+        CHECK(s_shape.size() == 1);  // Singular values are 1D
+        CHECK(v_shape.size() >= 2);  // Should have singular value bond + column bonds
+    }
+
+    SUBCASE("Tensor manipulation operations") {
+        tci::shape_t<cytnx::Tensor> shape = {2, 3, 4};
+        cytnx::Tensor a, b;
+
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(2.0, 1.0), a);
+
+        // Test complex conjugate
+        CHECK_NOTHROW(tci::cplx_conj(ctx, a, b));
+
+        // Test real/imaginary part extraction
+        tci::real_ten_t<cytnx::Tensor> real_part, imag_part;
+        CHECK_NOTHROW(tci::real(ctx, a, real_part));
+        CHECK_NOTHROW(tci::imag(ctx, a, imag_part));
+
+        // Test scaling
+        cytnx::Tensor scaled;
+        CHECK_NOTHROW(tci::scale(ctx, a, cytnx::cytnx_complex128(0.5, 0.0), scaled));
+
+        // Test normalization
+        auto original_norm = tci::norm(ctx, a);
+        cytnx::Tensor normalized;
+        auto reported_norm = tci::normalize(ctx, a, normalized);
+        auto new_norm = tci::norm(ctx, normalized);
+
+        CHECK(original_norm > 0.0);
+        CHECK(std::abs(new_norm - 1.0) < 1e-10);  // Should be normalized to 1
+    }
+
+    SUBCASE("Tensor reshaping and transposition") {
+        tci::shape_t<cytnx::Tensor> shape = {2, 3, 4};
+        cytnx::Tensor a, reshaped, transposed;
+
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), a);
+
+        // Test reshape
+        tci::shape_t<cytnx::Tensor> new_shape = {6, 4};
+        CHECK_NOTHROW(tci::reshape(ctx, a, new_shape, reshaped));
+
+        auto result_shape = tci::shape(ctx, reshaped);
+        CHECK(result_shape[0] == 6);
+        CHECK(result_shape[1] == 4);
+        CHECK(tci::size(ctx, reshaped) == tci::size(ctx, a));  // Same total size
+
+        // Test transpose
+        tci::List<tci::bond_idx_t<cytnx::Tensor>> new_order = {2, 0, 1};  // (2,3,4) → (4,2,3)
+        CHECK_NOTHROW(tci::transpose(ctx, a, new_order, transposed));
+
+        auto trans_shape = tci::shape(ctx, transposed);
+        CHECK(trans_shape[0] == 4);
+        CHECK(trans_shape[1] == 2);
+        CHECK(trans_shape[2] == 3);
+    }
+
+    tci::destroy_context(ctx);
+}
+
+TEST_CASE("TCI Linear Combination and Element Access") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("Linear combination of tensors") {
+        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        cytnx::Tensor a, b, c, result;
+
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), a);
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(2.0, 0.0), b);
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(3.0, 0.0), c);
+
+        // Test uniform linear combination (coefficients = 1.0)
+        tci::List<cytnx::Tensor> tensors = {a, b, c};
+        CHECK_NOTHROW(tci::linear_combine(ctx, tensors, result));
+
+        // Result should be filled with 6.0 (1+2+3)
+        tci::elem_coors_t<cytnx::Tensor> coord = {0, 0};
+        auto elem = tci::get_elem(ctx, result, coord);
+        CHECK(std::abs(elem.real() - 6.0) < 1e-10);
+
+        // Test weighted linear combination
+        tci::List<tci::elem_t<cytnx::Tensor>> coefs = {
+            cytnx::cytnx_complex128(0.5, 0.0),
+            cytnx::cytnx_complex128(2.0, 0.0),
+            cytnx::cytnx_complex128(1.5, 0.0)
+        };
+
+        CHECK_NOTHROW(tci::linear_combine(ctx, tensors, coefs, result));
+
+        // Result should be 0.5*1 + 2.0*2 + 1.5*3 = 0.5 + 4.0 + 4.5 = 9.0
+        elem = tci::get_elem(ctx, result, coord);
+        CHECK(std::abs(elem.real() - 9.0) < 1e-10);
+    }
+
+    SUBCASE("Element access and modification") {
+        tci::shape_t<cytnx::Tensor> shape = {3, 3};
+        cytnx::Tensor tensor;
+
+        tci::zeros(ctx, shape, tensor);
+
+        // Set elements
+        tci::elem_coors_t<cytnx::Tensor> coord1 = {0, 0};
+        tci::elem_coors_t<cytnx::Tensor> coord2 = {1, 1};
+        tci::elem_coors_t<cytnx::Tensor> coord3 = {2, 2};
+
+        tci::set_elem(ctx, tensor, coord1, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, tensor, coord2, cytnx::cytnx_complex128(2.0, 0.0));
+        tci::set_elem(ctx, tensor, coord3, cytnx::cytnx_complex128(3.0, 0.0));
+
+        // Get elements back
+        auto elem1 = tci::get_elem(ctx, tensor, coord1);
+        auto elem2 = tci::get_elem(ctx, tensor, coord2);
+        auto elem3 = tci::get_elem(ctx, tensor, coord3);
+
+        CHECK(std::abs(elem1.real() - 1.0) < 1e-10);
+        CHECK(std::abs(elem2.real() - 2.0) < 1e-10);
+        CHECK(std::abs(elem3.real() - 3.0) < 1e-10);
+
+        // Check that it's a diagonal matrix
+        tci::elem_coors_t<cytnx::Tensor> off_diag = {0, 1};
+        auto off_elem = tci::get_elem(ctx, tensor, off_diag);
+        CHECK(std::abs(off_elem.real()) < 1e-10);
+    }
+
+    tci::destroy_context(ctx);
+}
