@@ -1,0 +1,4 @@
+[submodule "external/Cytnx"]
+	path = external/Cytnx
+	url = https://github.com/ultimatile/Cytnx.git
+	branch = name-resolve-intrusive_ptr
