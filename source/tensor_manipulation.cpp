@@ -132,9 +132,14 @@ void real(
     const cytnx::Tensor &in,
     real_ten_t<cytnx::Tensor> &out
 ) {
-    // TODO: Implement real part extraction
-    // For now, just copy the tensor
-    out = in.clone();
+    if (in.dtype() == cytnx::Type.ComplexDouble || in.dtype() == cytnx::Type.ComplexFloat) {
+        // Extract real part from complex tensor
+        auto temp = in.clone();
+        out = temp.real();
+    } else {
+        // Already real, just copy
+        out = in.clone();
+    }
 }
 
 template <>
@@ -153,9 +158,14 @@ void imag(
     const cytnx::Tensor &in,
     real_ten_t<cytnx::Tensor> &out
 ) {
-    // TODO: Implement imaginary part extraction
-    // For now, just create a zero tensor
-    out = cytnx::zeros(in.shape(), cytnx::Type.Double, ctx);
+    if (in.dtype() == cytnx::Type.ComplexDouble || in.dtype() == cytnx::Type.ComplexFloat) {
+        // Extract imaginary part from complex tensor
+        auto temp = in.clone();
+        out = temp.imag();
+    } else {
+        // Real tensor, imaginary part is zero
+        out = cytnx::zeros(in.shape(), cytnx::Type.Double, ctx);
+    }
 }
 
 template <>
