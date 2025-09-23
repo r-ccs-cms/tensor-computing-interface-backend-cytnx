@@ -317,3 +317,133 @@ TEST_CASE("TCI Tensor Manipulation") {
 
     tci::destroy_context(ctx);
 }
+
+TEST_CASE("TCI Advanced Tensor Manipulation") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("Concatenate 2D tensors") {
+        tci::shape_t<cytnx::Tensor> shape = {2, 3};
+        cytnx::Tensor tensor1, tensor2, result;
+
+        tci::ones(ctx, shape, tensor1);
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(2.0, 0.0), tensor2);
+
+        // Test vertical concatenation (bond_idx = 0)
+        std::vector<cytnx::Tensor> tensors = {tensor1, tensor2};
+        CHECK_NOTHROW(tci::concatenate(ctx, tensors, 0, result));
+
+        auto result_shape = tci::shape(ctx, result);
+        CHECK(result_shape == std::vector<std::size_t>{4, 3}); // 2+2 = 4 rows
+
+        // Test horizontal concatenation (bond_idx = 1)
+        CHECK_NOTHROW(tci::concatenate(ctx, tensors, 1, result));
+        result_shape = tci::shape(ctx, result);
+        CHECK(result_shape == std::vector<std::size_t>{2, 6}); // 3+3 = 6 columns
+    }
+
+    SUBCASE("Concatenate error cases") {
+        tci::shape_t<cytnx::Tensor> shape_3d = {2, 3, 4};
+        cytnx::Tensor tensor_3d;
+        tci::ones(ctx, shape_3d, tensor_3d);
+
+        std::vector<cytnx::Tensor> tensors_3d = {tensor_3d};
+        cytnx::Tensor result;
+
+        // Test unsupported dimension
+        CHECK_THROWS_AS(tci::concatenate(ctx, tensors_3d, 2, result), std::runtime_error);
+
+        // Test empty tensor list
+        std::vector<cytnx::Tensor> empty_tensors;
+        CHECK_THROWS_AS(tci::concatenate(ctx, empty_tensors, 0, result), std::invalid_argument);
+    }
+
+    SUBCASE("Extract sub-tensor") {
+        tci::shape_t<cytnx::Tensor> shape = {4, 6};
+        cytnx::Tensor tensor, sub_result;
+        tci::ones(ctx, shape, tensor);
+
+        // Set some specific values for verification
+        tci::set_elem(ctx, tensor, {1, 2}, cytnx::cytnx_complex128(5.0, 0.0));
+        tci::set_elem(ctx, tensor, {2, 3}, cytnx::cytnx_complex128(7.0, 0.0));
+
+        // Extract sub-tensor [1:3, 2:5)
+        std::vector<std::pair<std::size_t, std::size_t>> coor_pairs = {{1, 3}, {2, 5}};
+        CHECK_NOTHROW(tci::extract_sub(ctx, tensor, coor_pairs, sub_result));
+
+        auto sub_shape = tci::shape(ctx, sub_result);
+        CHECK(sub_shape == std::vector<std::size_t>{2, 3}); // (3-1) x (5-2)
+
+        // Verify extracted value
+        auto extracted_elem = tci::get_elem(ctx, sub_result, {0, 0}); // Should be (1,2) from original
+        CHECK(std::abs(extracted_elem.real() - 5.0) < 1e-10);
+    }
+
+    SUBCASE("Replace sub-tensor") {
+        tci::shape_t<cytnx::Tensor> main_shape = {4, 4};
+        tci::shape_t<cytnx::Tensor> sub_shape = {2, 2};
+        cytnx::Tensor main_tensor, sub_tensor, result;
+
+        tci::zeros(ctx, main_shape, main_tensor);
+        tci::fill(ctx, sub_shape, cytnx::cytnx_complex128(3.0, 0.0), sub_tensor);
+
+        // Replace starting at position (1, 1)
+        std::vector<std::size_t> begin_pt = {1, 1};
+        CHECK_NOTHROW(tci::replace_sub(ctx, main_tensor, sub_tensor, begin_pt, result));
+
+        // Verify replacement
+        auto replaced_elem = tci::get_elem(ctx, result, {1, 1});
+        CHECK(std::abs(replaced_elem.real() - 3.0) < 1e-10);
+
+        auto replaced_elem2 = tci::get_elem(ctx, result, {2, 2});
+        CHECK(std::abs(replaced_elem2.real() - 3.0) < 1e-10);
+
+        // Verify non-replaced area
+        auto non_replaced = tci::get_elem(ctx, result, {0, 0});
+        CHECK(std::abs(non_replaced.real() - 0.0) < 1e-10);
+    }
+
+    SUBCASE("Expand tensor dimensions") {
+        tci::shape_t<cytnx::Tensor> original_shape = {2, 3};
+        cytnx::Tensor tensor, expanded;
+        tci::ones(ctx, original_shape, tensor);
+
+        // Expand bond 0 by 1, bond 1 by 2
+        std::unordered_map<std::size_t, std::size_t> increment_map = {{0, 1}, {1, 2}};
+        CHECK_NOTHROW(tci::expand(ctx, tensor, increment_map, expanded));
+
+        auto expanded_shape = tci::shape(ctx, expanded);
+        CHECK(expanded_shape == std::vector<std::size_t>{3, 5}); // 2+1, 3+2
+
+        // Verify original data is preserved (at beginning)
+        auto elem = tci::get_elem(ctx, expanded, {0, 0});
+        CHECK(std::abs(elem.real() - 1.0) < 1e-10);
+
+        // Verify expanded area is zero
+        auto zero_elem = tci::get_elem(ctx, expanded, {2, 0}); // Expanded row
+        CHECK(std::abs(zero_elem.real() - 0.0) < 1e-10);
+    }
+
+    SUBCASE("For each with coordinates") {
+        tci::shape_t<cytnx::Tensor> shape = {2, 3};
+        cytnx::Tensor tensor;
+        tci::zeros(ctx, shape, tensor);
+
+        // Set values based on coordinates using for_each_with_coors
+        std::function<void(cytnx::cytnx_complex128&, const std::vector<std::size_t>&)> set_coords =
+            [](cytnx::cytnx_complex128 &elem, const std::vector<std::size_t> &coords) {
+                elem = cytnx::cytnx_complex128(coords[0] * 10 + coords[1], 0.0);
+            };
+
+        CHECK_NOTHROW(tci::for_each_with_coors(ctx, tensor, std::move(set_coords)));
+
+        // Verify values
+        auto elem_01 = tci::get_elem(ctx, tensor, {0, 1});
+        CHECK(std::abs(elem_01.real() - 1.0) < 1e-10); // 0*10 + 1 = 1
+
+        auto elem_12 = tci::get_elem(ctx, tensor, {1, 2});
+        CHECK(std::abs(elem_12.real() - 12.0) < 1e-10); // 1*10 + 2 = 12
+    }
+
+    tci::destroy_context(ctx);
+}
