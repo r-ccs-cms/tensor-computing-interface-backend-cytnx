@@ -119,3 +119,98 @@ TEST_CASE("TCI Tensor Operations") {
 
     tci::destroy_context(ctx);
 }
+
+TEST_CASE("TCI assign_from_container") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("Create tensor from std::vector with row-major indexing") {
+        // Create a 2x3 tensor from container
+        std::vector<cytnx::cytnx_complex128> container = {
+            cytnx::cytnx_complex128(1.0, 0.0), cytnx::cytnx_complex128(2.0, 0.0), cytnx::cytnx_complex128(3.0, 0.0),
+            cytnx::cytnx_complex128(4.0, 0.0), cytnx::cytnx_complex128(5.0, 0.0), cytnx::cytnx_complex128(6.0, 0.0)
+        };
+
+        auto coors2idx = [](const tci::elem_coors_t<cytnx::Tensor> &coors) -> std::ptrdiff_t {
+            return coors[0] * 3 + coors[1]; // row-major for 2x3 matrix
+        };
+
+        tci::shape_t<cytnx::Tensor> shape = {2, 3};
+        cytnx::Tensor tensor;
+
+        CHECK_NOTHROW(tci::assign_from_container(ctx, shape, container.begin(), coors2idx, tensor));
+
+        // Verify tensor properties
+        CHECK(tci::rank(ctx, tensor) == 2);
+        auto result_shape = tci::shape(ctx, tensor);
+        CHECK(result_shape[0] == 2);
+        CHECK(result_shape[1] == 3);
+
+        // Verify element values match container
+        auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
+        CHECK(std::abs(elem_00.real() - 1.0) < 1e-10);
+
+        auto elem_01 = tci::get_elem(ctx, tensor, {0, 1});
+        CHECK(std::abs(elem_01.real() - 2.0) < 1e-10);
+
+        auto elem_10 = tci::get_elem(ctx, tensor, {1, 0});
+        CHECK(std::abs(elem_10.real() - 4.0) < 1e-10);
+
+        auto elem_12 = tci::get_elem(ctx, tensor, {1, 2});
+        CHECK(std::abs(elem_12.real() - 6.0) < 1e-10);
+    }
+
+    SUBCASE("Create tensor from std::vector with custom indexing") {
+        // Create a 2x2 tensor with column-major indexing
+        std::vector<cytnx::cytnx_complex128> container = {
+            cytnx::cytnx_complex128(1.0, 0.0), cytnx::cytnx_complex128(3.0, 0.0), // column 0
+            cytnx::cytnx_complex128(2.0, 0.0), cytnx::cytnx_complex128(4.0, 0.0)  // column 1
+        };
+
+        auto coors2idx = [](const tci::elem_coors_t<cytnx::Tensor> &coors) -> std::ptrdiff_t {
+            return coors[1] * 2 + coors[0]; // column-major for 2x2 matrix
+        };
+
+        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        cytnx::Tensor tensor;
+
+        CHECK_NOTHROW(tci::assign_from_container(ctx, shape, container.begin(), coors2idx, tensor));
+
+        // Verify element values with column-major layout
+        auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
+        CHECK(std::abs(elem_00.real() - 1.0) < 1e-10);
+
+        auto elem_01 = tci::get_elem(ctx, tensor, {0, 1});
+        CHECK(std::abs(elem_01.real() - 2.0) < 1e-10);
+
+        auto elem_10 = tci::get_elem(ctx, tensor, {1, 0});
+        CHECK(std::abs(elem_10.real() - 3.0) < 1e-10);
+
+        auto elem_11 = tci::get_elem(ctx, tensor, {1, 1});
+        CHECK(std::abs(elem_11.real() - 4.0) < 1e-10);
+    }
+
+    SUBCASE("Out-of-place version") {
+        std::vector<cytnx::cytnx_complex128> container = {
+            cytnx::cytnx_complex128(7.0, 0.0), cytnx::cytnx_complex128(8.0, 0.0), cytnx::cytnx_complex128(9.0, 0.0)
+        };
+
+        auto coors2idx = [](const tci::elem_coors_t<cytnx::Tensor> &coors) -> std::ptrdiff_t {
+            return coors[0]; // simple linear indexing for 1D tensor
+        };
+
+        tci::shape_t<cytnx::Tensor> shape = {3};
+
+        cytnx::Tensor tensor;
+        CHECK_NOTHROW(tensor = tci::assign_from_container<cytnx::Tensor>(ctx, shape, container.begin(), coors2idx));
+
+        // Verify elements
+        auto elem_0 = tci::get_elem(ctx, tensor, {0});
+        CHECK(std::abs(elem_0.real() - 7.0) < 1e-10);
+
+        auto elem_2 = tci::get_elem(ctx, tensor, {2});
+        CHECK(std::abs(elem_2.real() - 9.0) < 1e-10);
+    }
+
+    tci::destroy_context(ctx);
+}
