@@ -268,7 +268,8 @@ TEST_CASE("TCI Tensor Manipulation") {
     SUBCASE("Reshape operations") {
         tci::shape_t<cytnx::Tensor> original_shape = {2, 3, 4};
         cytnx::Tensor tensor;
-        tci::ones(ctx, original_shape, tensor);
+        tci::zeros(ctx, original_shape, tensor);
+        tci::fill(ctx, original_shape, cytnx::cytnx_complex128(1.0, 0.0), tensor);
 
         // Test in-place reshape
         tci::shape_t<cytnx::Tensor> new_shape = {6, 4};
@@ -282,7 +283,8 @@ TEST_CASE("TCI Tensor Manipulation") {
     SUBCASE("Transpose operations") {
         tci::shape_t<cytnx::Tensor> shape = {2, 3, 4};
         cytnx::Tensor tensor, transposed;
-        tci::ones(ctx, shape, tensor);
+        tci::zeros(ctx, shape, tensor);
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), tensor);
 
         // Test out-of-place transpose
         std::vector<std::size_t> new_order = {2, 0, 1}; // 4,2,3
@@ -361,7 +363,8 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     SUBCASE("Extract sub-tensor") {
         tci::shape_t<cytnx::Tensor> shape = {4, 6};
         cytnx::Tensor tensor, sub_result;
-        tci::ones(ctx, shape, tensor);
+        tci::zeros(ctx, shape, tensor);
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), tensor);
 
         // Set some specific values for verification
         tci::set_elem(ctx, tensor, {1, 2}, cytnx::cytnx_complex128(5.0, 0.0));
@@ -406,7 +409,8 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     SUBCASE("Expand tensor dimensions") {
         tci::shape_t<cytnx::Tensor> original_shape = {2, 3};
         cytnx::Tensor tensor, expanded;
-        tci::ones(ctx, original_shape, tensor);
+        tci::zeros(ctx, original_shape, tensor);
+        tci::fill(ctx, original_shape, cytnx::cytnx_complex128(1.0, 0.0), tensor);
 
         // Expand bond 0 by 1, bond 1 by 2
         std::unordered_map<std::size_t, std::size_t> increment_map = {{0, 1}, {1, 2}};
