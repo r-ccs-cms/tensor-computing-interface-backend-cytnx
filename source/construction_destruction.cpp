@@ -157,7 +157,58 @@ cytnx::Tensor move(
     return result;
 }
 
-// TODO: assign_from_container implementation needs template specialization fixes
-// Temporarily commented out to allow building other functions
+// Explicit specialization for cytnx::Tensor - in-place version
+template <>
+void assign_from_container(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const shape_t<cytnx::Tensor> &shape,
+    std::vector<elem_t<cytnx::Tensor>>::iterator init_elems_begin,
+    std::function<std::ptrdiff_t(const elem_coors_t<cytnx::Tensor> &)> &&coors2idx,
+    cytnx::Tensor &a
+) {
+    // Create tensor with the specified shape
+    allocate(ctx, shape, a);
+
+    // Generate all coordinate combinations and assign values
+    std::function<void(elem_coors_t<cytnx::Tensor>, std::size_t)> assign_recursive;
+    assign_recursive = [&](elem_coors_t<cytnx::Tensor> current_coords, std::size_t dim) {
+        if (dim == shape.size()) {
+            // Base case: all dimensions set, assign the element
+            auto index = coors2idx(current_coords);
+            auto value = *(init_elems_begin + index);
+
+            // Convert coordinates to cytnx format and set element
+            std::vector<cytnx::cytnx_uint64> cytnx_coords;
+            cytnx_coords.reserve(current_coords.size());
+            for (const auto& coord : current_coords) {
+                cytnx_coords.push_back(static_cast<cytnx::cytnx_uint64>(coord));
+            }
+
+            a.at<elem_t<cytnx::Tensor>>(cytnx_coords) = value;
+        } else {
+            // Recursive case: iterate through current dimension
+            for (bond_dim_t<cytnx::Tensor> i = 0; i < shape[dim]; ++i) {
+                current_coords.push_back(i);
+                assign_recursive(current_coords, dim + 1);
+                current_coords.pop_back();
+            }
+        }
+    };
+
+    assign_recursive({}, 0);
+}
+
+// Explicit specialization for cytnx::Tensor - out-of-place version
+template <>
+cytnx::Tensor assign_from_container(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const shape_t<cytnx::Tensor> &shape,
+    std::vector<elem_t<cytnx::Tensor>>::iterator init_elems_begin,
+    std::function<std::ptrdiff_t(const elem_coors_t<cytnx::Tensor> &)> &&coors2idx
+) {
+    cytnx::Tensor result;
+    assign_from_container(ctx, shape, init_elems_begin, std::move(coors2idx), result);
+    return result;
+}
 
 } // namespace tci
