@@ -40,6 +40,52 @@ TEST_CASE("TCI Tensor Creation") {
         CHECK(result_shape[1] == 3);
     }
 
+    SUBCASE("Create random tensor (in-place)") {
+        tci::shape_t<cytnx::Tensor> shape = {2, 3};
+        cytnx::Tensor tensor;
+        std::size_t counter = 0;
+
+        auto gen = [&]() -> cytnx::cytnx_complex128 {
+            return cytnx::cytnx_complex128(static_cast<double>(counter++), 0.0);
+        };
+
+        CHECK_NOTHROW(tci::random(ctx, shape, gen, tensor));
+        CHECK(counter == 6);
+
+        auto result_shape = tci::shape(ctx, tensor);
+        CHECK(result_shape == shape);
+
+        auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
+        CHECK(std::abs(elem_00.real() - 0.0) < 1e-10);
+        CHECK(std::abs(elem_00.imag()) < 1e-10);
+
+        auto elem_01 = tci::get_elem(ctx, tensor, {0, 1});
+        CHECK(std::abs(elem_01.real() - 1.0) < 1e-10);
+
+        auto elem_12 = tci::get_elem(ctx, tensor, {1, 2});
+        CHECK(std::abs(elem_12.real() - 5.0) < 1e-10);
+    }
+
+    SUBCASE("Create random tensor (out-of-place)") {
+        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        std::size_t counter = 0;
+
+        auto gen = [&]() -> cytnx::cytnx_complex128 {
+            return cytnx::cytnx_complex128(static_cast<double>(counter++), 0.0);
+        };
+
+        cytnx::Tensor tensor;
+        CHECK_NOTHROW(tensor = tci::random(ctx, shape, gen));
+        CHECK(counter == 4);
+
+        auto result_shape = tci::shape(ctx, tensor);
+        CHECK(result_shape == shape);
+
+        auto elem_11 = tci::get_elem(ctx, tensor, {1, 1});
+        CHECK(std::abs(elem_11.real() - 3.0) < 1e-10);
+        CHECK(std::abs(elem_11.imag()) < 1e-10);
+    }
+
     tci::destroy_context(ctx);
 }
 
