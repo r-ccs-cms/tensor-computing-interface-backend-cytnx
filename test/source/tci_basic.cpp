@@ -260,3 +260,60 @@ TEST_CASE("TCI assign_from_container") {
 
     tci::destroy_context(ctx);
 }
+
+TEST_CASE("TCI Tensor Manipulation") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("Reshape operations") {
+        tci::shape_t<cytnx::Tensor> original_shape = {2, 3, 4};
+        cytnx::Tensor tensor;
+        tci::ones(ctx, original_shape, tensor);
+
+        // Test in-place reshape
+        tci::shape_t<cytnx::Tensor> new_shape = {6, 4};
+        CHECK_NOTHROW(tci::reshape(ctx, tensor, new_shape));
+
+        auto result_shape = tci::shape(ctx, tensor);
+        CHECK(result_shape == new_shape);
+        CHECK(tci::size(ctx, tensor) == 24); // Same total size
+    }
+
+    SUBCASE("Transpose operations") {
+        tci::shape_t<cytnx::Tensor> shape = {2, 3, 4};
+        cytnx::Tensor tensor, transposed;
+        tci::ones(ctx, shape, tensor);
+
+        // Test out-of-place transpose
+        std::vector<std::size_t> new_order = {2, 0, 1}; // 4,2,3
+        CHECK_NOTHROW(tci::transpose(ctx, tensor, new_order, transposed));
+
+        auto result_shape = tci::shape(ctx, transposed);
+        CHECK(result_shape == std::vector<std::size_t>{4, 2, 3});
+    }
+
+    SUBCASE("Complex operations") {
+        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        cytnx::Tensor tensor;
+        tci::fill(ctx, shape, cytnx::cytnx_complex128(2.0, 3.0), tensor);
+
+        // Test complex conjugate
+        cytnx::Tensor conjugated;
+        CHECK_NOTHROW(tci::cplx_conj(ctx, tensor, conjugated));
+
+        // Test real/imaginary part extraction
+        tci::real_ten_t<cytnx::Tensor> real_part, imag_part;
+        CHECK_NOTHROW(tci::real(ctx, tensor, real_part));
+        CHECK_NOTHROW(tci::imag(ctx, tensor, imag_part));
+
+        // Verify real part
+        auto real_elem = tci::get_elem(ctx, real_part, {0, 0});
+        CHECK(std::abs(real_elem.real() - 2.0) < 1e-10);
+
+        // Verify imaginary part
+        auto imag_elem = tci::get_elem(ctx, imag_part, {0, 0});
+        CHECK(std::abs(imag_elem.real() - 3.0) < 1e-10);
+    }
+
+    tci::destroy_context(ctx);
+}
