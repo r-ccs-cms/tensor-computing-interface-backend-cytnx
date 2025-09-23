@@ -266,4 +266,168 @@ void for_each(
     Func &&f
 );
 
+/**
+ * @brief Expand tensor dimensions (in-place version)
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param inout Tensor to expand
+ * @param bond_idx_increment_map Map of bond indices to increments
+ */
+template <typename TenT>
+void expand(
+    context_handle_t<TenT> &ctx,
+    TenT &inout,
+    const Map<bond_idx_t<TenT>, bond_dim_t<TenT>> &bond_idx_increment_map
+);
+
+/**
+ * @brief Expand tensor dimensions (out-of-place version)
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param in Input tensor
+ * @param bond_idx_increment_map Map of bond indices to increments
+ * @param out Output tensor
+ */
+template <typename TenT>
+void expand(
+    context_handle_t<TenT> &ctx,
+    const TenT &in,
+    const Map<bond_idx_t<TenT>, bond_dim_t<TenT>> &bond_idx_increment_map,
+    TenT &out
+);
+
+/**
+ * @brief Shrink tensor dimensions (in-place version)
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param inout Tensor to shrink
+ * @param bd_idx_el_coor_pair_map Map of bond indices to coordinate pairs
+ */
+template <typename TenT>
+void shrink(
+    context_handle_t<TenT> &ctx,
+    TenT &inout,
+    const bond_idx_elem_coor_pair_map<TenT> &bd_idx_el_coor_pair_map
+);
+
+/**
+ * @brief Shrink tensor dimensions (out-of-place version)
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param in Input tensor
+ * @param bd_idx_el_coor_pair_map Map of bond indices to coordinate pairs
+ * @param out Output tensor
+ */
+template <typename TenT>
+void shrink(
+    context_handle_t<TenT> &ctx,
+    const TenT &in,
+    const bond_idx_elem_coor_pair_map<TenT> &bd_idx_el_coor_pair_map,
+    TenT &out
+);
+
+/**
+ * @brief Extract sub-tensor (in-place version)
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param inout Tensor to extract from
+ * @param coor_pairs Coordinate pairs for extraction ranges
+ */
+template <typename TenT>
+void extract_sub(
+    context_handle_t<TenT> &ctx,
+    TenT &inout,
+    const List<Pair<elem_coor_t<TenT>, elem_coor_t<TenT>>> &coor_pairs
+);
+
+/**
+ * @brief Extract sub-tensor (out-of-place version)
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param in Input tensor
+ * @param coor_pairs Coordinate pairs for extraction ranges
+ * @param out Output tensor
+ */
+template <typename TenT>
+void extract_sub(
+    context_handle_t<TenT> &ctx,
+    const TenT &in,
+    const List<Pair<elem_coor_t<TenT>, elem_coor_t<TenT>>> &coor_pairs,
+    TenT &out
+);
+
+/**
+ * @brief Replace sub-tensor (in-place version)
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param inout Tensor to modify
+ * @param sub Sub-tensor to insert
+ * @param begin_pt Starting coordinates
+ */
+template <typename TenT>
+void replace_sub(
+    context_handle_t<TenT> &ctx,
+    TenT &inout,
+    const TenT &sub,
+    const elem_coors_t<TenT> &begin_pt
+);
+
+/**
+ * @brief Replace sub-tensor (out-of-place version)
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param in Input tensor
+ * @param sub Sub-tensor to insert
+ * @param begin_pt Starting coordinates
+ * @param out Output tensor
+ */
+template <typename TenT>
+void replace_sub(
+    context_handle_t<TenT> &ctx,
+    const TenT &in,
+    const TenT &sub,
+    const elem_coors_t<TenT> &begin_pt,
+    TenT &out
+);
+
+/**
+ * @brief Apply function to each element with coordinates (modifying version)
+ *
+ * @tparam TenT Tensor type
+ * @tparam Func Function type
+ * @param ctx Context handle for the tensor library
+ * @param inout Tensor to process
+ * @param f Function to apply to each element with coordinates
+ */
+template <typename TenT, typename Func>
+void for_each_with_coors(
+    context_handle_t<TenT> &ctx,
+    TenT &inout,
+    Func &&f
+);
+
+/**
+ * @brief Apply function to each element with coordinates (const version)
+ *
+ * @tparam TenT Tensor type
+ * @tparam Func Function type
+ * @param ctx Context handle for the tensor library
+ * @param in Tensor to process
+ * @param f Function to apply to each element with coordinates
+ */
+template <typename TenT, typename Func>
+void for_each_with_coors(
+    context_handle_t<TenT> &ctx,
+    const TenT &in,
+    Func &&f
+);
+
 } // namespace tci
