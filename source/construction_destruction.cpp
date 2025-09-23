@@ -1,6 +1,7 @@
 #include "tci/construction_destruction.h"
 #include "tci/cytnx_tensor_traits.h"
 #include <cytnx.hpp>
+#include <functional>
 
 namespace tci {
 
@@ -57,6 +58,34 @@ cytnx::Tensor zeros(
 ) {
     cytnx::Tensor result;
     zeros(ctx, shape, result);
+    return result;
+}
+
+template <typename RandNumGen>
+void random(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const shape_t<cytnx::Tensor> &shape,
+    RandNumGen &gen,
+    cytnx::Tensor &a
+) {
+    allocate(ctx, shape, a);
+
+    auto &storage = a.storage();
+    const auto total = storage.size();
+
+    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
+        storage.at<elem_t<cytnx::Tensor>>(idx) = static_cast<elem_t<cytnx::Tensor>>(gen());
+    }
+}
+
+template <typename RandNumGen>
+cytnx::Tensor random(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const shape_t<cytnx::Tensor> &shape,
+    RandNumGen &gen
+) {
+    cytnx::Tensor result;
+    random(ctx, shape, gen, result);
     return result;
 }
 
