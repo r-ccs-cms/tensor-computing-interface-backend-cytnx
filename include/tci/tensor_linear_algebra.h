@@ -82,6 +82,66 @@ void scale(
 );
 
 /**
+ * @brief Diagonal operation (rank-1 ⇔ rank-2 diagonal matrix conversion) - in-place
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param inout Tensor to transform (rank-1 → rank-2 diagonal or rank-2 → rank-1)
+ */
+template <typename TenT>
+void diag(
+    context_handle_t<TenT> &ctx,
+    TenT &inout
+);
+
+/**
+ * @brief Diagonal operation (rank-1 ⇔ rank-2 diagonal matrix conversion) - out-of-place
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param in Input tensor (rank-1 or rank-2)
+ * @param out Output tensor (rank-2 diagonal or rank-1)
+ */
+template <typename TenT>
+void diag(
+    context_handle_t<TenT> &ctx,
+    const TenT &in,
+    TenT &out
+);
+
+/**
+ * @brief Partial trace operation - in-place
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param inout Tensor to trace
+ * @param bdidx_pairs Bond index pairs to trace over
+ */
+template <typename TenT>
+void trace(
+    context_handle_t<TenT> &ctx,
+    TenT &inout,
+    const bond_idx_pairs_t<TenT> &bdidx_pairs
+);
+
+/**
+ * @brief Partial trace operation - out-of-place
+ *
+ * @tparam TenT Tensor type
+ * @param ctx Context handle for the tensor library
+ * @param in Input tensor
+ * @param bdidx_pairs Bond index pairs to trace over
+ * @param out Output traced tensor
+ */
+template <typename TenT>
+void trace(
+    context_handle_t<TenT> &ctx,
+    const TenT &in,
+    const bond_idx_pairs_t<TenT> &bdidx_pairs,
+    TenT &out
+);
+
+/**
  * @brief Tensor contraction with bond labels (version 1)
  *
  * @tparam TenT Tensor type
