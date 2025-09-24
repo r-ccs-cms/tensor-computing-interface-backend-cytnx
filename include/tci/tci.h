@@ -8,6 +8,7 @@
 #include "tci/tensor_manipulation.h"
 #include "tci/tensor_linear_algebra.h"
 #include "tci/miscellaneous.h"
+#include "tci/debugging.h"
 
 /**
  * @file tci.h
