@@ -71,6 +71,8 @@ cd tensor-computing-interface-backend-cytnx
 brew install openblas llvm libomp cmake boost arpack
 ```
 
+llvm (LLVM Clang) is optional; Apple Clang may work.
+
 ### 3. Configure and Build
 
 ```bash
@@ -79,22 +81,10 @@ export CPPFLAGS="-I/opt/homebrew/opt/openblas/include -I/opt/homebrew/opt/llvm/i
 export LDFLAGS="-L/opt/homebrew/opt/openblas/lib -L/opt/homebrew/opt/llvm/lib -L/opt/homebrew/opt/libomp/lib"
 
 # Configure with CMake
-cmake -S . -B build \
-  -DBLAS_LIBRARIES="/opt/homebrew/opt/openblas/lib/libopenblas.dylib" \
-  -DLAPACK_LIBRARIES="/opt/homebrew/opt/openblas/lib/libopenblas.dylib" \
-  -DBUILD_PYTHON=OFF
+cmake -S . -B build -DBUILD_PYTHON=OFF
 
 # Build
 cmake --build build --parallel 4
-```
-
-### 4. Run Tests
-
-```bash
-# Build and run tests
-cmake -S test -B build/test
-cmake --build build/test
-cd build/test && ./TCITests
 ```
 
 ## Usage Example
