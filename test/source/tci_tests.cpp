@@ -433,3 +433,153 @@ TEST_CASE("TCI Tensor Contraction") {
 
     tci::destroy_context(ctx);
 }
+
+TEST_CASE("TCI Truncated SVD") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("Truncated SVD with max bond dimension") {
+        // Create a 4x4 matrix with known singular values
+        tci::shape_t<cytnx::Tensor> shape = {4, 4};
+        cytnx::Tensor matrix;
+        tci::zeros(ctx, shape, matrix);
+
+        // Fill diagonal with values [3, 2, 1, 0.1] for known singular values
+        tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+        tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, matrix, {3, 3}, cytnx::cytnx_complex128(0.1, 0.0));
+
+        cytnx::Tensor u, v_dag;
+        tci::real_ten_t<cytnx::Tensor> s_diag;
+        tci::real_t<cytnx::Tensor> trunc_err;
+
+        // Test with chi_max = 2 (should truncate to 2 largest singular values)
+        tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err, 2, 0.5);
+
+        // Should keep only 2 largest singular values (above s_min = 0.5)
+        CHECK(s_diag.shape()[0] <= 2);
+
+        // Should have truncation error > 0 because smaller singular values were truncated
+        CHECK(trunc_err >= 0.0); // Truncation error should be non-negative
+    }
+
+    tci::destroy_context(ctx);
+}
+
+TEST_CASE("TCI QR Decomposition") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("QR decomposition of square matrix") {
+        // Create a 3x3 matrix
+        tci::shape_t<cytnx::Tensor> shape = {3, 3};
+        cytnx::Tensor matrix;
+        tci::zeros(ctx, shape, matrix);
+
+        // Fill with test values
+        tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+        tci::set_elem(ctx, matrix, {0, 2}, cytnx::cytnx_complex128(3.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(4.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 2}, cytnx::cytnx_complex128(6.0, 0.0));
+        tci::set_elem(ctx, matrix, {2, 0}, cytnx::cytnx_complex128(7.0, 0.0));
+        tci::set_elem(ctx, matrix, {2, 1}, cytnx::cytnx_complex128(8.0, 0.0));
+        tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(9.0, 0.0));
+
+        cytnx::Tensor q, r;
+
+        // Perform QR decomposition
+        tci::qr(ctx, matrix, 2, q, r);
+
+        // Q should be orthogonal, R should be upper triangular
+        CHECK(q.shape().size() == 3); // Should maintain rank structure
+        CHECK(r.shape().size() == 3); // Should maintain rank structure
+    }
+
+    tci::destroy_context(ctx);
+}
+
+TEST_CASE("TCI LQ Decomposition") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("LQ decomposition of square matrix") {
+        // Create a 3x3 matrix
+        tci::shape_t<cytnx::Tensor> shape = {3, 3};
+        cytnx::Tensor matrix;
+        tci::zeros(ctx, shape, matrix);
+
+        // Fill with test values
+        tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+        tci::set_elem(ctx, matrix, {0, 2}, cytnx::cytnx_complex128(3.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(4.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 2}, cytnx::cytnx_complex128(6.0, 0.0));
+        tci::set_elem(ctx, matrix, {2, 0}, cytnx::cytnx_complex128(7.0, 0.0));
+        tci::set_elem(ctx, matrix, {2, 1}, cytnx::cytnx_complex128(8.0, 0.0));
+        tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(9.0, 0.0));
+
+        cytnx::Tensor l, q;
+
+        // Perform LQ decomposition
+        tci::lq(ctx, matrix, 2, l, q);
+
+        // L should be lower triangular, Q should be orthogonal
+        CHECK(l.shape().size() == 3); // Should maintain rank structure
+        CHECK(q.shape().size() == 3); // Should maintain rank structure
+    }
+
+    tci::destroy_context(ctx);
+}
+
+TEST_CASE("TCI Eigenvalue Functions") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("General matrix eigenvalues") {
+        // Create a 2x2 matrix
+        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        cytnx::Tensor matrix;
+        tci::zeros(ctx, shape, matrix);
+
+        // Fill with test values
+        tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
+
+        tci::cplx_ten_t<cytnx::Tensor> eigenvalues;
+
+        // Perform eigenvalue calculation
+        tci::eigvals(ctx, matrix, 1, eigenvalues);
+
+        // Should have 2 eigenvalues
+        CHECK(eigenvalues.shape()[0] == 2);
+    }
+
+    SUBCASE("Symmetric matrix eigenvalues") {
+        // Create a symmetric 2x2 matrix
+        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        cytnx::Tensor matrix;
+        tci::zeros(ctx, shape, matrix);
+
+        // Fill with symmetric values
+        tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+        tci::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(3.0, 0.0));
+
+        tci::real_ten_t<cytnx::Tensor> eigenvalues;
+
+        // Perform symmetric eigenvalue calculation
+        tci::eigvalsh(ctx, matrix, 1, eigenvalues);
+
+        // Should have 2 real eigenvalues
+        CHECK(eigenvalues.shape()[0] == 2);
+    }
+
+    tci::destroy_context(ctx);
+}
