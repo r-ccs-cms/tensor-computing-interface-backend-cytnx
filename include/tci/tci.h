@@ -1,14 +1,14 @@
 #pragma once
 
-#include "tci/tensor_traits.h"
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/read_only_getters.h"
 #include "tci/construction_destruction.h"
-#include "tci/io_operations.h"
-#include "tci/tensor_manipulation.h"
-#include "tci/tensor_linear_algebra.h"
-#include "tci/miscellaneous.h"
+#include "tci/cytnx_tensor_traits.h"
 #include "tci/debugging.h"
+#include "tci/io_operations.h"
+#include "tci/miscellaneous.h"
+#include "tci/read_only_getters.h"
+#include "tci/tensor_linear_algebra.h"
+#include "tci/tensor_manipulation.h"
+#include "tci/tensor_traits.h"
 
 /**
  * @file tci.h
@@ -23,6 +23,6 @@
  */
 
 namespace tci {
-    // All TCI functions and types are defined in their respective headers
-    // This main header serves as a convenient include point for all TCI functionality
+  // All TCI functions and types are defined in their respective headers
+  // This main header serves as a convenient include point for all TCI functionality
 }
