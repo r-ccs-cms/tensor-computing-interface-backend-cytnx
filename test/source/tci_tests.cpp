@@ -583,3 +583,134 @@ TEST_CASE("TCI Eigenvalue Functions") {
 
     tci::destroy_context(ctx);
 }
+
+TEST_CASE("TCI Tensor Contraction") {
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
+
+    SUBCASE("Matrix multiplication via contraction: ij,jk->ik") {
+        // Create two 2x2 matrices for testing
+        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        cytnx::Tensor a, b, c;
+        tci::zeros(ctx, shape, a);
+        tci::zeros(ctx, shape, b);
+
+        // Fill matrix A: [[1, 2], [3, 4]]
+        tci::set_elem(ctx, a, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, a, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+        tci::set_elem(ctx, a, {1, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+        tci::set_elem(ctx, a, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
+
+        // Fill matrix B: [[5, 6], [7, 8]]
+        tci::set_elem(ctx, b, {0, 0}, cytnx::cytnx_complex128(5.0, 0.0));
+        tci::set_elem(ctx, b, {0, 1}, cytnx::cytnx_complex128(6.0, 0.0));
+        tci::set_elem(ctx, b, {1, 0}, cytnx::cytnx_complex128(7.0, 0.0));
+        tci::set_elem(ctx, b, {1, 1}, cytnx::cytnx_complex128(8.0, 0.0));
+
+        // Contract using Einstein notation: A * B
+        tci::contract(ctx, a, "ij", b, "jk", c, "ik");
+
+        // Check result: A*B = [[19, 22], [43, 50]]
+        auto c00 = tci::get_elem(ctx, c, {0, 0});
+        auto c01 = tci::get_elem(ctx, c, {0, 1});
+        auto c10 = tci::get_elem(ctx, c, {1, 0});
+        auto c11 = tci::get_elem(ctx, c, {1, 1});
+
+        CHECK(std::abs(c00.real() - 19.0) < 1e-10);
+        CHECK(std::abs(c01.real() - 22.0) < 1e-10);
+        CHECK(std::abs(c10.real() - 43.0) < 1e-10);
+        CHECK(std::abs(c11.real() - 50.0) < 1e-10);
+    }
+
+    SUBCASE("Abnormal NCON: mixing positive and negative output labels") {
+        // Create test tensors for abnormal NCON demonstration
+        tci::shape_t<cytnx::Tensor> shape_a = {2, 3};
+        tci::shape_t<cytnx::Tensor> shape_b = {3, 2};
+        cytnx::Tensor a, b, c;
+        tci::zeros(ctx, shape_a, a);
+        tci::zeros(ctx, shape_b, b);
+
+        // Fill with simple test values
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                tci::set_elem(ctx, a, {i, j}, cytnx::cytnx_complex128(i * 3 + j + 1, 0.0));
+            }
+        }
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                tci::set_elem(ctx, b, {i, j}, cytnx::cytnx_complex128(i * 2 + j + 1, 0.0));
+            }
+        }
+
+        // Test abnormal NCON with mixed positive/negative output labels
+        tci::List<tci::bond_label_t<cytnx::Tensor>> bd_labs_a = {1, 2};  // positive labels for tensor a
+        tci::List<tci::bond_label_t<cytnx::Tensor>> bd_labs_b = {2, 3};  // mixed: 2 (contract), 3 (positive output)
+        tci::List<tci::bond_label_t<cytnx::Tensor>> bd_labs_c = {-1, 3}; // ABNORMAL: mixing negative (-1) and positive (3)
+
+        // This should handle abnormal NCON gracefully
+        tci::contract(ctx, a, bd_labs_a, b, bd_labs_b, c, bd_labs_c);
+
+        // Verify contraction occurred (shape should be 2x2)
+        CHECK(c.shape().size() == 2);
+        CHECK(c.shape()[0] == 2);
+        CHECK(c.shape()[1] == 2);
+    }
+
+    SUBCASE("Vector dot product via contraction: i,i->") {
+        // Create two vectors for dot product
+        tci::shape_t<cytnx::Tensor> shape = {3};
+        cytnx::Tensor a, b, c;
+        tci::zeros(ctx, shape, a);
+        tci::zeros(ctx, shape, b);
+
+        // Fill vectors: a = [1, 2, 3], b = [4, 5, 6]
+        tci::set_elem(ctx, a, {0}, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, a, {1}, cytnx::cytnx_complex128(2.0, 0.0));
+        tci::set_elem(ctx, a, {2}, cytnx::cytnx_complex128(3.0, 0.0));
+
+        tci::set_elem(ctx, b, {0}, cytnx::cytnx_complex128(4.0, 0.0));
+        tci::set_elem(ctx, b, {1}, cytnx::cytnx_complex128(5.0, 0.0));
+        tci::set_elem(ctx, b, {2}, cytnx::cytnx_complex128(6.0, 0.0));
+
+        // Contract to compute dot product: sum_i a[i] * b[i] = 32
+        tci::contract(ctx, a, "i", b, "i", c, "");
+
+        // Result should be scalar with value 32
+        CHECK(c.shape().size() == 0); // scalar tensor
+        auto dot_result = tci::get_elem(ctx, c, {});
+        CHECK(std::abs(dot_result.real() - 32.0) < 1e-10);
+    }
+
+    SUBCASE("Outer product via contraction: i,j->ij") {
+        // Create two vectors for outer product
+        tci::shape_t<cytnx::Tensor> shape_a = {2};
+        tci::shape_t<cytnx::Tensor> shape_b = {3};
+        cytnx::Tensor a, b, c;
+        tci::zeros(ctx, shape_a, a);
+        tci::zeros(ctx, shape_b, b);
+
+        // Fill vectors: a = [1, 2], b = [3, 4, 5]
+        tci::set_elem(ctx, a, {0}, cytnx::cytnx_complex128(1.0, 0.0));
+        tci::set_elem(ctx, a, {1}, cytnx::cytnx_complex128(2.0, 0.0));
+
+        tci::set_elem(ctx, b, {0}, cytnx::cytnx_complex128(3.0, 0.0));
+        tci::set_elem(ctx, b, {1}, cytnx::cytnx_complex128(4.0, 0.0));
+        tci::set_elem(ctx, b, {2}, cytnx::cytnx_complex128(5.0, 0.0));
+
+        // Contract to compute outer product: a[i] * b[j] -> c[i,j]
+        tci::contract(ctx, a, "i", b, "j", c, "ij");
+
+        // Result should be 2x3 matrix
+        CHECK(c.shape().size() == 2);
+        CHECK(c.shape()[0] == 2);
+        CHECK(c.shape()[1] == 3);
+
+        // Check specific values: c[0,0] = 1*3 = 3, c[1,2] = 2*5 = 10
+        auto c00 = tci::get_elem(ctx, c, {0, 0});
+        auto c12 = tci::get_elem(ctx, c, {1, 2});
+        CHECK(std::abs(c00.real() - 3.0) < 1e-10);
+        CHECK(std::abs(c12.real() - 10.0) < 1e-10);
+    }
+
+    tci::destroy_context(ctx);
+}
