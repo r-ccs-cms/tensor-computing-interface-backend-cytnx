@@ -13,14 +13,25 @@ include(../cmake/tools.cmake)
 
 # ---- Dependencies ----
 
-add_library(doctest INTERFACE)
-target_include_directories(doctest INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
-add_library(doctest::doctest ALIAS doctest)
+# Add doctest via CPM.cmake (header-only mode)
+include(../cmake/CPM.cmake)
+CPMAddPackage(
+  NAME doctest
+  GITHUB_REPOSITORY doctest/doctest
+  VERSION 2.4.12
+  DOWNLOAD_ONLY YES
+)
+
+if (doctest_ADDED)
+  add_library(doctest INTERFACE)
+  target_include_directories(doctest INTERFACE ${doctest_SOURCE_DIR})
+  target_compile_definitions(doctest INTERFACE DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
+  add_library(doctest::doctest ALIAS doctest)
+endif()
 
 if(TEST_INSTALLED_VERSION)
   find_package(TCI REQUIRED)
 else()
-  include(../cmake/CPM.cmake)
   CPMAddPackage(NAME TCI SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
 endif()
 
