@@ -68,7 +68,7 @@ cd tensor-computing-interface-backend-cytnx
 ### 2. Install Dependencies (macOS with Homebrew)
 
 ```bash
-brew install openblas llvm libomp cmake
+brew install openblas llvm libomp cmake boost arpack
 ```
 
 ### 3. Configure and Build
@@ -181,4 +181,3 @@ cd build/test && ./TCITests
 
 - [Cytnx](https://github.com/Cytnx-dev/Cytnx): High-performance tensor network library
 - [TCI Specification](link-to-spec): Universal tensor computing interface specification
-
