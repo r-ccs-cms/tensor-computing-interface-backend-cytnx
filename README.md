@@ -47,21 +47,21 @@ This design ensures maximum compatibility while leveraging Cytnx's optimized imp
 ### Required
 
 - **CMake 3.24+**: Required for Cytnx
-- **C++20 capable compiler**: GCC 10+, Clang 12+, or MSVC 2019+
+- **C++20 capable compiler**: GCC 10+, Clang 12+
 - **BLAS/LAPACK**: OpenBLAS recommended
 - **Cytnx**: Included as git submodule
+- **OpenMP**: For parallel computations
 
 ### Optional
 
-- **OpenMP**: For parallel computations
-- **CUDA**: For GPU acceleration (if supported by Cytnx)
+- **CUDA**: For GPU acceleration (via Cytnx)
 
 ## Quick Start
 
 ### 1. Clone with Submodules
 
 ```bash
-git clone --recursive https://github.com/your-org/tensor-computing-interface-backend-cytnx.git
+git clone --recursive https://github.com/r-ccs-cms/tensor-computing-interface-backend-cytnx.git
 cd tensor-computing-interface-backend-cytnx
 ```
 
