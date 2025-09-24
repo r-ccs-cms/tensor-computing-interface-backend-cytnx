@@ -11,6 +11,7 @@
 #include <vector>
 #include <complex>
 #include <iomanip>
+#include <random>
 
 using Ten = cytnx::Tensor;
 using namespace tci;
@@ -28,8 +29,10 @@ void basic_tensor_operations() {
     Ten zeros_tensor = zeros<Ten>(ctx, {3, 4});
     Ten ones_tensor = fill<Ten>(ctx, {2, 3}, std::complex<double>(1.0, 0.0));
     Ten eye_tensor = eye<Ten>(ctx, 4);
-    Ten random_tensor = random<Ten>(ctx, {2, 2, 2},
-                                   []() { return std::complex<double>(std::rand() / double(RAND_MAX), 0); });
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_real_distribution<double> dist(-1.0, 1.0);
+    auto random_gen1 = [&rng, &dist]() { return std::complex<double>(dist(rng), dist(rng)); };
+    Ten random_tensor = random<Ten>(ctx, {2, 2, 2}, random_gen1);
 
     std::cout << "Created tensors with shapes:" << std::endl;
     std::cout << "  zeros: ";
@@ -120,10 +123,11 @@ void tensor_contraction_example() {
     auto ctx = create_context<context_handle_t<Ten>>();
 
     // Create tensors for contraction
-    Ten A = random<Ten>(ctx, {3, 4, 5},
-                       []() { return std::complex<double>(std::rand() / double(RAND_MAX), 0); });
-    Ten B = random<Ten>(ctx, {5, 6, 7},
-                       []() { return std::complex<double>(std::rand() / double(RAND_MAX), 0); });
+    std::mt19937 rng2(std::random_device{}());
+    std::uniform_real_distribution<double> dist2(-1.0, 1.0);
+    auto random_gen2 = [&rng2, &dist2]() { return std::complex<double>(dist2(rng2), dist2(rng2)); };
+    Ten A = random<Ten>(ctx, {3, 4, 5}, random_gen2);
+    Ten B = random<Ten>(ctx, {5, 6, 7}, random_gen2);
 
     std::cout << "Created tensors:" << std::endl;
     std::cout << "  A: 3×4×5" << std::endl;
@@ -139,10 +143,11 @@ void tensor_contraction_example() {
     std::cout << "\b " << std::endl; // Remove last ×
 
     // More complex contraction using Einstein notation
-    Ten D = random<Ten>(ctx, {3, 4},
-                       []() { return std::complex<double>(std::rand() / double(RAND_MAX), 0); });
-    Ten E = random<Ten>(ctx, {4, 5},
-                       []() { return std::complex<double>(std::rand() / double(RAND_MAX), 0); });
+    std::mt19937 rng3(std::random_device{}());
+    std::uniform_real_distribution<double> dist3(-1.0, 1.0);
+    auto random_gen3 = [&rng3, &dist3]() { return std::complex<double>(dist3(rng3), dist3(rng3)); };
+    Ten D = random<Ten>(ctx, {3, 4}, random_gen3);
+    Ten E = random<Ten>(ctx, {4, 5}, random_gen3);
 
     Ten F;
     // Einstein notation: "ij,jk->ik" (matrix multiplication)
