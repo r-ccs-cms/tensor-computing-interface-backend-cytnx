@@ -1,6 +1,8 @@
 #include "tci/tensor_linear_algebra.h"
 #include "tci/cytnx_tensor_traits.h"
 #include <cytnx.hpp>
+#include <set>
+#include <map>
 
 namespace tci {
 
@@ -26,6 +28,104 @@ real_t<cytnx::Tensor> norm(
     }
 }
 
+namespace {
+    // Abnormal NCON analysis: detect and handle mixed positive/negative output labels
+    struct NCONAnalysis {
+        std::vector<cytnx::cytnx_uint64> contract_axes_a, contract_axes_b;
+        std::vector<cytnx::cytnx_uint64> free_axes_a, free_axes_b;
+        std::vector<cytnx::cytnx_uint64> output_permutation;
+        bool is_abnormal_ncon = false;
+
+        NCONAnalysis(const List<bond_label_t<cytnx::Tensor>> &bd_labs_a,
+                    const List<bond_label_t<cytnx::Tensor>> &bd_labs_b,
+                    const List<bond_label_t<cytnx::Tensor>> &bd_labs_c) {
+            analyze(bd_labs_a, bd_labs_b, bd_labs_c);
+        }
+
+    private:
+        void analyze(const List<bond_label_t<cytnx::Tensor>> &bd_labs_a,
+                    const List<bond_label_t<cytnx::Tensor>> &bd_labs_b,
+                    const List<bond_label_t<cytnx::Tensor>> &bd_labs_c) {
+            // Find contracted indices (appear in both a and b, not in c)
+            std::set<cytnx::cytnx_int64> labels_a(bd_labs_a.begin(), bd_labs_a.end());
+            std::set<cytnx::cytnx_int64> labels_b(bd_labs_b.begin(), bd_labs_b.end());
+            std::set<cytnx::cytnx_int64> labels_c(bd_labs_c.begin(), bd_labs_c.end());
+
+            // Check for abnormal NCON: output labels mixing positive and negative
+            bool has_positive = false, has_negative = false;
+            for (const auto& label : bd_labs_c) {
+                if (label > 0) has_positive = true;
+                if (label < 0) has_negative = true;
+            }
+            is_abnormal_ncon = has_positive && has_negative;
+
+            // Find contract axes
+            for (size_t i = 0; i < bd_labs_a.size(); ++i) {
+                auto label = bd_labs_a[i];
+                if (labels_b.count(label) && !labels_c.count(label)) {
+                    contract_axes_a.push_back(static_cast<cytnx::cytnx_uint64>(i));
+                } else if (labels_c.count(label)) {
+                    free_axes_a.push_back(static_cast<cytnx::cytnx_uint64>(i));
+                }
+            }
+
+            for (size_t i = 0; i < bd_labs_b.size(); ++i) {
+                auto label = bd_labs_b[i];
+                if (labels_a.count(label) && !labels_c.count(label)) {
+                    contract_axes_b.push_back(static_cast<cytnx::cytnx_uint64>(i));
+                } else if (labels_c.count(label)) {
+                    free_axes_b.push_back(static_cast<cytnx::cytnx_uint64>(i));
+                }
+            }
+
+            // Calculate output permutation to match bd_labs_c order
+            calculate_output_permutation(bd_labs_a, bd_labs_b, bd_labs_c);
+        }
+
+        void calculate_output_permutation(const List<bond_label_t<cytnx::Tensor>> &bd_labs_a,
+                                         const List<bond_label_t<cytnx::Tensor>> &bd_labs_b,
+                                         const List<bond_label_t<cytnx::Tensor>> &bd_labs_c) {
+            // Create mapping from output label to desired position
+            std::map<cytnx::cytnx_int64, size_t> target_pos;
+            for (size_t i = 0; i < bd_labs_c.size(); ++i) {
+                target_pos[bd_labs_c[i]] = i;
+            }
+
+            // Build permutation array
+            output_permutation.clear();
+            size_t current_pos = 0;
+
+            // Add free axes from tensor a
+            for (size_t i = 0; i < bd_labs_a.size(); ++i) {
+                auto label = bd_labs_a[i];
+                if (target_pos.count(label)) {
+                    while (output_permutation.size() <= target_pos[label]) {
+                        output_permutation.push_back(-1);
+                    }
+                    output_permutation[target_pos[label]] = current_pos;
+                }
+                if (std::find(contract_axes_a.begin(), contract_axes_a.end(), i) == contract_axes_a.end()) {
+                    current_pos++;
+                }
+            }
+
+            // Add free axes from tensor b
+            for (size_t i = 0; i < bd_labs_b.size(); ++i) {
+                auto label = bd_labs_b[i];
+                if (target_pos.count(label)) {
+                    while (output_permutation.size() <= target_pos[label]) {
+                        output_permutation.push_back(-1);
+                    }
+                    output_permutation[target_pos[label]] = current_pos;
+                }
+                if (std::find(contract_axes_b.begin(), contract_axes_b.end(), i) == contract_axes_b.end()) {
+                    current_pos++;
+                }
+            }
+        }
+    };
+}
+
 template <>
 void contract(
     context_handle_t<cytnx::Tensor> &ctx,
@@ -42,21 +142,38 @@ void contract(
         throw std::invalid_argument("contract: bond label count must match tensor rank");
     }
 
-    // Convert bond labels to cytnx format for contraction
-    std::vector<cytnx::cytnx_int64> cytnx_labs_a, cytnx_labs_b;
-    cytnx_labs_a.reserve(bd_labs_a.size());
-    cytnx_labs_b.reserve(bd_labs_b.size());
+    // Perform abnormal NCON analysis
+    NCONAnalysis analysis(bd_labs_a, bd_labs_b, bd_labs_c);
 
-    for (const auto& label : bd_labs_a) {
-        cytnx_labs_a.push_back(static_cast<cytnx::cytnx_int64>(label));
-    }
-    for (const auto& label : bd_labs_b) {
-        cytnx_labs_b.push_back(static_cast<cytnx::cytnx_int64>(label));
+    if (analysis.contract_axes_a.empty() || analysis.contract_axes_b.empty()) {
+        throw std::invalid_argument("contract: no valid contraction axes found");
     }
 
-    // Perform contraction using Cytnx linalg API for tensors
-    // Note: Cytnx::Contract mainly works with UniTensor, use basic multiplication for now
-    throw std::runtime_error("contract: tensor contraction not yet implemented - Cytnx Contract API needs UniTensor");
+    // Use cytnx::linalg::Tensordot for efficient contraction
+    try {
+        cytnx::Tensor result = cytnx::linalg::Tensordot(a, b, analysis.contract_axes_a, analysis.contract_axes_b);
+
+        // Apply output permutation if needed for abnormal NCON
+        if (!analysis.output_permutation.empty() && analysis.is_abnormal_ncon) {
+            // Filter out invalid permutation indices
+            std::vector<cytnx::cytnx_uint64> valid_perm;
+            for (auto idx : analysis.output_permutation) {
+                if (idx < static_cast<cytnx::cytnx_uint64>(result.shape().size())) {
+                    valid_perm.push_back(idx);
+                }
+            }
+
+            if (valid_perm.size() == result.shape().size()) {
+                c = result.permute(valid_perm);
+            } else {
+                c = result; // Fallback to original result if permutation is invalid
+            }
+        } else {
+            c = result;
+        }
+    } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("contract: Tensordot failed - ") + e.what());
+    }
 }
 
 template <>
