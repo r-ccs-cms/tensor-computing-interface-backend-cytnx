@@ -51,7 +51,7 @@ namespace tci {
       if (i > 0) info << ",";
       info << shape[i];
     }
-    info << "], elements=" << a.storage_size();
+    info << "], elements=" << a.storage().size();
 
     TCI_TIME_FUNCTION_WITH_INFO("tci::to_container", info.str());
 
