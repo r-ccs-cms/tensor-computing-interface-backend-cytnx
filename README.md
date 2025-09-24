@@ -75,8 +75,30 @@ llvm (LLVM Clang) is optional; Apple Clang may work.
 
 ### 3. Configure and Build
 
+#### Option A: Using CMake Presets (Recommended)
+
 ```bash
-# Set environment variables for proper library linking
+# Configure and build with Homebrew preset (automatically handles dependencies)
+cmake --preset brew
+cmake --build build
+```
+
+#### Option B: Manual Configuration
+
+```bash
+# Configure with toolchain file
+cmake -S . -B build \
+  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos-homebrew.cmake \
+  -DBUILD_PYTHON=OFF
+
+# Build
+cmake --build build --parallel 8
+```
+
+#### Option C: Legacy Method
+
+```bash
+# Manual environment variable setup (not recommended)
 export CPPFLAGS="-I/opt/homebrew/opt/openblas/include -I/opt/homebrew/opt/llvm/include -I/opt/homebrew/opt/libomp/include"
 export LDFLAGS="-L/opt/homebrew/opt/openblas/lib -L/opt/homebrew/opt/llvm/lib -L/opt/homebrew/opt/libomp/lib"
 
@@ -129,11 +151,14 @@ g++ -std=c++17 -I<tci-install>/include your_code.cpp -lTCI -lcytnx
 ## Project Structure
 
 ```
-├── include/tci/           # Public TCI API headers (C++17 compatible)
-├── source/               # TCI implementation (C++17 features, C++20 compile)
-├── test/                 # Test suite
-├── external/Cytnx/       # Cytnx library submodule
-└── CMakeLists.txt        # Build configuration
+├── include/tci/                    # Public TCI API headers (C++17 compatible)
+├── source/                        # TCI implementation (C++17 features, C++20 compile)
+├── test/                          # Test suite
+├── external/Cytnx/                # Cytnx library submodule
+├── cmake/toolchains/              # CMake toolchain files
+│   └── macos-homebrew.cmake       # Homebrew dependency configuration
+├── CMakePresets.json              # CMake preset configurations
+└── CMakeLists.txt                 # Build configuration
 ```
 
 ## Contributing
@@ -150,17 +175,36 @@ g++ -std=c++17 -I<tci-install>/include your_code.cpp -lTCI -lcytnx
 - TCI library compiles with C++20 (required by Cytnx)
 - Public headers remain C++17 compatible
 - Use explicit template specialization to hide implementation details
+- **CMake presets** provide simplified build configuration
+- **Homebrew toolchain** automatically handles keg-only dependency paths
 
 ### Testing
 
+#### Option A: Using CMake Presets
+
+```bash
+# Configure and build tests
+cmake --preset brew-test
+cmake --build test/build
+
+# Run tests
+cmake --build test/build --target test
+```
+
+#### Option B: Manual Configuration
+
 ```bash
 # Build and run test suite
-cmake -S test -B build/test
-cmake --build build/test
-cd build/test && ./TCITests
+cmake -S test -B test/build \
+  -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/macos-homebrew.cmake \
+  -DBUILD_PYTHON=OFF
+cmake --build test/build
+
+# Run tests
+cmake --build test/build --target test
 
 # With doctest, you can also run specific test cases
-./build/test/TCITests --test-case="*Context*"
+./test/build/TCITests --test-case="*Context*"
 ```
 
 ## License

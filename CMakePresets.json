@@ -1,0 +1,68 @@
+{
+  "version": 5,
+  "configurePresets": [
+    {
+      "name": "brew",
+      "displayName": "Development build with Homebrew dependencies",
+      "description": "macOS development build using Homebrew toolchain",
+      "generator": "Ninja",
+      "binaryDir": "build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "cmake/toolchains/macos-homebrew.cmake",
+        "BUILD_PYTHON": "OFF",
+        "BUILD_EXAMPLES": "OFF",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "brew-release",
+      "displayName": "Release build with Homebrew dependencies",
+      "description": "macOS release build using Homebrew toolchain",
+      "generator": "Ninja",
+      "binaryDir": "build-release",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "cmake/toolchains/macos-homebrew.cmake",
+        "BUILD_PYTHON": "OFF",
+        "BUILD_EXAMPLES": "OFF",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "brew-test",
+      "displayName": "Test configuration",
+      "description": "Test build configuration with Homebrew dependencies",
+      "generator": "Ninja",
+      "binaryDir": "test/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "../cmake/toolchains/macos-homebrew.cmake",
+        "BUILD_PYTHON": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "brew",
+      "configurePreset": "brew",
+      "jobs": 8
+    },
+    {
+      "name": "brew-release",
+      "configurePreset": "brew-release",
+      "jobs": 8
+    },
+    {
+      "name": "brew-test",
+      "configurePreset": "brew-test",
+      "jobs": 8
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "brew",
+      "configurePreset": "brew-test",
+      "environment": {
+        "CTEST_OUTPUT_ON_FAILURE": "1"
+      }
+    }
+  ]
+}
