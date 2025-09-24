@@ -26,7 +26,7 @@ void basic_tensor_operations() {
 
     // Create tensors of different types
     Ten zeros_tensor = zeros<Ten>(ctx, {3, 4});
-    Ten ones_tensor = ones<Ten>(ctx, {2, 3});
+    Ten ones_tensor = fill<Ten>(ctx, {2, 3}, std::complex<double>(1.0, 0.0));
     Ten eye_tensor = eye<Ten>(ctx, 4);
     Ten random_tensor = random<Ten>(ctx, {2, 2, 2},
                                    []() { return std::complex<double>(std::rand() / double(RAND_MAX), 0); });

@@ -75,8 +75,8 @@ public:
         set_elem(ctx, A_odd, coor_10, std::complex<double>(sqrt_half, 0));
 
         // Initialize lambda (singular values) as identity
-        lambda_even = ones<Ten>(ctx, {1});
-        lambda_odd = ones<Ten>(ctx, {1});
+        lambda_even = fill<Ten>(ctx, {1}, 1.0);
+        lambda_odd = fill<Ten>(ctx, {1}, 1.0);
     }
 
     /**
