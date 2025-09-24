@@ -54,4 +54,10 @@ target_include_directories(
 # ---- Add alias target for tests ----
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
+# ---- Add examples ----
+option(BUILD_EXAMPLES "Build example programs" ON)
+if(BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif()
+
 # ---- Tests will be added separately in test/ directory ----
