@@ -318,4 +318,372 @@ void trace(
     trace(ctx, out, bdidx_pairs);
 }
 
+template <>
+void trunc_svd(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const cytnx::Tensor &a,
+    const rank_t<cytnx::Tensor> num_of_bds_as_row,
+    cytnx::Tensor &u,
+    real_ten_t<cytnx::Tensor> &s_diag,
+    cytnx::Tensor &v_dag,
+    real_t<cytnx::Tensor> &trunc_err,
+    const bond_dim_t<cytnx::Tensor> chi_max,
+    const real_t<cytnx::Tensor> s_min
+) {
+    // First perform full SVD
+    svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag);
+
+    auto num_singular_values = s_diag.shape()[0];
+
+    // Determine how many singular values to keep
+    cytnx::cytnx_uint64 keep_count = std::min(static_cast<cytnx::cytnx_uint64>(chi_max), num_singular_values);
+
+    // Filter by minimum threshold s_min
+    cytnx::cytnx_uint64 threshold_count = 0;
+    for (cytnx::cytnx_uint64 i = 0; i < num_singular_values; ++i) {
+        auto s_val = static_cast<double>(s_diag.at({i}).real());
+        if (s_val >= s_min) {
+            threshold_count++;
+        } else {
+            break; // Singular values are in descending order
+        }
+    }
+
+    keep_count = std::min(keep_count, threshold_count);
+
+    // Calculate truncation error
+    trunc_err = 0.0;
+    for (cytnx::cytnx_uint64 i = keep_count; i < num_singular_values; ++i) {
+        auto s_val = static_cast<double>(s_diag.at({i}).real());
+        trunc_err += s_val * s_val; // Frobenius norm squared
+    }
+    trunc_err = std::sqrt(trunc_err);
+
+    // Truncate if necessary
+    if (keep_count < num_singular_values) {
+        // Truncate singular values
+        cytnx::Tensor s_truncated = cytnx::zeros({keep_count}, s_diag.dtype(), ctx);
+        for (cytnx::cytnx_uint64 i = 0; i < keep_count; ++i) {
+            s_truncated.at({i}) = s_diag.at({i});
+        }
+        s_diag = std::move(s_truncated);
+
+        // Truncate U matrix (keep first keep_count columns)
+        auto u_shape = u.shape();
+        u_shape.back() = keep_count; // Last dimension is bond dimension
+        cytnx::Tensor u_truncated = cytnx::zeros(u_shape, u.dtype(), ctx);
+
+        // Copy truncated U
+        std::vector<cytnx::cytnx_uint64> u_indices(u.shape().size());
+        for (cytnx::cytnx_uint64 col = 0; col < keep_count; ++col) {
+            u_indices.back() = col;
+            // Copy each element row by row
+            std::function<void(cytnx::cytnx_uint64)> copy_recursive = [&](cytnx::cytnx_uint64 dim) {
+                if (dim == u_indices.size() - 1) {
+                    u_truncated.at(u_indices) = u.at(u_indices);
+                } else {
+                    for (cytnx::cytnx_uint64 i = 0; i < u_shape[dim]; ++i) {
+                        u_indices[dim] = i;
+                        copy_recursive(dim + 1);
+                    }
+                }
+            };
+            copy_recursive(0);
+        }
+        u = std::move(u_truncated);
+
+        // Truncate V_dag matrix (keep first keep_count rows)
+        auto v_shape = v_dag.shape();
+        v_shape[0] = keep_count; // First dimension is bond dimension
+        cytnx::Tensor v_truncated = cytnx::zeros(v_shape, v_dag.dtype(), ctx);
+
+        // Copy truncated V_dag
+        std::vector<cytnx::cytnx_uint64> v_indices(v_dag.shape().size());
+        for (cytnx::cytnx_uint64 row = 0; row < keep_count; ++row) {
+            v_indices[0] = row;
+            // Copy each element column by column
+            std::function<void(cytnx::cytnx_uint64)> copy_v_recursive = [&](cytnx::cytnx_uint64 dim) {
+                if (dim == v_indices.size()) {
+                    v_truncated.at(v_indices) = v_dag.at(v_indices);
+                } else if (dim == 0) {
+                    copy_v_recursive(dim + 1);
+                } else {
+                    for (cytnx::cytnx_uint64 i = 0; i < v_shape[dim]; ++i) {
+                        v_indices[dim] = i;
+                        copy_v_recursive(dim + 1);
+                    }
+                }
+            };
+            copy_v_recursive(1);
+        }
+        v_dag = std::move(v_truncated);
+    }
+}
+
+template <>
+void qr(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const cytnx::Tensor &a,
+    const rank_t<cytnx::Tensor> num_of_bds_as_row,
+    cytnx::Tensor &q,
+    cytnx::Tensor &r
+) {
+    auto shape = a.shape();
+
+    // Calculate row and column dimensions based on num_of_bds_as_row
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
+        row_dim *= shape[i];
+    }
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+        col_dim *= shape[i];
+    }
+
+    // Reshape tensor to matrix form for QR
+    cytnx::Tensor matrix = a.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // Perform QR decomposition using Cytnx
+    auto qr_result = cytnx::linalg::Qr(matrix);
+
+    // Extract results
+    q = qr_result[0];  // Q matrix (orthogonal)
+    r = qr_result[1];  // R matrix (upper triangular)
+
+    // Reshape Q to match original bond structure
+    std::vector<cytnx::cytnx_uint64> q_shape;
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
+        q_shape.push_back(shape[i]);
+    }
+    q_shape.push_back(std::min(row_dim, col_dim)); // Add bond dimension
+    q.reshape_(q_shape);
+
+    // Reshape R to match bond structure
+    std::vector<cytnx::cytnx_uint64> r_shape;
+    r_shape.push_back(std::min(row_dim, col_dim)); // Bond dimension first
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+        r_shape.push_back(shape[i]);
+    }
+    r.reshape_(r_shape);
+}
+
+template <>
+void lq(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const cytnx::Tensor &a,
+    const rank_t<cytnx::Tensor> num_of_bds_as_row,
+    cytnx::Tensor &l,
+    cytnx::Tensor &q
+) {
+    auto shape = a.shape();
+
+    // Calculate row and column dimensions based on num_of_bds_as_row
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
+        row_dim *= shape[i];
+    }
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+        col_dim *= shape[i];
+    }
+
+    // Reshape tensor to matrix form
+    cytnx::Tensor matrix = a.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // Transpose for QR decomposition (A = LQ ⇔ A^T = Q^TR^T)
+    auto matrix_t = matrix.permute({1, 0}); // swap dimensions for 2D transpose
+
+    // Perform QR decomposition on transpose
+    auto qr_result = cytnx::linalg::Qr(matrix_t);
+    auto q_temp = qr_result[0];  // Q from QR of A^T
+    auto r_temp = qr_result[1];  // R from QR of A^T
+
+    // For LQ: A = LQ, so A^T = Q^TR^T
+    // Therefore: Q = (Q_temp)^T, L = (R_temp)^T
+    q = q_temp.permute({1, 0});
+    l = r_temp.permute({1, 0});
+
+    // Reshape L to match original bond structure
+    std::vector<cytnx::cytnx_uint64> l_shape;
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
+        l_shape.push_back(shape[i]);
+    }
+    l_shape.push_back(std::min(row_dim, col_dim)); // Add bond dimension
+    l.reshape_(l_shape);
+
+    // Reshape Q to match bond structure
+    std::vector<cytnx::cytnx_uint64> q_shape;
+    q_shape.push_back(std::min(row_dim, col_dim)); // Bond dimension first
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+        q_shape.push_back(shape[i]);
+    }
+    q.reshape_(q_shape);
+}
+
+template <>
+void eigvals(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const cytnx::Tensor &a,
+    const rank_t<cytnx::Tensor> num_of_bds_as_row,
+    cplx_ten_t<cytnx::Tensor> &w_diag
+) {
+    auto shape = a.shape();
+
+    // Calculate row and column dimensions based on num_of_bds_as_row
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
+        row_dim *= shape[i];
+    }
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+        col_dim *= shape[i];
+    }
+
+    if (row_dim != col_dim) {
+        throw std::invalid_argument("eigvals: matrix must be square");
+    }
+
+    // Reshape tensor to matrix form
+    cytnx::Tensor matrix = a.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // For general matrix eigenvalues, use Eigh (Cytnx doesn't have general Eig)
+    // Note: This assumes the matrix is Hermitian, for true general case would need different approach
+    auto eigh_result = cytnx::linalg::Eigh(matrix);
+    w_diag = eigh_result[0]; // Eigenvalues
+
+    // Convert real eigenvalues to complex if needed
+    if (w_diag.dtype() != cytnx::Type.ComplexDouble) {
+        w_diag = w_diag.astype(cytnx::Type.ComplexDouble);
+    }
+}
+
+template <>
+void eigvalsh(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const cytnx::Tensor &a,
+    const rank_t<cytnx::Tensor> num_of_bds_as_row,
+    real_ten_t<cytnx::Tensor> &w_diag
+) {
+    auto shape = a.shape();
+
+    // Calculate row and column dimensions based on num_of_bds_as_row
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
+        row_dim *= shape[i];
+    }
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+        col_dim *= shape[i];
+    }
+
+    if (row_dim != col_dim) {
+        throw std::invalid_argument("eigvalsh: matrix must be square");
+    }
+
+    // Reshape tensor to matrix form
+    cytnx::Tensor matrix = a.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // Use Eigh for Hermitian matrix eigenvalues
+    auto eigh_result = cytnx::linalg::Eigh(matrix);
+    w_diag = eigh_result[0]; // Real eigenvalues
+}
+
+template <>
+void eig(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const cytnx::Tensor &a,
+    const rank_t<cytnx::Tensor> num_of_bds_as_row,
+    cplx_ten_t<cytnx::Tensor> &w_diag,
+    cplx_ten_t<cytnx::Tensor> &v
+) {
+    auto shape = a.shape();
+
+    // Calculate row and column dimensions based on num_of_bds_as_row
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
+        row_dim *= shape[i];
+    }
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+        col_dim *= shape[i];
+    }
+
+    if (row_dim != col_dim) {
+        throw std::invalid_argument("eig: matrix must be square");
+    }
+
+    // Reshape tensor to matrix form
+    cytnx::Tensor matrix = a.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // Use Eigh for general matrix eigenvalues and eigenvectors
+    // Note: This assumes the matrix is Hermitian, for true general case would need different approach
+    auto eigh_result = cytnx::linalg::Eigh(matrix);
+    w_diag = eigh_result[0]; // Eigenvalues
+    v = eigh_result[1];      // Eigenvectors
+
+    // Convert to complex types if needed
+    if (w_diag.dtype() != cytnx::Type.ComplexDouble) {
+        w_diag = w_diag.astype(cytnx::Type.ComplexDouble);
+    }
+    if (v.dtype() != cytnx::Type.ComplexDouble) {
+        v = v.astype(cytnx::Type.ComplexDouble);
+    }
+}
+
+template <>
+void eigh(
+    context_handle_t<cytnx::Tensor> &ctx,
+    const cytnx::Tensor &a,
+    const rank_t<cytnx::Tensor> num_of_bds_as_row,
+    real_ten_t<cytnx::Tensor> &w_diag,
+    cytnx::Tensor &v
+) {
+    auto shape = a.shape();
+
+    // Calculate row and column dimensions based on num_of_bds_as_row
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
+        row_dim *= shape[i];
+    }
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+        col_dim *= shape[i];
+    }
+
+    if (row_dim != col_dim) {
+        throw std::invalid_argument("eigh: matrix must be square");
+    }
+
+    // Reshape tensor to matrix form
+    cytnx::Tensor matrix = a.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // Use Eigh for Hermitian matrix eigenvalues and eigenvectors
+    auto eigh_result = cytnx::linalg::Eigh(matrix);
+    w_diag = eigh_result[0]; // Real eigenvalues
+    v = eigh_result[1];      // Eigenvectors
+
+    // Reshape v to match original bond structure
+    std::vector<cytnx::cytnx_uint64> v_shape;
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
+        v_shape.push_back(shape[i]);
+    }
+    v_shape.push_back(row_dim); // Add eigenstate dimension
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+        v_shape.push_back(shape[i]);
+    }
+    v.reshape_(v_shape);
+}
+
 } // namespace tci
