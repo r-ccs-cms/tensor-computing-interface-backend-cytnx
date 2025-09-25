@@ -326,7 +326,7 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     tci::shape_t<cytnx::Tensor> shape = {2, 3};
     cytnx::Tensor tensor1, tensor2, result;
 
-    tci::ones(ctx, shape, tensor1);
+    tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), tensor1);
     tci::fill(ctx, shape, cytnx::cytnx_complex128(2.0, 0.0), tensor2);
 
     // Test vertical concatenation (bond_idx = 0)
@@ -345,7 +345,7 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
   SUBCASE("Concatenate error cases") {
     tci::shape_t<cytnx::Tensor> shape_3d = {2, 3, 4};
     cytnx::Tensor tensor_3d;
-    tci::ones(ctx, shape_3d, tensor_3d);
+    tci::fill(ctx, shape_3d, cytnx::cytnx_complex128(1.0, 0.0), tensor_3d);
 
     std::vector<cytnx::Tensor> tensors_3d = {tensor_3d};
     cytnx::Tensor result;
