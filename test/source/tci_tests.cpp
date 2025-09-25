@@ -341,8 +341,18 @@ TEST_CASE("TCI Eigenvalue Problems") {
     tci::eye(ctx, 2, matrix);
 
     cytnx::Tensor eigenvals, eigenvecs;
-    // This should fail until eig is implemented
-    CHECK_THROWS_AS(tci::eig(ctx, matrix, 1, eigenvals, eigenvecs), std::runtime_error);
+    tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
+
+    CHECK(tci::rank(ctx, eigenvals) == 1);
+    CHECK(tci::size(ctx, eigenvals) == 2);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {0}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {1}).real() - 1.0) < 1e-10);
+
+    CHECK(tci::rank(ctx, eigenvecs) == 2);
+    CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
+    CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvecs, {0, 0}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvecs, {1, 1}).real() - 1.0) < 1e-10);
   }
 
   SUBCASE("Symmetric eigendecomposition") {
@@ -350,8 +360,18 @@ TEST_CASE("TCI Eigenvalue Problems") {
     tci::eye(ctx, 2, matrix);
 
     cytnx::Tensor eigenvals, eigenvecs;
-    // This should fail until eigh is implemented
-    CHECK_THROWS_AS(tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs), std::runtime_error);
+    tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs);
+
+    CHECK(tci::rank(ctx, eigenvals) == 1);
+    CHECK(tci::size(ctx, eigenvals) == 2);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {0}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {1}).real() - 1.0) < 1e-10);
+
+    CHECK(tci::rank(ctx, eigenvecs) == 2);
+    CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
+    CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvecs, {0, 0}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvecs, {1, 1}).real() - 1.0) < 1e-10);
   }
 
   tci::destroy_context(ctx);

@@ -549,13 +549,13 @@ namespace tci {
     matrix.reshape_(
         {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
-    // For general matrix eigenvalues, use Eigh (Cytnx doesn't have general Eig)
-    // Note: This assumes the matrix is Hermitian, for true general case would need different
-    // approach
-    auto eigh_result = cytnx::linalg::Eigh(matrix);
-    w_diag = eigh_result[0];  // Eigenvalues
+    auto eig_result = cytnx::linalg::Eig(matrix);  // [eigenvalues, eigenvectors]
+    w_diag = eig_result[0];
 
-    // Convert real eigenvalues to complex if needed
+    if (w_diag.shape().size() != 1) {
+      w_diag.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+
     if (w_diag.dtype() != cytnx::Type.ComplexDouble) {
       w_diag = w_diag.astype(cytnx::Type.ComplexDouble);
     }
@@ -586,9 +586,12 @@ namespace tci {
     matrix.reshape_(
         {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
-    // Use Eigh for Hermitian matrix eigenvalues
     auto eigh_result = cytnx::linalg::Eigh(matrix);
-    w_diag = eigh_result[0];  // Real eigenvalues
+    w_diag = eigh_result[0];
+
+    if (w_diag.shape().size() != 1) {
+      w_diag.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
   }
 
   template <> void eig(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
@@ -596,7 +599,6 @@ namespace tci {
                        cplx_ten_t<cytnx::Tensor>& w_diag, cplx_ten_t<cytnx::Tensor>& v) {
     auto shape = a.shape();
 
-    // Calculate row and column dimensions based on num_of_bds_as_row
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
@@ -611,21 +613,24 @@ namespace tci {
       throw std::invalid_argument("eig: matrix must be square");
     }
 
-    // Reshape tensor to matrix form
     cytnx::Tensor matrix = a.clone();
     matrix.reshape_(
         {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
-    // Use Eigh for general matrix eigenvalues and eigenvectors
-    // Note: This assumes the matrix is Hermitian, for true general case would need different
-    // approach
-    auto eigh_result = cytnx::linalg::Eigh(matrix);
-    w_diag = eigh_result[0];  // Eigenvalues
-    v = eigh_result[1];       // Eigenvectors
+    auto eig_result = cytnx::linalg::Eig(matrix);  // [eigenvalues, eigenvectors]
+    w_diag = eig_result[0];
+    v = eig_result[1];
 
-    // Convert to complex types if needed
+    if (w_diag.shape().size() != 1) {
+      w_diag.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
     if (w_diag.dtype() != cytnx::Type.ComplexDouble) {
       w_diag = w_diag.astype(cytnx::Type.ComplexDouble);
+    }
+
+    if (v.shape().size() != 2) {
+      v.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                  static_cast<cytnx::cytnx_int64>(row_dim)});
     }
     if (v.dtype() != cytnx::Type.ComplexDouble) {
       v = v.astype(cytnx::Type.ComplexDouble);
@@ -637,7 +642,6 @@ namespace tci {
                         real_ten_t<cytnx::Tensor>& w_diag, cytnx::Tensor& v) {
     auto shape = a.shape();
 
-    // Calculate row and column dimensions based on num_of_bds_as_row
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
@@ -652,26 +656,22 @@ namespace tci {
       throw std::invalid_argument("eigh: matrix must be square");
     }
 
-    // Reshape tensor to matrix form
     cytnx::Tensor matrix = a.clone();
     matrix.reshape_(
         {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
-    // Use Eigh for Hermitian matrix eigenvalues and eigenvectors
-    auto eigh_result = cytnx::linalg::Eigh(matrix);
-    w_diag = eigh_result[0];  // Real eigenvalues
-    v = eigh_result[1];       // Eigenvectors
+    auto eigh_result = cytnx::linalg::Eigh(matrix);  // [eigenvalues, eigenvectors]
+    w_diag = eigh_result[0];
+    v = eigh_result[1];
 
-    // Reshape v to match original bond structure
-    std::vector<cytnx::cytnx_uint64> v_shape;
-    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
-      v_shape.push_back(shape[i]);
+    if (w_diag.shape().size() != 1) {
+      w_diag.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    v_shape.push_back(row_dim);  // Add eigenstate dimension
-    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
-      v_shape.push_back(shape[i]);
+
+    if (v.shape().size() != 2) {
+      v.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                  static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    v.reshape_(v_shape);
   }
 
 }  // namespace tci
