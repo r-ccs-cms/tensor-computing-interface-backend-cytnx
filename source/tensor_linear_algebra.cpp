@@ -389,9 +389,11 @@ namespace tci {
                                                static_cast<double>(elem.imag()));
         }
 
-        // Create scalar tensor with trace result
-        inout = cytnx::zeros({}, inout.dtype(), ctx);
-        inout.at({}) = trace_sum;
+        // Create scalar tensor with trace result without zero-dimension initialization issues
+        cytnx::Tensor scalar = cytnx::zeros({1}, inout.dtype(), ctx);
+        scalar.at({0}) = trace_sum;
+        scalar.reshape_({});
+        inout = std::move(scalar);
         return;
       }
     }
