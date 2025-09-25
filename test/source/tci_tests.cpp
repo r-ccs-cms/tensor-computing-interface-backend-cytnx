@@ -1631,3 +1631,218 @@ TEST_CASE("tci::clear API compliance test") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("tci::move API compliance test") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  // Test 1: In-place move with data preservation
+  {
+    // Create source tensor with known data
+    tci::shape_t<cytnx::Tensor> shape = {2, 3};
+    auto source_tensor = tci::zeros<cytnx::Tensor>(ctx, shape);
+
+    // Fill with known values
+    for (int i = 0; i < 2; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        tci::set_elem(ctx, source_tensor, {static_cast<unsigned long long>(i), static_cast<unsigned long long>(j)}, cytnx::cytnx_complex128(i * 3 + j + 1, 0.0));
+      }
+    }
+
+    // Store original values for verification
+    auto orig_val_00 = tci::get_elem(ctx, source_tensor, {0ULL, 0ULL});
+    auto orig_val_12 = tci::get_elem(ctx, source_tensor, {1ULL, 2ULL});
+
+    // Create destination tensor
+    cytnx::Tensor dest_tensor;
+
+    // Perform in-place move
+    tci::move(ctx, source_tensor, dest_tensor);
+
+    // Verify destination has the moved data
+    CHECK(tci::size(ctx, dest_tensor) == 6);
+    CHECK(tci::rank(ctx, dest_tensor) == 2);
+    CHECK(tci::shape(ctx, dest_tensor) == shape);
+
+    // Verify data integrity
+    auto moved_val_00 = tci::get_elem(ctx, dest_tensor, {0ULL, 0ULL});
+    auto moved_val_12 = tci::get_elem(ctx, dest_tensor, {1ULL, 2ULL});
+    CHECK(std::abs(moved_val_00.real() - orig_val_00.real()) < 1e-10);
+    CHECK(std::abs(moved_val_12.real() - orig_val_12.real()) < 1e-10);
+
+    // Verify source is cleared (moved from)
+    bool source_cleared = false;
+    try {
+      auto size_after = tci::size(ctx, source_tensor);
+      auto rank_after = tci::rank(ctx, source_tensor);
+      source_cleared = (size_after == 0 || rank_after == 0 || size_after != 6);
+    } catch (...) {
+      source_cleared = true;
+    }
+    CHECK(source_cleared);
+  }
+
+  // Test 2: Out-of-place move with data preservation
+  {
+    // Create source tensor
+    tci::shape_t<cytnx::Tensor> shape = {3, 2};
+    auto source_tensor = tci::zeros<cytnx::Tensor>(ctx, shape);
+
+    // Set specific values
+    tci::set_elem(ctx, source_tensor, {0ULL, 0ULL}, cytnx::cytnx_complex128(10.0, 5.0));
+    tci::set_elem(ctx, source_tensor, {2ULL, 1ULL}, cytnx::cytnx_complex128(20.0, -3.0));
+
+    // Store original values
+    auto orig_val_00 = tci::get_elem(ctx, source_tensor, {0ULL, 0ULL});
+    auto orig_val_21 = tci::get_elem(ctx, source_tensor, {2ULL, 1ULL});
+
+    // Perform out-of-place move
+    auto moved_tensor = tci::move<cytnx::Tensor>(ctx, source_tensor);
+
+    // Verify moved tensor has correct properties
+    CHECK(tci::size(ctx, moved_tensor) == 6);
+    CHECK(tci::rank(ctx, moved_tensor) == 2);
+    CHECK(tci::shape(ctx, moved_tensor) == shape);
+
+    // Verify data integrity
+    auto moved_val_00 = tci::get_elem(ctx, moved_tensor, {0ULL, 0ULL});
+    auto moved_val_21 = tci::get_elem(ctx, moved_tensor, {2ULL, 1ULL});
+    CHECK(std::abs(moved_val_00.real() - orig_val_00.real()) < 1e-10);
+    CHECK(std::abs(moved_val_00.imag() - orig_val_00.imag()) < 1e-10);
+    CHECK(std::abs(moved_val_21.real() - orig_val_21.real()) < 1e-10);
+    CHECK(std::abs(moved_val_21.imag() - orig_val_21.imag()) < 1e-10);
+
+    // Verify source is cleared
+    bool source_cleared = false;
+    try {
+      auto size_after = tci::size(ctx, source_tensor);
+      auto rank_after = tci::rank(ctx, source_tensor);
+      source_cleared = (size_after == 0 || rank_after == 0 || size_after != 6);
+    } catch (...) {
+      source_cleared = true;
+    }
+    CHECK(source_cleared);
+  }
+
+  // Test 3: Move large tensor (performance test)
+  {
+    tci::shape_t<cytnx::Tensor> large_shape = {10, 10, 5};
+    auto large_tensor = tci::zeros<cytnx::Tensor>(ctx, large_shape);
+
+    // Set some values
+    tci::set_elem(ctx, large_tensor, {0ULL, 0ULL, 0ULL}, cytnx::cytnx_complex128(100.0, 0.0));
+    tci::set_elem(ctx, large_tensor, {9ULL, 9ULL, 4ULL}, cytnx::cytnx_complex128(999.0, 0.0));
+
+    cytnx::Tensor dest_large;
+
+    // Perform move
+    CHECK_NOTHROW(tci::move(ctx, large_tensor, dest_large));
+
+    // Verify moved tensor
+    CHECK(tci::size(ctx, dest_large) == 500);  // 10*10*5
+
+    // Verify specific values
+    auto val1 = tci::get_elem(ctx, dest_large, {0ULL, 0ULL, 0ULL});
+    auto val2 = tci::get_elem(ctx, dest_large, {9ULL, 9ULL, 4ULL});
+    CHECK(std::abs(val1.real() - 100.0) < 1e-10);
+    CHECK(std::abs(val2.real() - 999.0) < 1e-10);
+  }
+
+  // Test 4: Move complex tensor preserving type
+  {
+    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+    auto complex_tensor = tci::zeros<cytnx::Tensor>(ctx, shape);
+
+    // Set complex values
+    tci::set_elem(ctx, complex_tensor, {0ULL, 0ULL}, cytnx::cytnx_complex128(1.0, 2.0));
+    tci::set_elem(ctx, complex_tensor, {1ULL, 1ULL}, cytnx::cytnx_complex128(-3.0, 4.0));
+
+    auto moved = tci::move<cytnx::Tensor>(ctx, complex_tensor);
+
+    // Verify type preservation
+    CHECK(moved.dtype() == cytnx::Type.ComplexDouble);
+
+    // Verify complex values
+    auto val1 = tci::get_elem(ctx, moved, {0ULL, 0ULL});
+    auto val2 = tci::get_elem(ctx, moved, {1ULL, 1ULL});
+    CHECK(std::abs(val1.real() - 1.0) < 1e-10);
+    CHECK(std::abs(val1.imag() - 2.0) < 1e-10);
+    CHECK(std::abs(val2.real() + 3.0) < 1e-10);  // -3.0
+    CHECK(std::abs(val2.imag() - 4.0) < 1e-10);
+  }
+
+  // Test 5: Move tensor created by different construction methods
+  {
+    // Move an eye tensor
+    auto eye_tensor = tci::eye<cytnx::Tensor>(ctx, 3);
+    auto moved_eye = tci::move<cytnx::Tensor>(ctx, eye_tensor);
+
+    CHECK(tci::size(ctx, moved_eye) == 9);
+    CHECK(tci::rank(ctx, moved_eye) == 2);
+
+    // Verify diagonal elements are 1
+    auto diag00 = tci::get_elem(ctx, moved_eye, {0ULL, 0ULL});
+    auto diag11 = tci::get_elem(ctx, moved_eye, {1ULL, 1ULL});
+    auto diag22 = tci::get_elem(ctx, moved_eye, {2ULL, 2ULL});
+    CHECK(std::abs(diag00.real() - 1.0) < 1e-10);
+    CHECK(std::abs(diag11.real() - 1.0) < 1e-10);
+    CHECK(std::abs(diag22.real() - 1.0) < 1e-10);
+
+    // Verify off-diagonal elements are 0
+    auto off_diag01 = tci::get_elem(ctx, moved_eye, {0ULL, 1ULL});
+    CHECK(std::abs(off_diag01.real()) < 1e-10);
+  }
+
+  // Test 6: Move tensor to already occupied destination
+  {
+    // Create two tensors with different data
+    tci::shape_t<cytnx::Tensor> shape1 = {2, 2};
+    tci::shape_t<cytnx::Tensor> shape2 = {3, 3};
+
+    auto tensor1 = tci::zeros<cytnx::Tensor>(ctx, shape1);
+    auto tensor2 = tci::zeros<cytnx::Tensor>(ctx, shape2);
+
+    tci::set_elem(ctx, tensor1, {0ULL, 0ULL}, cytnx::cytnx_complex128(42.0, 0.0));
+    tci::set_elem(ctx, tensor2, {0ULL, 0ULL}, cytnx::cytnx_complex128(99.0, 0.0));
+
+    // Move tensor1 into tensor2 (should replace tensor2)
+    tci::move(ctx, tensor1, tensor2);
+
+    // Verify tensor2 now has tensor1's properties and data
+    CHECK(tci::size(ctx, tensor2) == 4);  // 2*2, not 3*3
+    CHECK(tci::rank(ctx, tensor2) == 2);
+
+    auto val = tci::get_elem(ctx, tensor2, {0ULL, 0ULL});
+    CHECK(std::abs(val.real() - 42.0) < 1e-10);
+
+    // tensor1 should be cleared
+    bool tensor1_cleared = false;
+    try {
+      auto size_after = tci::size(ctx, tensor1);
+      tensor1_cleared = (size_after == 0 || size_after != 4);
+    } catch (...) {
+      tensor1_cleared = true;
+    }
+    CHECK(tensor1_cleared);
+  }
+
+  // Test 7: Move empty/uninitialized tensor
+  {
+    cytnx::Tensor empty_tensor;
+    cytnx::Tensor dest_tensor;
+
+    // Move empty tensor should not crash
+    CHECK_NOTHROW(tci::move(ctx, empty_tensor, dest_tensor));
+  }
+
+  // Test 8: Self-assignment protection (though not recommended)
+  {
+    auto test_tensor = tci::zeros<cytnx::Tensor>(ctx, {2, 2});
+    tci::set_elem(ctx, test_tensor, {0ULL, 0ULL}, cytnx::cytnx_complex128(123.0, 0.0));
+
+    // Self-move should not crash (though behavior is undefined)
+    CHECK_NOTHROW(tci::move(ctx, test_tensor, test_tensor));
+  }
+
+  tci::destroy_context(ctx);
+}
+
