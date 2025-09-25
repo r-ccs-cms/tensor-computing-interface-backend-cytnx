@@ -5,6 +5,7 @@
 #include <cmath>
 #include <chrono>
 #include <iostream>
+#include <numeric>
 
 /**
  * @brief iTEBD (Infinite Time Evolving Block Decimation) Integration Test
@@ -118,19 +119,21 @@ public:
 
         // U = V * diag(exp(-i*dt*eigenvals)) * V†
         // Reshape for tensor contraction
-        Ten exp_w_diag = diag(ctx, exp_w); // Convert to diagonal matrix
+        Ten exp_w_diag;
+        diag(ctx, exp_w, exp_w_diag); // Convert to diagonal matrix
 
         // U = V * exp_w_diag * V†
         Ten temp;
         contract(ctx, v, {0, 1}, exp_w_diag, {1, 2}, temp, {0, 2}); // V * exp_w_diag
 
-        Ten v_dagger = cplx_conj(ctx, v);
-        v_dagger = transpose(ctx, v_dagger, {1, 0}); // V†
+        Ten v_dagger;
+        cplx_conj(ctx, v, v_dagger);
+        transpose(ctx, v_dagger, {1, 0}); // V†
 
         contract(ctx, temp, {0, 1}, v_dagger, {1, 2}, U_even, {0, 2}); // Final U
 
         // Reshape U back to physical indices [d_left, d_right, d_left', d_right']
-        U_even = reshape(ctx, U_even, {2, 2, 2, 2});
+        reshape(ctx, U_even, {2, 2, 2, 2});
         U_odd = copy(ctx, U_even); // Same operator for homogeneous system
     }
 
@@ -182,14 +185,20 @@ public:
         size_t left_dim = psi_shape[0] * psi_shape[1];  // d1' * chi_L
         size_t right_dim = psi_shape[2] * psi_shape[3]; // d2' * chi_R
 
-        Ten Psi_matrix = reshape(ctx, Psi_new, {left_dim, right_dim});
+        Ten Psi_matrix;
+        shape_t<Ten> matrix_shape = {static_cast<bond_dim_t<Ten>>(left_dim),
+                                     static_cast<bond_dim_t<Ten>>(right_dim)};
+        reshape(ctx, Psi_new, matrix_shape, Psi_matrix);
 
         // Perform SVD with truncation
         Ten U_svd, S_diag, V_dag;
         real_t<Ten> trunc_err = 0.0;
 
-        trunc_svd(ctx, Psi_matrix, 1, U_svd, S_diag, V_dag, trunc_err,
-                 1, bond_dim, trunc_err_threshold, trunc_err_threshold);
+        const auto chi_max = static_cast<bond_dim_t<Ten>>(bond_dim);
+        const auto s_min = static_cast<real_t<Ten>>(trunc_err_threshold);
+
+        trunc_svd(ctx, Psi_matrix, static_cast<rank_t<Ten>>(1), U_svd, S_diag, V_dag, trunc_err,
+                  chi_max, s_min);
 
         // Update lambda (singular values)
         if (is_even) {
@@ -200,15 +209,23 @@ public:
 
         // Reshape U_svd and V_dag back to MPS form
         auto s_shape = shape(ctx, S_diag);
-        size_t new_bond_dim = s_shape[0];
+        const auto new_bond_dim = s_shape[0];
 
         // A1_new[d1', chi_L, chi_new]
-        A1 = reshape(ctx, U_svd, {psi_shape[0], psi_shape[1], new_bond_dim});
+        shape_t<Ten> a1_shape = {psi_shape[0], psi_shape[1], new_bond_dim};
+        reshape(ctx, U_svd, a1_shape);
+        move(ctx, U_svd, A1);
 
-        // A2_new[d2', chi_new, chi_R] = V_dag^T[chi_new, d2' * chi_R] reshaped
-        Ten V = transpose(ctx, V_dag, {1, 0}); // V = V_dag^T
-        A2 = reshape(ctx, V, {new_bond_dim, psi_shape[2], psi_shape[3]});
-        A2 = transpose(ctx, A2, {1, 0, 2}); // A2[d2', chi_new, chi_R]
+        // A2_new[d2', chi_new, chi_R] = (V_dag^T) reshaped and permuted
+        List<bond_idx_t<Ten>> vt_order = {1, 0};
+        transpose(ctx, V_dag, vt_order);
+
+        shape_t<Ten> a2_shape = {new_bond_dim, psi_shape[2], psi_shape[3]};
+        reshape(ctx, V_dag, a2_shape);
+
+        List<bond_idx_t<Ten>> final_order = {1, 0, 2};
+        transpose(ctx, V_dag, final_order);
+        move(ctx, V_dag, A2);
 
         return static_cast<double>(trunc_err);
     }
@@ -235,7 +252,7 @@ public:
         // Trace to get expectation value
         auto energy_elem = get_elem(ctx, rho_H, {0, 0});
         for (size_t i = 1; i < 4; ++i) {
-            energy_elem += get_elem(ctx, rho_H, {i, i});
+            energy_elem += get_elem(ctx, rho_H, {static_cast<elem_coor_t<Ten>>(i), static_cast<elem_coor_t<Ten>>(i)});
         }
         observables[0] = energy_elem.real();
 
@@ -251,7 +268,8 @@ public:
      * @brief Get current bond dimension
      */
     size_t get_bond_dimension() const {
-        auto lambda_shape = shape(ctx, lambda_even);
+        auto ctx_copy = ctx;
+        auto lambda_shape = shape(ctx_copy, lambda_even);
         return lambda_shape[0];
     }
 
@@ -259,14 +277,15 @@ public:
      * @brief Get memory usage information
      */
     std::vector<size_t> get_memory_info() const {
+        auto ctx_copy = ctx;
         std::vector<size_t> memory_info;
 
-        memory_info.push_back(size_bytes(ctx, A_even));
-        memory_info.push_back(size_bytes(ctx, A_odd));
-        memory_info.push_back(size_bytes(ctx, lambda_even));
-        memory_info.push_back(size_bytes(ctx, lambda_odd));
-        memory_info.push_back(size_bytes(ctx, U_even));
-        memory_info.push_back(size_bytes(ctx, U_odd));
+        memory_info.push_back(size_bytes(ctx_copy, A_even));
+        memory_info.push_back(size_bytes(ctx_copy, A_odd));
+        memory_info.push_back(size_bytes(ctx_copy, lambda_even));
+        memory_info.push_back(size_bytes(ctx_copy, lambda_odd));
+        memory_info.push_back(size_bytes(ctx_copy, U_even));
+        memory_info.push_back(size_bytes(ctx_copy, U_odd));
 
         return memory_info;
     }

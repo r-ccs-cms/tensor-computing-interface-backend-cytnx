@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tci/tensor_traits.h"
+#include "tci/read_only_getters.h"
 
 namespace tci {
 
@@ -41,7 +42,32 @@ namespace tci {
    * @param coors2idx Function to convert coordinates to linear index
    */
   template <typename TenT, typename RandomIt, typename Func>
-  void to_container(context_handle_t<TenT>& ctx, const TenT& a, RandomIt first, Func&& coors2idx);
+  void to_container(context_handle_t<TenT>& ctx, const TenT& a, RandomIt first, Func&& coors2idx) {
+    const auto ten_shape = shape(ctx, a);
+    const auto total_size = size(ctx, a);
+
+    // Create coordinate vector for iteration
+    elem_coors_t<TenT> coors(ten_shape.size(), 0);
+
+    for (size_t flat_idx = 0; flat_idx < total_size; ++flat_idx) {
+      // Get element at current coordinates
+      auto elem = get_elem(ctx, a, coors);
+
+      // Use lambda to convert coordinates to container index
+      auto container_idx = std::invoke(coors2idx, coors);
+
+      // Store element in container
+      *(first + container_idx) = static_cast<typename std::iterator_traits<RandomIt>::value_type>(elem);
+
+      // Advance to next coordinate (row-major order)
+      for (int dim = static_cast<int>(coors.size()) - 1; dim >= 0; --dim) {
+        if (++coors[dim] < ten_shape[dim]) {
+          break;
+        }
+        coors[dim] = 0;
+      }
+    }
+  }
 
   /**
    * @brief Print tensor contents in human-readable format

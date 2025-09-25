@@ -2,6 +2,7 @@
 #include <tci/tci.h>
 
 #include <cytnx.hpp>
+#include <functional>
 
 TEST_CASE("TCI Context Management") {
   tci::context_handle_t<cytnx::Tensor> ctx;
@@ -76,7 +77,7 @@ TEST_CASE("TCI Tensor Creation") {
     };
 
     cytnx::Tensor tensor;
-    CHECK_NOTHROW(tensor = tci::random(ctx, shape, gen));
+    CHECK_NOTHROW(tensor = tci::random<cytnx::Tensor>(ctx, shape, gen));
     CHECK(counter == 4);
 
     auto result_shape = tci::shape(ctx, tensor);
@@ -174,14 +175,16 @@ TEST_CASE("TCI assign_from_container") {
            cytnx::cytnx_complex128(3.0, 0.0), cytnx::cytnx_complex128(4.0, 0.0),
            cytnx::cytnx_complex128(5.0, 0.0), cytnx::cytnx_complex128(6.0, 0.0)};
 
-    auto coors2idx = [](const tci::elem_coors_t<cytnx::Tensor>& coors) -> std::ptrdiff_t {
-      return coors[0] * 3 + coors[1];  // row-major for 2x3 matrix
-    };
+    std::function<std::ptrdiff_t(const tci::elem_coors_t<cytnx::Tensor>&)> coors2idx
+        = [](const tci::elem_coors_t<cytnx::Tensor>& coors) -> std::ptrdiff_t {
+            return coors[0] * 3 + coors[1];  // row-major for 2x3 matrix
+          };
 
     tci::shape_t<cytnx::Tensor> shape = {2, 3};
     cytnx::Tensor tensor;
 
-    CHECK_NOTHROW(tci::assign_from_container(ctx, shape, container.begin(), coors2idx, tensor));
+    CHECK_NOTHROW(
+        tci::assign_from_container(ctx, shape, container.begin(), std::move(coors2idx), tensor));
 
     // Verify tensor properties
     CHECK(tci::rank(ctx, tensor) == 2);
@@ -210,14 +213,16 @@ TEST_CASE("TCI assign_from_container") {
         cytnx::cytnx_complex128(2.0, 0.0), cytnx::cytnx_complex128(4.0, 0.0)   // column 1
     };
 
-    auto coors2idx = [](const tci::elem_coors_t<cytnx::Tensor>& coors) -> std::ptrdiff_t {
-      return coors[1] * 2 + coors[0];  // column-major for 2x2 matrix
-    };
+    std::function<std::ptrdiff_t(const tci::elem_coors_t<cytnx::Tensor>&)> coors2idx
+        = [](const tci::elem_coors_t<cytnx::Tensor>& coors) -> std::ptrdiff_t {
+            return coors[1] * 2 + coors[0];  // column-major for 2x2 matrix
+          };
 
     tci::shape_t<cytnx::Tensor> shape = {2, 2};
     cytnx::Tensor tensor;
 
-    CHECK_NOTHROW(tci::assign_from_container(ctx, shape, container.begin(), coors2idx, tensor));
+    CHECK_NOTHROW(
+        tci::assign_from_container(ctx, shape, container.begin(), std::move(coors2idx), tensor));
 
     // Verify element values with column-major layout
     auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
@@ -238,15 +243,16 @@ TEST_CASE("TCI assign_from_container") {
         = {cytnx::cytnx_complex128(7.0, 0.0), cytnx::cytnx_complex128(8.0, 0.0),
            cytnx::cytnx_complex128(9.0, 0.0)};
 
-    auto coors2idx = [](const tci::elem_coors_t<cytnx::Tensor>& coors) -> std::ptrdiff_t {
-      return coors[0];  // simple linear indexing for 1D tensor
-    };
+    std::function<std::ptrdiff_t(const tci::elem_coors_t<cytnx::Tensor>&)> coors2idx
+        = [](const tci::elem_coors_t<cytnx::Tensor>& coors) -> std::ptrdiff_t {
+            return coors[0];  // simple linear indexing for 1D tensor
+          };
 
     tci::shape_t<cytnx::Tensor> shape = {3};
 
     cytnx::Tensor tensor;
-    CHECK_NOTHROW(tensor = tci::assign_from_container<cytnx::Tensor>(ctx, shape, container.begin(),
-                                                                     coors2idx));
+    CHECK_NOTHROW(tensor = tci::assign_from_container<cytnx::Tensor>(
+                      ctx, shape, container.begin(), std::move(coors2idx)));
 
     // Verify elements
     auto elem_0 = tci::get_elem(ctx, tensor, {0});
@@ -285,11 +291,12 @@ TEST_CASE("TCI Tensor Manipulation") {
     tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), tensor);
 
     // Test out-of-place transpose
-    std::vector<std::size_t> new_order = {2, 0, 1};  // 4,2,3
+    tci::List<tci::bond_idx_t<cytnx::Tensor>> new_order = {2, 0, 1};  // 4,2,3
     CHECK_NOTHROW(tci::transpose(ctx, tensor, new_order, transposed));
 
     auto result_shape = tci::shape(ctx, transposed);
-    CHECK(result_shape == std::vector<std::size_t>{4, 2, 3});
+    tci::shape_t<cytnx::Tensor> expected_shape = {4, 2, 3};
+    CHECK(result_shape == expected_shape);
   }
 
   SUBCASE("Complex operations") {
@@ -334,12 +341,14 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     CHECK_NOTHROW(tci::concatenate(ctx, tensors, 0, result));
 
     auto result_shape = tci::shape(ctx, result);
-    CHECK(result_shape == std::vector<std::size_t>{4, 3});  // 2+2 = 4 rows
+    tci::shape_t<cytnx::Tensor> expected_vertical_shape = {4, 3};
+    CHECK(result_shape == expected_vertical_shape);  // 2+2 = 4 rows
 
     // Test horizontal concatenation (bond_idx = 1)
     CHECK_NOTHROW(tci::concatenate(ctx, tensors, 1, result));
     result_shape = tci::shape(ctx, result);
-    CHECK(result_shape == std::vector<std::size_t>{2, 6});  // 3+3 = 6 columns
+    tci::shape_t<cytnx::Tensor> expected_horizontal_shape = {2, 6};
+    CHECK(result_shape == expected_horizontal_shape);  // 3+3 = 6 columns
   }
 
   SUBCASE("Concatenate error cases") {
@@ -369,11 +378,13 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     tci::set_elem(ctx, tensor, {2, 3}, cytnx::cytnx_complex128(7.0, 0.0));
 
     // Extract sub-tensor [1:3, 2:5)
-    std::vector<std::pair<std::size_t, std::size_t>> coor_pairs = {{1, 3}, {2, 5}};
+    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> coor_pairs
+        = {{1, 3}, {2, 5}};
     CHECK_NOTHROW(tci::extract_sub(ctx, tensor, coor_pairs, sub_result));
 
     auto sub_shape = tci::shape(ctx, sub_result);
-    CHECK(sub_shape == std::vector<std::size_t>{2, 3});  // (3-1) x (5-2)
+    tci::shape_t<cytnx::Tensor> expected_sub_shape = {2, 3};
+    CHECK(sub_shape == expected_sub_shape);  // (3-1) x (5-2)
 
     // Verify extracted value
     auto extracted_elem = tci::get_elem(ctx, sub_result, {0, 0});  // Should be (1,2) from original
@@ -389,7 +400,7 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     tci::fill(ctx, sub_shape, cytnx::cytnx_complex128(3.0, 0.0), sub_tensor);
 
     // Replace starting at position (1, 1)
-    std::vector<std::size_t> begin_pt = {1, 1};
+    tci::elem_coors_t<cytnx::Tensor> begin_pt = {1, 1};
     CHECK_NOTHROW(tci::replace_sub(ctx, main_tensor, sub_tensor, begin_pt, result));
 
     // Verify replacement
@@ -411,11 +422,13 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     tci::fill(ctx, original_shape, cytnx::cytnx_complex128(1.0, 0.0), tensor);
 
     // Expand bond 0 by 1, bond 1 by 2
-    std::unordered_map<std::size_t, std::size_t> increment_map = {{0, 1}, {1, 2}};
+    tci::Map<tci::bond_idx_t<cytnx::Tensor>, tci::bond_dim_t<cytnx::Tensor>> increment_map
+        = {{0, 1}, {1, 2}};
     CHECK_NOTHROW(tci::expand(ctx, tensor, increment_map, expanded));
 
     auto expanded_shape = tci::shape(ctx, expanded);
-    CHECK(expanded_shape == std::vector<std::size_t>{3, 5});  // 2+1, 3+2
+    tci::shape_t<cytnx::Tensor> expected_expanded_shape = {3, 5};
+    CHECK(expanded_shape == expected_expanded_shape);  // 2+1, 3+2
 
     // Verify original data is preserved (at beginning)
     auto elem = tci::get_elem(ctx, expanded, {0, 0});
@@ -432,8 +445,8 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     tci::zeros(ctx, shape, tensor);
 
     // Set values based on coordinates using for_each_with_coors
-    std::function<void(cytnx::cytnx_complex128&, const std::vector<std::size_t>&)> set_coords
-        = [](cytnx::cytnx_complex128& elem, const std::vector<std::size_t>& coords) {
+    std::function<void(cytnx::cytnx_complex128&, const tci::elem_coors_t<cytnx::Tensor>&)> set_coords
+        = [](cytnx::cytnx_complex128& elem, const tci::elem_coors_t<cytnx::Tensor>& coords) {
             elem = cytnx::cytnx_complex128(coords[0] * 10 + coords[1], 0.0);
           };
 
