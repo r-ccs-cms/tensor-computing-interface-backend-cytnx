@@ -842,3 +842,101 @@ TEST_CASE("tci::for_each API compliance test") {
 
   tci::destroy_context(ctx);
 }
+
+TEST_CASE("tci::linear_combine API compliance test") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("linear_combine uniform coefficients - basic tensor addition") {
+    // Create test tensors with known values
+    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+
+    cytnx::Tensor tensor_a, tensor_b, tensor_c, result;
+    tci::zeros(ctx, shape, tensor_a);
+    tci::zeros(ctx, shape, tensor_b);
+    tci::zeros(ctx, shape, tensor_c);
+
+    // Set tensor_a = [[1, 2], [3, 4]]
+    tci::set_elem(ctx, tensor_a, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, tensor_a, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, tensor_a, {1, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+    tci::set_elem(ctx, tensor_a, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
+
+    // Set tensor_b = [[5, 6], [7, 8]]
+    tci::set_elem(ctx, tensor_b, {0, 0}, cytnx::cytnx_complex128(5.0, 0.0));
+    tci::set_elem(ctx, tensor_b, {0, 1}, cytnx::cytnx_complex128(6.0, 0.0));
+    tci::set_elem(ctx, tensor_b, {1, 0}, cytnx::cytnx_complex128(7.0, 0.0));
+    tci::set_elem(ctx, tensor_b, {1, 1}, cytnx::cytnx_complex128(8.0, 0.0));
+
+    // Set tensor_c = [[1, 1], [1, 1]]
+    tci::set_elem(ctx, tensor_c, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, tensor_c, {0, 1}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, tensor_c, {1, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, tensor_c, {1, 1}, cytnx::cytnx_complex128(1.0, 0.0));
+
+    // Test uniform linear combination (simple addition)
+    tci::List<cytnx::Tensor> tensors = {tensor_a, tensor_b, tensor_c};
+    CHECK_NOTHROW(tci::linear_combine(ctx, tensors, result));
+
+    // Expected result: [[7, 9], [11, 13]] = [[1+5+1, 2+6+1], [3+7+1, 4+8+1]]
+    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 7.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, result, {0, 1}).real() - 9.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, result, {1, 0}).real() - 11.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, result, {1, 1}).real() - 13.0) < 1e-10);
+  }
+
+  SUBCASE("linear_combine with specified coefficients - weighted combination") {
+    // Create test tensors
+    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+
+    cytnx::Tensor tensor_a, tensor_b, result;
+    tci::zeros(ctx, shape, tensor_a);
+    tci::zeros(ctx, shape, tensor_b);
+
+    // Set tensor_a = [[2, 4], [6, 8]]
+    tci::set_elem(ctx, tensor_a, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, tensor_a, {0, 1}, cytnx::cytnx_complex128(4.0, 0.0));
+    tci::set_elem(ctx, tensor_a, {1, 0}, cytnx::cytnx_complex128(6.0, 0.0));
+    tci::set_elem(ctx, tensor_a, {1, 1}, cytnx::cytnx_complex128(8.0, 0.0));
+
+    // Set tensor_b = [[1, 3], [5, 7]]
+    tci::set_elem(ctx, tensor_b, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, tensor_b, {0, 1}, cytnx::cytnx_complex128(3.0, 0.0));
+    tci::set_elem(ctx, tensor_b, {1, 0}, cytnx::cytnx_complex128(5.0, 0.0));
+    tci::set_elem(ctx, tensor_b, {1, 1}, cytnx::cytnx_complex128(7.0, 0.0));
+
+    // Test weighted linear combination: 0.5 * tensor_a + 2.0 * tensor_b
+    tci::List<cytnx::Tensor> tensors = {tensor_a, tensor_b};
+    tci::List<tci::elem_t<cytnx::Tensor>> coefficients = {
+        cytnx::cytnx_complex128(0.5, 0.0),
+        cytnx::cytnx_complex128(2.0, 0.0)
+    };
+
+    CHECK_NOTHROW(tci::linear_combine(ctx, tensors, coefficients, result));
+
+    // Expected result: [[3, 8], [13, 18]] = [[0.5*2+2*1, 0.5*4+2*3], [0.5*6+2*5, 0.5*8+2*7]]
+    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 3.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, result, {0, 1}).real() - 8.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, result, {1, 0}).real() - 13.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, result, {1, 1}).real() - 18.0) < 1e-10);
+  }
+
+  SUBCASE("linear_combine edge cases") {
+    tci::shape_t<cytnx::Tensor> shape = {1, 1};
+    cytnx::Tensor single_tensor, result;
+    tci::zeros(ctx, shape, single_tensor);
+    tci::set_elem(ctx, single_tensor, {0, 0}, cytnx::cytnx_complex128(5.0, 0.0));
+
+    // Test single tensor uniform combination
+    tci::List<cytnx::Tensor> single_list = {single_tensor};
+    CHECK_NOTHROW(tci::linear_combine(ctx, single_list, result));
+    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 5.0) < 1e-10);
+
+    // Test single tensor with coefficient
+    tci::List<tci::elem_t<cytnx::Tensor>> single_coef = {cytnx::cytnx_complex128(3.0, 0.0)};
+    CHECK_NOTHROW(tci::linear_combine(ctx, single_list, single_coef, result));
+    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 15.0) < 1e-10);
+  }
+
+  tci::destroy_context(ctx);
+}
