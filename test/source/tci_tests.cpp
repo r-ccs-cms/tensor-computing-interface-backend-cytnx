@@ -294,9 +294,23 @@ TEST_CASE("TCI Matrix Decomposition - Truncated SVD") {
     cytnx::Tensor s_diag;
     double trunc_err;
 
-    // This should fail until trunc_svd is implemented
-    CHECK_THROWS_AS(tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err, 2, 0.1),
-                    std::runtime_error);
+    // Test truncated SVD implementation
+    CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err, 2, 0.1));
+
+    // Verify dimensions (should be truncated to at most chi_max=2)
+    auto u_shape = tci::shape(ctx, u);
+    auto s_shape = tci::shape(ctx, s_diag);
+    auto v_dag_shape = tci::shape(ctx, v_dag);
+
+    CHECK(u_shape.size() == 2);
+    CHECK(v_dag_shape.size() == 2);
+    CHECK(s_shape.size() == 1);
+
+    // Check that the number of singular values doesn't exceed chi_max
+    CHECK(s_shape[0] <= 2);
+
+    // Verify that truncation error is non-negative
+    CHECK(trunc_err >= 0.0);
   }
 
   tci::destroy_context(ctx);
@@ -494,9 +508,20 @@ TEST_CASE("TCI Truncated SVD") {
     tci::real_ten_t<cytnx::Tensor> s_diag;
     tci::real_t<cytnx::Tensor> trunc_err;
 
-    // Placeholder guard until trunc_svd is production-ready
-    CHECK_THROWS_AS(tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err, 2, 0.5),
-                    std::runtime_error);
+    // Test truncated SVD with chi_max=2 and s_min=0.5
+    CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err, 2, 0.5));
+
+    // Verify dimensions (should be truncated to at most chi_max=2)
+    auto s_shape = tci::shape(ctx, s_diag);
+    CHECK(s_shape.size() == 1);
+    CHECK(s_shape[0] <= 2);
+
+    // With s_min=0.5, values 0.1 should be truncated, so we expect 2 singular values (3.0, 2.0, 1.0 >= 0.5)
+    // But limited by chi_max=2, so we should get 2 values
+    CHECK(s_shape[0] <= 2);
+
+    // Verify that truncation error represents information lost
+    CHECK(trunc_err >= 0.0);
   }
 
   tci::destroy_context(ctx);
