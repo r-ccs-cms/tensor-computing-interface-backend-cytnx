@@ -1978,3 +1978,218 @@ TEST_CASE("tci::scale API functionality") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("tci::shrink API functionality") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  // Test 1: In-place shrinking of 2D tensor - extract central 2x2 from 4x4
+  {
+    cytnx::Tensor tensor;
+    tci::zeros(ctx, {4, 4}, tensor);
+
+    // Fill with identifiable pattern: [row][col] = row*10 + col
+    for (cytnx::cytnx_uint64 i = 0; i < 4; ++i) {
+      for (cytnx::cytnx_uint64 j = 0; j < 4; ++j) {
+        tci::set_elem(ctx, tensor, {i, j}, cytnx::cytnx_complex128(i*10.0 + j, 0.0));
+      }
+    }
+
+    // Shrink to extract central 2x2 (indices 1:3, 1:3)
+    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    shrink_map[0] = {1ULL, 3ULL};  // rows 1-2 (range [1, 3))
+    shrink_map[1] = {1ULL, 3ULL};  // cols 1-2 (range [1, 3))
+
+    CHECK_NOTHROW(tci::shrink(ctx, tensor, shrink_map));
+
+    // Check resulting shape
+    auto result_shape = tci::shape(ctx, tensor);
+    CHECK(result_shape[0] == 2ULL);
+    CHECK(result_shape[1] == 2ULL);
+
+    // Check values: should be [11, 12; 21, 22]
+    auto elem_00 = tci::get_elem(ctx, tensor, {0ULL, 0ULL});
+    auto elem_01 = tci::get_elem(ctx, tensor, {0ULL, 1ULL});
+    auto elem_10 = tci::get_elem(ctx, tensor, {1ULL, 0ULL});
+    auto elem_11 = tci::get_elem(ctx, tensor, {1ULL, 1ULL});
+
+    CHECK(std::abs(elem_00.real() - 11.0) < 1e-15);
+    CHECK(std::abs(elem_01.real() - 12.0) < 1e-15);
+    CHECK(std::abs(elem_10.real() - 21.0) < 1e-15);
+    CHECK(std::abs(elem_11.real() - 22.0) < 1e-15);
+  }
+
+  // Test 2: In-place shrinking with partial dimension specification
+  {
+    cytnx::Tensor tensor;
+    tci::zeros(ctx, {3, 5, 2}, tensor);
+
+    // Fill with identifiable pattern
+    for (cytnx::cytnx_uint64 i = 0; i < 3; ++i) {
+      for (cytnx::cytnx_uint64 j = 0; j < 5; ++j) {
+        for (cytnx::cytnx_uint64 k = 0; k < 2; ++k) {
+          tci::set_elem(ctx, tensor, {i, j, k},
+                       cytnx::cytnx_complex128(i*100.0 + j*10.0 + k, 0.0));
+        }
+      }
+    }
+
+    // Shrink only middle dimension (keep first slice of first dim, middle 3 of second dim, all of third dim)
+    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    shrink_map[0] = {0ULL, 1ULL};  // first slice only
+    shrink_map[1] = {1ULL, 4ULL};  // middle 3 slices
+
+    CHECK_NOTHROW(tci::shrink(ctx, tensor, shrink_map));
+
+    // Check resulting shape
+    auto result_shape = tci::shape(ctx, tensor);
+    CHECK(result_shape[0] == 1ULL);
+    CHECK(result_shape[1] == 3ULL);
+    CHECK(result_shape[2] == 2ULL);
+
+    // Check specific values
+    auto elem = tci::get_elem(ctx, tensor, {0ULL, 0ULL, 1ULL});
+    CHECK(std::abs(elem.real() - 11.0) < 1e-15);  // was [0,1,1] = 0*100 + 1*10 + 1 = 11
+
+    elem = tci::get_elem(ctx, tensor, {0ULL, 2ULL, 0ULL});
+    CHECK(std::abs(elem.real() - 30.0) < 1e-15);  // was [0,3,0] = 0*100 + 3*10 + 0 = 30
+  }
+
+  // Test 3: Out-of-place shrinking preserves original
+  {
+    cytnx::Tensor input, output;
+    tci::fill(ctx, {3, 3}, cytnx::cytnx_complex128(42.0, 7.0), input);
+
+    // Set corner elements to different values
+    tci::set_elem(ctx, input, {0ULL, 0ULL}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, input, {2ULL, 2ULL}, cytnx::cytnx_complex128(9.0, 0.0));
+
+    // Shrink to extract 2x2 from top-left
+    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    shrink_map[0] = {0ULL, 2ULL};  // first 2 rows
+    shrink_map[1] = {0ULL, 2ULL};  // first 2 cols
+
+    CHECK_NOTHROW(tci::shrink(ctx, input, shrink_map, output));
+
+    // Input should be unchanged
+    auto input_shape = tci::shape(ctx, input);
+    CHECK(input_shape[0] == 3ULL);
+    CHECK(input_shape[1] == 3ULL);
+
+    auto input_corner = tci::get_elem(ctx, input, {2ULL, 2ULL});
+    CHECK(std::abs(input_corner.real() - 9.0) < 1e-15);
+
+    // Output should have shrunk dimensions
+    auto output_shape = tci::shape(ctx, output);
+    CHECK(output_shape[0] == 2ULL);
+    CHECK(output_shape[1] == 2ULL);
+
+    // Output should contain the extracted values
+    auto output_elem = tci::get_elem(ctx, output, {0ULL, 0ULL});
+    CHECK(std::abs(output_elem.real() - 1.0) < 1e-15);
+
+    auto output_fill = tci::get_elem(ctx, output, {1ULL, 1ULL});
+    CHECK(std::abs(output_fill.real() - 42.0) < 1e-15);
+    CHECK(std::abs(output_fill.imag() - 7.0) < 1e-15);
+  }
+
+  // Test 4: Single element extraction
+  {
+    cytnx::Tensor tensor;
+    tci::zeros(ctx, {4, 3}, tensor);
+    tci::set_elem(ctx, tensor, {2ULL, 1ULL}, cytnx::cytnx_complex128(123.456, -78.9));
+
+    // Extract single element
+    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    shrink_map[0] = {2ULL, 3ULL};  // single row
+    shrink_map[1] = {1ULL, 2ULL};  // single col
+
+    CHECK_NOTHROW(tci::shrink(ctx, tensor, shrink_map));
+
+    // Should be 1x1 tensor
+    auto shape = tci::shape(ctx, tensor);
+    CHECK(shape[0] == 1ULL);
+    CHECK(shape[1] == 1ULL);
+
+    auto elem = tci::get_elem(ctx, tensor, {0ULL, 0ULL});
+    CHECK(std::abs(elem.real() - 123.456) < 1e-10);
+    CHECK(std::abs(elem.imag() + 78.9) < 1e-10);
+  }
+
+  // Test 5: Full slice extraction (should be no-op)
+  {
+    cytnx::Tensor original, shrunk;
+    tci::fill(ctx, {2, 3, 4}, cytnx::cytnx_complex128(1.5, -2.5), original);
+
+    // Extract full ranges
+    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    shrink_map[0] = {0ULL, 2ULL};  // full first dimension
+    shrink_map[1] = {0ULL, 3ULL};  // full second dimension
+    shrink_map[2] = {0ULL, 4ULL};  // full third dimension
+
+    CHECK_NOTHROW(tci::shrink(ctx, original, shrink_map, shrunk));
+
+    // Should have same shape
+    auto orig_shape = tci::shape(ctx, original);
+    auto shrunk_shape = tci::shape(ctx, shrunk);
+    CHECK(orig_shape[0] == shrunk_shape[0]);
+    CHECK(orig_shape[1] == shrunk_shape[1]);
+    CHECK(orig_shape[2] == shrunk_shape[2]);
+
+    // Values should match
+    auto orig_elem = tci::get_elem(ctx, original, {1ULL, 2ULL, 3ULL});
+    auto shrunk_elem = tci::get_elem(ctx, shrunk, {1ULL, 2ULL, 3ULL});
+    CHECK(std::abs(orig_elem.real() - shrunk_elem.real()) < 1e-15);
+    CHECK(std::abs(orig_elem.imag() - shrunk_elem.imag()) < 1e-15);
+  }
+
+  // Test 6: Edge case - extract first row only
+  {
+    cytnx::Tensor tensor;
+    tci::zeros(ctx, {5, 3}, tensor);
+
+    // Set first row to different values
+    tci::set_elem(ctx, tensor, {0ULL, 0ULL}, cytnx::cytnx_complex128(10.0, 0.0));
+    tci::set_elem(ctx, tensor, {0ULL, 1ULL}, cytnx::cytnx_complex128(20.0, 0.0));
+    tci::set_elem(ctx, tensor, {0ULL, 2ULL}, cytnx::cytnx_complex128(30.0, 0.0));
+
+    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    shrink_map[0] = {0ULL, 1ULL};  // first row only
+
+    CHECK_NOTHROW(tci::shrink(ctx, tensor, shrink_map));
+
+    auto shape = tci::shape(ctx, tensor);
+    CHECK(shape[0] == 1ULL);
+    CHECK(shape[1] == 3ULL);
+
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {0ULL, 0ULL}).real() - 10.0) < 1e-15);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {0ULL, 1ULL}).real() - 20.0) < 1e-15);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {0ULL, 2ULL}).real() - 30.0) < 1e-15);
+  }
+
+  // Test 7: Edge case - extract last column only
+  {
+    cytnx::Tensor tensor, result;
+    tci::zeros(ctx, {3, 4}, tensor);
+
+    // Set last column to different values
+    tci::set_elem(ctx, tensor, {0ULL, 3ULL}, cytnx::cytnx_complex128(100.0, 0.0));
+    tci::set_elem(ctx, tensor, {1ULL, 3ULL}, cytnx::cytnx_complex128(200.0, 0.0));
+    tci::set_elem(ctx, tensor, {2ULL, 3ULL}, cytnx::cytnx_complex128(300.0, 0.0));
+
+    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    shrink_map[1] = {3ULL, 4ULL};  // last column only
+
+    CHECK_NOTHROW(tci::shrink(ctx, tensor, shrink_map, result));
+
+    auto shape = tci::shape(ctx, result);
+    CHECK(shape[0] == 3ULL);
+    CHECK(shape[1] == 1ULL);
+
+    CHECK(std::abs(tci::get_elem(ctx, result, {0ULL, 0ULL}).real() - 100.0) < 1e-15);
+    CHECK(std::abs(tci::get_elem(ctx, result, {1ULL, 0ULL}).real() - 200.0) < 1e-15);
+    CHECK(std::abs(tci::get_elem(ctx, result, {2ULL, 0ULL}).real() - 300.0) < 1e-15);
+  }
+
+  tci::destroy_context(ctx);
+}
+
