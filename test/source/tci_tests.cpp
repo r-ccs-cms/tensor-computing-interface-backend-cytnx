@@ -495,11 +495,11 @@ TEST_CASE("TCI QR Decomposition") {
     cytnx::Tensor q, r;
 
     // Perform QR decomposition
-    tci::qr(ctx, matrix, 2, q, r);
+    tci::qr(ctx, matrix, 1, q, r);
 
     // Q should be orthogonal, R should be upper triangular
-    CHECK(q.shape().size() == 3);  // Should maintain rank structure
-    CHECK(r.shape().size() == 3);  // Should maintain rank structure
+    CHECK(q.shape().size() == 2);  // 3x3 matrix -> 2D tensors
+    CHECK(r.shape().size() == 2);  // 3x3 matrix -> 2D tensors
   }
 
   tci::destroy_context(ctx);
@@ -529,11 +529,11 @@ TEST_CASE("TCI LQ Decomposition") {
     cytnx::Tensor l, q;
 
     // Perform LQ decomposition
-    tci::lq(ctx, matrix, 2, l, q);
+    tci::lq(ctx, matrix, 1, l, q);
 
     // L should be lower triangular, Q should be orthogonal
-    CHECK(l.shape().size() == 3);  // Should maintain rank structure
-    CHECK(q.shape().size() == 3);  // Should maintain rank structure
+    CHECK(l.shape().size() == 2);  // 3x3 matrix -> 2D tensors
+    CHECK(q.shape().size() == 2);  // 3x3 matrix -> 2D tensors
   }
 
   tci::destroy_context(ctx);
