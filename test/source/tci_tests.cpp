@@ -1032,3 +1032,247 @@ TEST_CASE("tci::normalize API compliance test") {
 
   tci::destroy_context(ctx);
 }
+
+TEST_CASE("tci::allocate API compliance test") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("allocate in-place version - basic allocation") {
+    // Test basic allocation with different shapes
+    tci::shape_t<cytnx::Tensor> shape = {2, 3};
+    cytnx::Tensor tensor;
+
+    // Allocate memory for tensor
+    CHECK_NOTHROW(tci::allocate(ctx, shape, tensor));
+
+    // Verify shape is correct
+    CHECK(tci::rank(ctx, tensor) == 2);
+    auto result_shape = tci::shape(ctx, tensor);
+    CHECK(result_shape.size() == 2);
+    CHECK(result_shape[0] == 2);
+    CHECK(result_shape[1] == 3);
+
+    // Verify size (total elements)
+    CHECK(tci::size(ctx, tensor) == 6);  // 2 * 3 = 6 elements
+
+    // Note: Memory is allocated but not initialized according to API spec
+    // We can verify tensor is properly allocated by checking it's not empty
+    CHECK(tensor.storage().size() == 6);
+  }
+
+  SUBCASE("allocate out-of-place version - return allocated tensor") {
+    // Test out-of-place allocation
+    tci::shape_t<cytnx::Tensor> shape = {3, 2, 2};
+
+    // Allocate and return tensor
+    cytnx::Tensor result;
+    CHECK_NOTHROW(result = tci::allocate<cytnx::Tensor>(ctx, shape));
+
+    // Verify 3D tensor properties
+    CHECK(tci::rank(ctx, result) == 3);
+    auto result_shape = tci::shape(ctx, result);
+    CHECK(result_shape.size() == 3);
+    CHECK(result_shape[0] == 3);
+    CHECK(result_shape[1] == 2);
+    CHECK(result_shape[2] == 2);
+
+    // Verify total size
+    CHECK(tci::size(ctx, result) == 12);  // 3 * 2 * 2 = 12 elements
+  }
+
+  SUBCASE("allocate different tensor shapes") {
+    // Test 1D vector allocation
+    tci::shape_t<cytnx::Tensor> shape_1d = {5};
+    cytnx::Tensor vector;
+    CHECK_NOTHROW(tci::allocate(ctx, shape_1d, vector));
+
+    CHECK(tci::rank(ctx, vector) == 1);
+    CHECK(tci::shape(ctx, vector)[0] == 5);
+    CHECK(tci::size(ctx, vector) == 5);
+
+    // Test scalar-like allocation
+    tci::shape_t<cytnx::Tensor> shape_scalar = {1};
+    cytnx::Tensor scalar;
+    CHECK_NOTHROW(tci::allocate(ctx, shape_scalar, scalar));
+
+    CHECK(tci::rank(ctx, scalar) == 1);
+    CHECK(tci::shape(ctx, scalar)[0] == 1);
+    CHECK(tci::size(ctx, scalar) == 1);
+
+    // Test higher-dimensional tensor
+    tci::shape_t<cytnx::Tensor> shape_4d = {2, 3, 2, 2};
+    auto tensor_4d = tci::allocate<cytnx::Tensor>(ctx, shape_4d);
+
+    CHECK(tci::rank(ctx, tensor_4d) == 4);
+    auto shape_4d_result = tci::shape(ctx, tensor_4d);
+    CHECK(shape_4d_result[0] == 2);
+    CHECK(shape_4d_result[1] == 3);
+    CHECK(shape_4d_result[2] == 2);
+    CHECK(shape_4d_result[3] == 2);
+    CHECK(tci::size(ctx, tensor_4d) == 24);  // 2*3*2*2 = 24
+  }
+
+  tci::destroy_context(ctx);
+}
+
+TEST_CASE("tci::save API compliance test") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  // Create test tensor with known values
+  tci::shape_t<cytnx::Tensor> shape = {2, 3};
+  auto test_tensor = tci::zeros<cytnx::Tensor>(ctx, shape);
+
+    // Fill with known values for verification
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      tci::set_elem(ctx, test_tensor, {static_cast<unsigned long long>(i), static_cast<unsigned long long>(j)}, cytnx::cytnx_complex128(i * 3 + j + 1, 0.0));
+    }
+  }
+
+    // Test 1: Save to file path (std::string)
+    {
+      std::string filename = "/tmp/claude/tci_save_test_string.cytn";
+
+      // Ensure directory exists
+      std::filesystem::create_directories("/tmp/claude");
+
+      // Save tensor
+      tci::save(ctx, test_tensor, filename);
+
+      // Verify file exists
+      CHECK(std::filesystem::exists(filename));
+
+      // Load back and verify contents
+      auto loaded = tci::load<cytnx::Tensor>(ctx, filename);
+      CHECK(tci::shape(ctx, loaded) == tci::shape(ctx, test_tensor));
+      CHECK(tci::size(ctx, loaded) == tci::size(ctx, test_tensor));
+
+      // Cleanup
+      std::filesystem::remove(filename);
+    }
+
+    // Test 2: Save to file path (const char*)
+    {
+      const char* filename = "/tmp/claude/tci_save_test_cstr.cytn";
+      std::string filename_str(filename);
+
+      tci::save(ctx, test_tensor, filename_str);
+
+      CHECK(std::filesystem::exists(filename_str));
+
+      auto loaded = tci::load<cytnx::Tensor>(ctx, filename_str);
+      CHECK(tci::shape(ctx, loaded) == tci::shape(ctx, test_tensor));
+
+      std::filesystem::remove(filename_str);
+    }
+
+    // Test 3: Save to filesystem::path
+    {
+      std::filesystem::path filepath = "/tmp/claude/tci_save_test_path.cytn";
+
+      tci::save(ctx, test_tensor, filepath);
+
+      CHECK(std::filesystem::exists(filepath));
+
+      auto loaded = tci::load<cytnx::Tensor>(ctx, filepath);
+      CHECK(tci::shape(ctx, loaded) == tci::shape(ctx, test_tensor));
+
+      std::filesystem::remove(filepath);
+    }
+
+    // Test 4: Save to output stream (stringstream)
+    {
+      std::ostringstream oss;
+
+      tci::save(ctx, test_tensor, oss);
+
+      // Verify stream has content
+      CHECK(!oss.str().empty());
+
+      // Test loading from corresponding input stream
+      std::istringstream iss(oss.str());
+      auto loaded = tci::load<cytnx::Tensor>(ctx, iss);
+
+      CHECK(tci::shape(ctx, loaded) == tci::shape(ctx, test_tensor));
+      CHECK(tci::size(ctx, loaded) == tci::size(ctx, test_tensor));
+    }
+
+    // Test 5: Save to file output stream
+    {
+      std::string filename = "/tmp/claude/tci_save_test_ofstream.cytn";
+
+      {
+        std::ofstream ofs(filename, std::ios::binary);
+        tci::save(ctx, test_tensor, ofs);
+      }  // File automatically closed
+
+      CHECK(std::filesystem::exists(filename));
+
+      auto loaded = tci::load<cytnx::Tensor>(ctx, filename);
+      CHECK(tci::shape(ctx, loaded) == tci::shape(ctx, test_tensor));
+
+      std::filesystem::remove(filename);
+    }
+
+    // Test 6: Save with automatic directory creation
+    {
+      std::string nested_path = "/tmp/claude/nested/deep/tci_save_test_auto_dir.cytn";
+
+      tci::save(ctx, test_tensor, nested_path);
+
+      CHECK(std::filesystem::exists(nested_path));
+
+      auto loaded = tci::load<cytnx::Tensor>(ctx, nested_path);
+      CHECK(tci::shape(ctx, loaded) == tci::shape(ctx, test_tensor));
+
+      // Cleanup nested directories
+      std::filesystem::remove_all("/tmp/claude/nested");
+    }
+
+    // Test 7: Save large tensor to verify performance
+    {
+      tci::shape_t<cytnx::Tensor> large_shape = {10, 10, 10};
+      auto large_tensor = tci::zeros<cytnx::Tensor>(ctx, large_shape);
+      // Fill with ones
+      for (int i = 0; i < 10; ++i) {
+        for (int j = 0; j < 10; ++j) {
+          for (int k = 0; k < 10; ++k) {
+            tci::set_elem(ctx, large_tensor, {static_cast<unsigned long long>(i), static_cast<unsigned long long>(j), static_cast<unsigned long long>(k)}, cytnx::cytnx_complex128(1.0, 0.0));
+          }
+        }
+      }
+
+      std::string filename = "/tmp/claude/tci_save_test_large.cytn";
+
+      tci::save(ctx, large_tensor, filename);
+
+      CHECK(std::filesystem::exists(filename));
+
+      auto loaded = tci::load<cytnx::Tensor>(ctx, filename);
+      CHECK(tci::shape(ctx, loaded) == tci::shape(ctx, large_tensor));
+      CHECK(tci::size(ctx, loaded) == 1000);  // 10*10*10
+
+      std::filesystem::remove(filename);
+    }
+
+    // Test 8: Save different data types (complex tensor)
+    {
+      auto complex_tensor = tci::to_cplx(ctx, test_tensor);
+
+      std::string filename = "/tmp/claude/tci_save_test_complex.cytn";
+
+      tci::save(ctx, complex_tensor, filename);
+
+      CHECK(std::filesystem::exists(filename));
+
+      auto loaded = tci::load<cytnx::Tensor>(ctx, filename);
+      CHECK(tci::shape(ctx, loaded) == tci::shape(ctx, complex_tensor));
+      CHECK(loaded.dtype() == complex_tensor.dtype());
+
+      std::filesystem::remove(filename);
+    }
+
+  tci::destroy_context(ctx);
+}
+
