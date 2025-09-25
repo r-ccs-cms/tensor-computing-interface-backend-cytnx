@@ -390,9 +390,23 @@ TEST_CASE("TCI Advanced Linear Algebra") {
     tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
     tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(2.0, 0.0));
 
-    // Skip exp test - function not implemented yet
-    // TODO: Implement tci::exp function
-    // CHECK_THROWS_AS(tci::exp(ctx, matrix, 1), std::runtime_error);
+    // Test matrix exponential (should work now)
+    cytnx::Tensor result;
+    CHECK_NOTHROW(tci::exp(ctx, matrix, 1, result));
+
+    // Verify dimensions are preserved
+    auto result_shape = tci::shape(ctx, result);
+    CHECK(result_shape.size() == 2);
+    CHECK(result_shape[0] == 2);
+    CHECK(result_shape[1] == 2);
+
+    // Test in-place version
+    cytnx::Tensor matrix_copy;
+    tci::copy(ctx, matrix, matrix_copy);
+    CHECK_NOTHROW(tci::exp(ctx, matrix_copy, 1));
+
+    // Results should be the same
+    CHECK(tci::eq(ctx, result, matrix_copy, 1e-12));
   }
 
   SUBCASE("Matrix inverse") {
