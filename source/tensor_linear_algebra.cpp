@@ -674,4 +674,64 @@ namespace tci {
     }
   }
 
+  // ===== Matrix Exponential =====
+
+  template <>
+  void exp(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout,
+           const rank_t<cytnx::Tensor> num_of_bds_as_row) {
+    auto shape = inout.shape();
+    if (shape.size() < num_of_bds_as_row) {
+      throw std::invalid_argument("exp: num_of_bds_as_row exceeds tensor rank");
+    }
+
+    cytnx::cytnx_uint64 row_dim = 1, col_dim = 1;
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
+      row_dim *= shape[i];
+    }
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+      col_dim *= shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("exp: matrix must be square");
+    }
+
+    auto original_shape = shape;
+    inout.reshape_({static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // Use Cytnx ExpM for general matrix exponential
+    inout = cytnx::linalg::ExpM(inout);
+
+    inout.reshape_(original_shape);
+  }
+
+  template <>
+  void exp(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
+           const rank_t<cytnx::Tensor> num_of_bds_as_row, cytnx::Tensor& out) {
+    auto shape = in.shape();
+    if (shape.size() < num_of_bds_as_row) {
+      throw std::invalid_argument("exp: num_of_bds_as_row exceeds tensor rank");
+    }
+
+    cytnx::cytnx_uint64 row_dim = 1, col_dim = 1;
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
+      row_dim *= shape[i];
+    }
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+      col_dim *= shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("exp: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = in.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // Use Cytnx ExpM for general matrix exponential
+    out = cytnx::linalg::ExpM(matrix);
+
+    out.reshape_(shape);
+  }
+
 }  // namespace tci

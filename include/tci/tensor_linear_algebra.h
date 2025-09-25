@@ -274,4 +274,27 @@ namespace tci {
                                      const rank_t<TenT> num_of_bds_as_row, real_ten_t<TenT>& w_diag,
                                      TenT& v);
 
+  /**
+   * @brief Matrix exponential (general matrix) - in-place version
+   *
+   * @tparam TenT Tensor type
+   * @param ctx Context handle for the tensor library
+   * @param inout Input/output tensor (square matrix)
+   * @param num_of_bds_as_row Number of bonds to treat as rows
+   */
+  template <typename TenT> void exp(context_handle_t<TenT>& ctx, TenT& inout,
+                                    const rank_t<TenT> num_of_bds_as_row);
+
+  /**
+   * @brief Matrix exponential (general matrix) - out-of-place version
+   *
+   * @tparam TenT Tensor type
+   * @param ctx Context handle for the tensor library
+   * @param in Input tensor (square matrix)
+   * @param num_of_bds_as_row Number of bonds to treat as rows
+   * @param out Output tensor
+   */
+  template <typename TenT> void exp(context_handle_t<TenT>& ctx, const TenT& in,
+                                    const rank_t<TenT> num_of_bds_as_row, TenT& out);
+
 }  // namespace tci
