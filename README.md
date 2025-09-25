@@ -80,7 +80,7 @@ llvm (LLVM Clang) is optional; Apple Clang may work.
 ```bash
 # Configure and build with Homebrew preset (automatically handles dependencies)
 cmake --preset brew
-cmake --build build
+cmake --build --preset brew
 ```
 
 #### Option B: Manual Configuration
@@ -95,19 +95,6 @@ cmake -S . -B build \
 cmake --build build --parallel 8
 ```
 
-#### Option C: Legacy Method
-
-```bash
-# Manual environment variable setup (not recommended)
-export CPPFLAGS="-I/opt/homebrew/opt/openblas/include -I/opt/homebrew/opt/llvm/include -I/opt/homebrew/opt/libomp/include"
-export LDFLAGS="-L/opt/homebrew/opt/openblas/lib -L/opt/homebrew/opt/llvm/lib -L/opt/homebrew/opt/libomp/lib"
-
-# Configure with CMake
-cmake -S . -B build -DBUILD_PYTHON=OFF
-
-# Build
-cmake --build build --parallel 4
-```
 
 ## Usage Example
 
@@ -180,31 +167,41 @@ g++ -std=c++17 -I<tci-install>/include your_code.cpp -lTCI -lcytnx
 
 ### Testing
 
-#### Option A: Using CMake Presets
+#### Option A: Using CMake Presets (Recommended)
 
 ```bash
 # Configure and build tests
 cmake --preset brew-test
-cmake --build test/build
+cmake --build --preset brew-test
 
-# Run tests
-cmake --build test/build --target test
+# Run tests directly
+./build-test/test/TCITests
 ```
 
-#### Option B: Manual Configuration
+#### Option B: Manual Test Configuration
 
 ```bash
-# Build and run test suite
-cmake -S test -B test/build \
-  -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/macos-homebrew.cmake \
+# Configure test build manually
+cmake -S . -B build-test \
+  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos-homebrew.cmake \
+  -DTCI_BUILD_TESTS=ON \
   -DBUILD_PYTHON=OFF
-cmake --build test/build
+
+# Build test suite
+cmake --build build-test --parallel 8
 
 # Run tests
-cmake --build test/build --target test
+./build-test/test/TCITests
 
-# With doctest, you can also run specific test cases
-./test/build/TCITests --test-case="*Context*"
+# With doctest, you can run specific test cases
+./build-test/test/TCITests --test-case="*Context*"
+```
+
+#### Test Development Workflow
+
+```bash
+# Quick test development cycle
+cmake --preset brew-test && cmake --build --preset brew-test && ./build-test/test/TCITests
 ```
 
 ## License

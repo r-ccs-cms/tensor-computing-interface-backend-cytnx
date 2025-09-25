@@ -25,14 +25,15 @@ CPMAddPackage(
 if (doctest_ADDED)
   add_library(doctest INTERFACE)
   target_include_directories(doctest INTERFACE ${doctest_SOURCE_DIR})
-  target_compile_definitions(doctest INTERFACE DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN)
   add_library(doctest::doctest ALIAS doctest)
 endif()
 
-if(TEST_INSTALLED_VERSION)
-  find_package(TCI REQUIRED)
-else()
-  CPMAddPackage(NAME TCI SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
+if(NOT TARGET TCI::TCI)
+  if(TEST_INSTALLED_VERSION)
+    find_package(TCI REQUIRED)
+  else()
+    CPMAddPackage(NAME TCI SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
+  endif()
 endif()
 
 # ---- Create binary ----

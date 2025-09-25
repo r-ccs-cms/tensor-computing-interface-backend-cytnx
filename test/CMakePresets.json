@@ -1,0 +1,32 @@
+{
+  "version": 5,
+  "configurePresets": [
+    {
+      "name": "brew-test",
+      "displayName": "Test configuration (Homebrew)",
+      "description": "Configure TCITests using the Homebrew toolchain",
+      "generator": "Ninja",
+      "binaryDir": "build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "../cmake/toolchains/macos-homebrew.cmake",
+        "BUILD_PYTHON": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "brew-test",
+      "configurePreset": "brew-test",
+      "jobs": 8
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "brew-test",
+      "configurePreset": "brew-test",
+      "environment": {
+        "CTEST_OUTPUT_ON_FAILURE": "1"
+      }
+    }
+  ]
+}

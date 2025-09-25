@@ -60,4 +60,8 @@ if(BUILD_EXAMPLES)
   add_subdirectory(examples)
 endif()
 
-# ---- Tests will be added separately in test/ directory ----
+# ---- Optional test suite ----
+option(TCI_BUILD_TESTS "Build the TCI test suite" OFF)
+if(TCI_BUILD_TESTS)
+  add_subdirectory(test)
+endif()

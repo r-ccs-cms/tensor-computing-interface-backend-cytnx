@@ -29,13 +29,13 @@
     },
     {
       "name": "brew-test",
-      "displayName": "Test configuration",
-      "description": "Test build configuration with Homebrew dependencies",
-      "generator": "Ninja",
-      "binaryDir": "test/build",
+      "displayName": "Debug build with test suite",
+      "description": "Homebrew toolchain with tests enabled",
+      "inherits": "brew",
+      "binaryDir": "build-test",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "../cmake/toolchains/macos-homebrew.cmake",
-        "BUILD_PYTHON": "OFF"
+        "TCI_BUILD_TESTS": "ON",
+        "BUILD_EXAMPLES": "OFF"
       }
     }
   ],
@@ -58,7 +58,7 @@
   ],
   "testPresets": [
     {
-      "name": "brew",
+      "name": "brew-test",
       "configurePreset": "brew-test",
       "environment": {
         "CTEST_OUTPUT_ON_FAILURE": "1"
