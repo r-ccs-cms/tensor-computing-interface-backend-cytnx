@@ -1462,3 +1462,172 @@ TEST_CASE("tci::load API compliance test") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("tci::clear API compliance test") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  // Test 1: Clear a tensor with existing data
+  {
+    tci::shape_t<cytnx::Tensor> shape = {2, 3};
+    auto test_tensor = tci::zeros<cytnx::Tensor>(ctx, shape);
+
+    // Fill with known values
+    for (int i = 0; i < 2; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        tci::set_elem(ctx, test_tensor, {static_cast<unsigned long long>(i), static_cast<unsigned long long>(j)}, cytnx::cytnx_complex128(i * 3 + j + 1, 0.0));
+      }
+    }
+
+    // Verify tensor has data before clearing
+    CHECK(tci::size(ctx, test_tensor) == 6);
+    CHECK(tci::rank(ctx, test_tensor) == 2);
+
+    // Clear the tensor
+    tci::clear(ctx, test_tensor);
+
+    // Verify tensor is cleared (should be in uninitialized state)
+    // After clearing, the tensor should be in a default state
+    // Check that it's no longer the same as before
+    bool is_cleared = true;
+    try {
+      // Attempting operations on cleared tensor may throw or return default values
+      auto size_after = tci::size(ctx, test_tensor);
+      auto rank_after = tci::rank(ctx, test_tensor);
+
+      // If we can access these, they should be different from the original
+      is_cleared = (size_after == 0 || rank_after == 0);
+    } catch (...) {
+      // If operations throw, the tensor is properly cleared
+      is_cleared = true;
+    }
+    CHECK(is_cleared);
+  }
+
+  // Test 2: Clear an already empty tensor
+  {
+    cytnx::Tensor empty_tensor;
+
+    // Clear an already empty tensor (should not crash)
+    CHECK_NOTHROW(tci::clear(ctx, empty_tensor));
+  }
+
+  // Test 3: Clear a large tensor
+  {
+    tci::shape_t<cytnx::Tensor> large_shape = {10, 10, 5};
+    auto large_tensor = tci::zeros<cytnx::Tensor>(ctx, large_shape);
+
+    // Verify it has data
+    CHECK(tci::size(ctx, large_tensor) == 500);  // 10*10*5
+
+    // Clear the tensor
+    tci::clear(ctx, large_tensor);
+
+    // Verify clearing worked
+    // After clearing, the tensor should be in a default uninitialized state
+    // We check this by trying to verify if it's different from a valid tensor
+    bool large_cleared = false;
+    try {
+      // A cleared tensor may have undefined behavior for size operations
+      // but should not crash. The key test is that it's different from before
+      auto size_after = tci::size(ctx, large_tensor);
+      auto rank_after = tci::rank(ctx, large_tensor);
+
+      // An empty/cleared tensor typically has size 0 or rank 0
+      large_cleared = (size_after == 0 || rank_after == 0 || size_after != 500);
+    } catch (...) {
+      // If operations throw, the tensor is properly cleared
+      large_cleared = true;
+    }
+    CHECK(large_cleared);
+  }
+
+  // Test 4: Clear a complex tensor
+  {
+    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+    auto complex_tensor = tci::zeros<cytnx::Tensor>(ctx, shape);
+
+    // Convert to complex (though zeros already creates complex type)
+    auto cplx_tensor = tci::to_cplx(ctx, complex_tensor);
+
+    // Set some complex values
+    tci::set_elem(ctx, cplx_tensor, {0ULL, 0ULL}, cytnx::cytnx_complex128(1.0, 2.0));
+    tci::set_elem(ctx, cplx_tensor, {1ULL, 1ULL}, cytnx::cytnx_complex128(3.0, 4.0));
+
+    // Verify it has the expected data type and size
+    CHECK(tci::size(ctx, cplx_tensor) == 4);
+
+    // Clear the tensor
+    tci::clear(ctx, cplx_tensor);
+
+    // Verify clearing worked
+    bool cplx_cleared = false;
+    try {
+      auto size_after = tci::size(ctx, cplx_tensor);
+      auto rank_after = tci::rank(ctx, cplx_tensor);
+
+      // Check if tensor state changed after clearing
+      cplx_cleared = (size_after == 0 || rank_after == 0 || size_after != 4);
+    } catch (...) {
+      cplx_cleared = true;
+    }
+    CHECK(cplx_cleared);
+  }
+
+  // Test 5: Clear tensor created by different construction methods
+  {
+    // Test clearing a tensor created with allocate
+    tci::shape_t<cytnx::Tensor> shape = {3, 3};
+    auto allocated_tensor = tci::allocate<cytnx::Tensor>(ctx, shape);
+
+    CHECK_NOTHROW(tci::clear(ctx, allocated_tensor));
+
+    // Test clearing a tensor created with eye
+    auto eye_tensor = tci::eye<cytnx::Tensor>(ctx, 3);
+
+    CHECK_NOTHROW(tci::clear(ctx, eye_tensor));
+
+    // Test clearing a copied tensor
+    auto original = tci::zeros<cytnx::Tensor>(ctx, shape);
+    auto copied = tci::copy<cytnx::Tensor>(ctx, original);
+
+    CHECK_NOTHROW(tci::clear(ctx, copied));
+  }
+
+  // Test 6: Multiple clears on same tensor
+  {
+    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+    auto test_tensor = tci::zeros<cytnx::Tensor>(ctx, shape);
+
+    // Clear multiple times (should not crash)
+    CHECK_NOTHROW(tci::clear(ctx, test_tensor));
+    CHECK_NOTHROW(tci::clear(ctx, test_tensor));
+    CHECK_NOTHROW(tci::clear(ctx, test_tensor));
+  }
+
+  // Test 7: Clear then reallocate
+  {
+    tci::shape_t<cytnx::Tensor> shape = {2, 3};
+    auto test_tensor = tci::zeros<cytnx::Tensor>(ctx, shape);
+
+    // Set some values
+    tci::set_elem(ctx, test_tensor, {0ULL, 0ULL}, cytnx::cytnx_complex128(42.0, 0.0));
+
+    // Clear the tensor
+    tci::clear(ctx, test_tensor);
+
+    // Reallocate with different shape
+    tci::shape_t<cytnx::Tensor> new_shape = {3, 2};
+    tci::zeros(ctx, new_shape, test_tensor);
+
+    // Verify new tensor works properly
+    CHECK(tci::size(ctx, test_tensor) == 6);
+    CHECK(tci::rank(ctx, test_tensor) == 2);
+
+    auto shape_result = tci::shape(ctx, test_tensor);
+    CHECK(shape_result[0] == 3);
+    CHECK(shape_result[1] == 2);
+  }
+
+  tci::destroy_context(ctx);
+}
+
