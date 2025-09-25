@@ -314,8 +314,8 @@ TEST_CASE("TCI Eigenvalue Problems") {
     tci::set_elem(ctx, diagonal, {2, 2}, cytnx::cytnx_complex128(3.0, 0.0));
 
     cytnx::Tensor eigenvals;
-    // This should fail until eigvals is implemented
-    CHECK_THROWS_AS(tci::eigvals(ctx, diagonal, 2, eigenvals), std::runtime_error);
+    // This should fail with invalid argument (matrix must be square)
+    CHECK_THROWS_AS(tci::eigvals(ctx, diagonal, 2, eigenvals), std::invalid_argument);
   }
 
   SUBCASE("Eigenvalues of symmetric matrix") {
@@ -330,8 +330,8 @@ TEST_CASE("TCI Eigenvalue Problems") {
     tci::set_elem(ctx, symmetric, {1, 1}, cytnx::cytnx_complex128(3.0, 0.0));
 
     cytnx::Tensor eigenvals;
-    // This should fail until eigvalsh is implemented
-    CHECK_THROWS_AS(tci::eigvalsh(ctx, symmetric, 2, eigenvals), std::runtime_error);
+    // This should fail with invalid argument (matrix must be square)
+    CHECK_THROWS_AS(tci::eigvalsh(ctx, symmetric, 2, eigenvals), std::invalid_argument);
   }
 
   SUBCASE("Eigenvalues and eigenvectors") {
