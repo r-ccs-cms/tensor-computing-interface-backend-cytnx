@@ -2,6 +2,7 @@
 
 #include <cytnx.hpp>
 #include <functional>
+#include <complex>
 
 #include "tci/cytnx_tensor_traits.h"
 
@@ -49,26 +50,6 @@ namespace tci {
     return result;
   }
 
-  template <typename RandNumGen> void random(context_handle_t<cytnx::Tensor>& ctx,
-                                             const shape_t<cytnx::Tensor>& shape, RandNumGen& gen,
-                                             cytnx::Tensor& a) {
-    allocate(ctx, shape, a);
-
-    auto& storage = a.storage();
-    const auto total = storage.size();
-
-    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
-      storage.at<elem_t<cytnx::Tensor>>(idx) = static_cast<elem_t<cytnx::Tensor>>(gen());
-    }
-  }
-
-  template <typename RandNumGen> cytnx::Tensor random(context_handle_t<cytnx::Tensor>& ctx,
-                                                      const shape_t<cytnx::Tensor>& shape,
-                                                      RandNumGen& gen) {
-    cytnx::Tensor result;
-    random(ctx, shape, gen, result);
-    return result;
-  }
 
   template <> void eye(context_handle_t<cytnx::Tensor>& ctx, const bond_dim_t<cytnx::Tensor> N,
                        cytnx::Tensor& a) {

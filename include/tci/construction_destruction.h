@@ -1,6 +1,10 @@
 #pragma once
 
 #include "tci/tensor_traits.h"
+#include "tci/cytnx_tensor_traits.h"
+#include <functional>
+#include <complex>
+#include <utility>
 
 namespace tci {
 
@@ -91,7 +95,18 @@ namespace tci {
    * @param a Output tensor
    */
   template <typename TenT, typename RandNumGen>
-  void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen& gen, TenT& a);
+  void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen, TenT& a) {
+    allocate(ctx, shape, a);
+    auto& storage = a.storage();
+    const auto total = storage.size();
+
+    // Fill tensor with random values using perfect forwarding to support any callable type
+    // std::invoke enables compatibility with lambdas, function pointers, functors, and std::function
+    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
+      // 'template' keyword required for dependent template name resolution in template context
+      storage.template at<elem_t<TenT>>(idx) = static_cast<elem_t<TenT>>(std::invoke(gen));
+    }
+  }
 
   /**
    * @brief Create a tensor with random values (out-of-place version)
@@ -104,7 +119,13 @@ namespace tci {
    * @return TenT Random-filled tensor
    */
   template <typename TenT, typename RandNumGen>
-  TenT random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen& gen);
+  TenT random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen) {
+    TenT result;
+    // Forward generator to in-place version to avoid duplication and maintain perfect forwarding
+    random(ctx, shape, std::forward<RandNumGen>(gen), result);
+    return result;
+  }
+
 
   /**
    * @brief Create an identity matrix (in-place version)
