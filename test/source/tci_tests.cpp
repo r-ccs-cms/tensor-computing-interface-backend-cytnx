@@ -1276,3 +1276,189 @@ TEST_CASE("tci::save API compliance test") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("tci::load API compliance test") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  // Create reference tensor for comparison
+  tci::shape_t<cytnx::Tensor> shape = {2, 3};
+  auto reference_tensor = tci::zeros<cytnx::Tensor>(ctx, shape);
+
+  // Fill with known values
+  for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      tci::set_elem(ctx, reference_tensor, {static_cast<unsigned long long>(i), static_cast<unsigned long long>(j)}, cytnx::cytnx_complex128(i * 3 + j + 1, 0.0));
+    }
+  }
+
+  // First save the reference tensor to use in load tests
+  std::string reference_filename = "/tmp/claude/tci_load_reference.cytn";
+  std::filesystem::create_directories("/tmp/claude");
+  tci::save(ctx, reference_tensor, reference_filename);
+
+  // Test 1: Load from file path (std::string) - in-place version
+  {
+    cytnx::Tensor loaded_tensor;
+
+    tci::load(ctx, reference_filename, loaded_tensor);
+
+    CHECK(tci::rank(ctx, loaded_tensor) == tci::rank(ctx, reference_tensor));
+    CHECK(tci::size(ctx, loaded_tensor) == tci::size(ctx, reference_tensor));
+    CHECK(tci::shape(ctx, loaded_tensor) == tci::shape(ctx, reference_tensor));
+
+    // Verify values match
+    for (int i = 0; i < 2; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        auto expected = tci::get_elem(ctx, reference_tensor, {static_cast<unsigned long long>(i), static_cast<unsigned long long>(j)});
+        auto actual = tci::get_elem(ctx, loaded_tensor, {static_cast<unsigned long long>(i), static_cast<unsigned long long>(j)});
+        CHECK(std::abs(expected.real() - actual.real()) < 1e-10);
+      }
+    }
+  }
+
+  // Test 2: Load from file path (std::string) - out-of-place version
+  {
+    auto loaded_tensor = tci::load<cytnx::Tensor>(ctx, reference_filename);
+
+    CHECK(tci::rank(ctx, loaded_tensor) == tci::rank(ctx, reference_tensor));
+    CHECK(tci::size(ctx, loaded_tensor) == tci::size(ctx, reference_tensor));
+    CHECK(tci::shape(ctx, loaded_tensor) == tci::shape(ctx, reference_tensor));
+
+    // Verify first and last elements
+    auto expected_first = tci::get_elem(ctx, reference_tensor, {0ULL, 0ULL});
+    auto actual_first = tci::get_elem(ctx, loaded_tensor, {0ULL, 0ULL});
+    CHECK(std::abs(expected_first.real() - actual_first.real()) < 1e-10);
+
+    auto expected_last = tci::get_elem(ctx, reference_tensor, {1ULL, 2ULL});
+    auto actual_last = tci::get_elem(ctx, loaded_tensor, {1ULL, 2ULL});
+    CHECK(std::abs(expected_last.real() - actual_last.real()) < 1e-10);
+  }
+
+  // Test 3: Load from filesystem::path - in-place version
+  {
+    std::filesystem::path filepath = reference_filename;
+    cytnx::Tensor loaded_tensor;
+
+    tci::load(ctx, filepath, loaded_tensor);
+
+    CHECK(tci::shape(ctx, loaded_tensor) == tci::shape(ctx, reference_tensor));
+    CHECK(tci::size(ctx, loaded_tensor) == tci::size(ctx, reference_tensor));
+  }
+
+  // Test 4: Load from filesystem::path - out-of-place version
+  {
+    std::filesystem::path filepath = reference_filename;
+    auto loaded_tensor = tci::load<cytnx::Tensor>(ctx, filepath);
+
+    CHECK(tci::shape(ctx, loaded_tensor) == tci::shape(ctx, reference_tensor));
+  }
+
+  // Test 5: Load from input stream (ifstream) - in-place version
+  {
+    std::ifstream ifs(reference_filename, std::ios::binary);
+    CHECK(ifs.is_open());
+
+    cytnx::Tensor loaded_tensor;
+    tci::load(ctx, ifs, loaded_tensor);
+
+    CHECK(tci::rank(ctx, loaded_tensor) == tci::rank(ctx, reference_tensor));
+    CHECK(tci::shape(ctx, loaded_tensor) == tci::shape(ctx, reference_tensor));
+  }
+
+  // Test 6: Load from input stream (ifstream) - out-of-place version
+  {
+    std::ifstream ifs(reference_filename, std::ios::binary);
+    CHECK(ifs.is_open());
+
+    auto loaded_tensor = tci::load<cytnx::Tensor>(ctx, ifs);
+
+    CHECK(tci::shape(ctx, loaded_tensor) == tci::shape(ctx, reference_tensor));
+  }
+
+  // Test 7: Load from stringstream (in-place)
+  {
+    // First save to stringstream
+    std::ostringstream oss;
+    tci::save(ctx, reference_tensor, oss);
+
+    // Then load from stringstream
+    std::istringstream iss(oss.str());
+    cytnx::Tensor loaded_tensor;
+
+    tci::load(ctx, iss, loaded_tensor);
+
+    CHECK(tci::rank(ctx, loaded_tensor) == tci::rank(ctx, reference_tensor));
+    CHECK(tci::shape(ctx, loaded_tensor) == tci::shape(ctx, reference_tensor));
+
+    // Verify some values
+    auto expected = tci::get_elem(ctx, reference_tensor, {0ULL, 1ULL});
+    auto actual = tci::get_elem(ctx, loaded_tensor, {0ULL, 1ULL});
+    CHECK(std::abs(expected.real() - actual.real()) < 1e-10);
+  }
+
+  // Test 8: Load from stringstream (out-of-place)
+  {
+    std::ostringstream oss;
+    tci::save(ctx, reference_tensor, oss);
+
+    std::istringstream iss(oss.str());
+    auto loaded_tensor = tci::load<cytnx::Tensor>(ctx, iss);
+
+    CHECK(tci::shape(ctx, loaded_tensor) == tci::shape(ctx, reference_tensor));
+  }
+
+  // Test 9: Load complex tensor
+  {
+    auto complex_tensor = tci::to_cplx(ctx, reference_tensor);
+    std::string complex_filename = "/tmp/claude/tci_load_complex.cytn";
+
+    tci::save(ctx, complex_tensor, complex_filename);
+
+    auto loaded_complex = tci::load<cytnx::Tensor>(ctx, complex_filename);
+
+    CHECK(tci::shape(ctx, loaded_complex) == tci::shape(ctx, complex_tensor));
+    CHECK(loaded_complex.dtype() == complex_tensor.dtype());
+
+    std::filesystem::remove(complex_filename);
+  }
+
+  // Test 10: Load large tensor
+  {
+    tci::shape_t<cytnx::Tensor> large_shape = {5, 4, 3};
+    auto large_tensor = tci::zeros<cytnx::Tensor>(ctx, large_shape);
+
+    // Set some known values
+    tci::set_elem(ctx, large_tensor, {0ULL, 0ULL, 0ULL}, cytnx::cytnx_complex128(100.0, 0.0));
+    tci::set_elem(ctx, large_tensor, {4ULL, 3ULL, 2ULL}, cytnx::cytnx_complex128(200.0, 0.0));
+
+    std::string large_filename = "/tmp/claude/tci_load_large.cytn";
+    tci::save(ctx, large_tensor, large_filename);
+
+    auto loaded_large = tci::load<cytnx::Tensor>(ctx, large_filename);
+
+    CHECK(tci::shape(ctx, loaded_large) == tci::shape(ctx, large_tensor));
+    CHECK(tci::size(ctx, loaded_large) == 60);  // 5*4*3
+
+    // Verify specific values
+    auto val1 = tci::get_elem(ctx, loaded_large, {0ULL, 0ULL, 0ULL});
+    auto val2 = tci::get_elem(ctx, loaded_large, {4ULL, 3ULL, 2ULL});
+    CHECK(std::abs(val1.real() - 100.0) < 1e-10);
+    CHECK(std::abs(val2.real() - 200.0) < 1e-10);
+
+    std::filesystem::remove(large_filename);
+  }
+
+  // Test 11: Error handling - non-existent file
+  {
+    std::string nonexistent = "/tmp/claude/does_not_exist.cytn";
+    cytnx::Tensor error_tensor;
+
+    CHECK_THROWS(tci::load(ctx, nonexistent, error_tensor));
+  }
+
+  // Cleanup
+  std::filesystem::remove(reference_filename);
+
+  tci::destroy_context(ctx);
+}
+
