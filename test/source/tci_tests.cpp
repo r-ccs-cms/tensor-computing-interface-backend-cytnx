@@ -2193,3 +2193,150 @@ TEST_CASE("tci::shrink API functionality") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("tci::to_cplx API functionality") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  // Test 1: Convert complex tensor to complex (should be a copy, in-place)
+  {
+    cytnx::Tensor complex_input, complex_output;
+    tci::zeros(ctx, {2, 3}, complex_input);
+
+    // Set complex tensor values
+    tci::set_elem(ctx, complex_input, {0ULL, 0ULL}, cytnx::cytnx_complex128(3.14, 0.0));
+    tci::set_elem(ctx, complex_input, {1ULL, 2ULL}, cytnx::cytnx_complex128(-2.71, 0.0));
+
+    CHECK_NOTHROW(tci::to_cplx(ctx, complex_input, complex_output));
+
+    // Check shape is preserved
+    auto input_shape = tci::shape(ctx, complex_input);
+    auto output_shape = tci::shape(ctx, complex_output);
+    CHECK(input_shape[0] == output_shape[0]);
+    CHECK(input_shape[1] == output_shape[1]);
+
+    // Check values are preserved exactly (complex -> complex copy)
+    auto elem1 = tci::get_elem(ctx, complex_output, {0ULL, 0ULL});
+    auto elem2 = tci::get_elem(ctx, complex_output, {1ULL, 2ULL});
+    auto elem_zero = tci::get_elem(ctx, complex_output, {0ULL, 1ULL});
+
+    CHECK(std::abs(elem1.real() - 3.14) < 1e-15);
+    CHECK(std::abs(elem1.imag()) < 1e-15);  // Imaginary part should be zero
+    CHECK(std::abs(elem2.real() + 2.71) < 1e-15);
+    CHECK(std::abs(elem2.imag()) < 1e-15);
+    CHECK(std::abs(elem_zero.real()) < 1e-15);
+    CHECK(std::abs(elem_zero.imag()) < 1e-15);
+  }
+
+  // Test 2: Out-of-place conversion from complex to complex (copy)
+  {
+    cytnx::Tensor complex_input;
+    tci::zeros(ctx, {2, 2}, complex_input);
+
+    tci::set_elem(ctx, complex_input, {0ULL, 0ULL}, cytnx::cytnx_complex128(7.0, -3.0));
+    tci::set_elem(ctx, complex_input, {1ULL, 0ULL}, cytnx::cytnx_complex128(0.0, 5.5));
+
+    auto complex_result = tci::to_cplx(ctx, complex_input);
+
+    // Values should be identical
+    auto input_elem1 = tci::get_elem(ctx, complex_input, {0ULL, 0ULL});
+    auto result_elem1 = tci::get_elem(ctx, complex_result, {0ULL, 0ULL});
+    auto input_elem2 = tci::get_elem(ctx, complex_input, {1ULL, 0ULL});
+    auto result_elem2 = tci::get_elem(ctx, complex_result, {1ULL, 0ULL});
+
+    CHECK(std::abs(input_elem1.real() - result_elem1.real()) < 1e-15);
+    CHECK(std::abs(input_elem1.imag() - result_elem1.imag()) < 1e-15);
+    CHECK(std::abs(input_elem2.real() - result_elem2.real()) < 1e-15);
+    CHECK(std::abs(input_elem2.imag() - result_elem2.imag()) < 1e-15);
+
+    CHECK(std::abs(result_elem1.real() - 7.0) < 1e-15);
+    CHECK(std::abs(result_elem1.imag() + 3.0) < 1e-15);
+    CHECK(std::abs(result_elem2.real()) < 1e-15);
+    CHECK(std::abs(result_elem2.imag() - 5.5) < 1e-15);
+  }
+
+  // Test 3: Complex tensor with both real and imaginary parts
+  {
+    cytnx::Tensor input, output;
+    tci::zeros(ctx, {2, 3}, input);
+
+    // Set various complex values
+    tci::set_elem(ctx, input, {0ULL, 0ULL}, cytnx::cytnx_complex128(1.5, 2.5));
+    tci::set_elem(ctx, input, {1ULL, 1ULL}, cytnx::cytnx_complex128(-3.0, 4.0));
+    tci::set_elem(ctx, input, {0ULL, 2ULL}, cytnx::cytnx_complex128(0.0, -7.5));
+
+    CHECK_NOTHROW(tci::to_cplx(ctx, input, output));
+
+    // Check that complex values are preserved exactly
+    auto elem1 = tci::get_elem(ctx, output, {0ULL, 0ULL});
+    auto elem2 = tci::get_elem(ctx, output, {1ULL, 1ULL});
+    auto elem3 = tci::get_elem(ctx, output, {0ULL, 2ULL});
+
+    CHECK(std::abs(elem1.real() - 1.5) < 1e-15);
+    CHECK(std::abs(elem1.imag() - 2.5) < 1e-15);
+    CHECK(std::abs(elem2.real() + 3.0) < 1e-15);
+    CHECK(std::abs(elem2.imag() - 4.0) < 1e-15);
+    CHECK(std::abs(elem3.real()) < 1e-15);
+    CHECK(std::abs(elem3.imag() + 7.5) < 1e-15);
+
+    // Verify input is unchanged
+    auto input_elem = tci::get_elem(ctx, input, {0ULL, 0ULL});
+    CHECK(std::abs(input_elem.real() - 1.5) < 1e-15);
+    CHECK(std::abs(input_elem.imag() - 2.5) < 1e-15);
+  }
+
+  // Test 4: Larger tensor test
+  {
+    cytnx::Tensor large_input, large_output;
+    tci::zeros(ctx, {3, 4, 2}, large_input);
+
+    // Fill with pattern: real = i*100 + j*10 + k, imag = i + j + k
+    for (cytnx::cytnx_uint64 i = 0; i < 3; ++i) {
+      for (cytnx::cytnx_uint64 j = 0; j < 4; ++j) {
+        for (cytnx::cytnx_uint64 k = 0; k < 2; ++k) {
+          double real_val = i*100.0 + j*10.0 + k;
+          double imag_val = i + j + k;
+          tci::set_elem(ctx, large_input, {i, j, k}, cytnx::cytnx_complex128(real_val, imag_val));
+        }
+      }
+    }
+
+    CHECK_NOTHROW(tci::to_cplx(ctx, large_input, large_output));
+
+    // Check a few sample values
+    auto elem_start = tci::get_elem(ctx, large_output, {0ULL, 0ULL, 0ULL});
+    auto elem_mid = tci::get_elem(ctx, large_output, {1ULL, 2ULL, 1ULL});
+    auto elem_end = tci::get_elem(ctx, large_output, {2ULL, 3ULL, 1ULL});
+
+    CHECK(std::abs(elem_start.real() - 0.0) < 1e-15);
+    CHECK(std::abs(elem_start.imag() - 0.0) < 1e-15);
+
+    CHECK(std::abs(elem_mid.real() - 121.0) < 1e-15);  // 1*100 + 2*10 + 1
+    CHECK(std::abs(elem_mid.imag() - 4.0) < 1e-15);    // 1 + 2 + 1
+
+    CHECK(std::abs(elem_end.real() - 231.0) < 1e-15);  // 2*100 + 3*10 + 1
+    CHECK(std::abs(elem_end.imag() - 6.0) < 1e-15);    // 2 + 3 + 1
+
+    // Check shape preservation
+    auto input_shape = tci::shape(ctx, large_input);
+    auto output_shape = tci::shape(ctx, large_output);
+    CHECK(input_shape[0] == output_shape[0]);
+    CHECK(input_shape[1] == output_shape[1]);
+    CHECK(input_shape[2] == output_shape[2]);
+  }
+
+  // Test 5: Edge case - single element tensor
+  {
+    cytnx::Tensor scalar_input, scalar_output;
+    tci::zeros(ctx, {1}, scalar_input);
+    tci::set_elem(ctx, scalar_input, {0ULL}, cytnx::cytnx_complex128(9.876, -1.234));
+
+    CHECK_NOTHROW(tci::to_cplx(ctx, scalar_input, scalar_output));
+
+    auto result = tci::get_elem(ctx, scalar_output, {0ULL});
+    CHECK(std::abs(result.real() - 9.876) < 1e-15);
+    CHECK(std::abs(result.imag() + 1.234) < 1e-15);
+  }
+
+  tci::destroy_context(ctx);
+}
+
