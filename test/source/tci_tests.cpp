@@ -266,8 +266,10 @@ TEST_CASE("TCI Matrix Decomposition - LQ") {
     tci::set_elem(ctx, matrix, {2, 1}, cytnx::cytnx_complex128(6.0, 0.0));
 
     cytnx::Tensor l, q;
-    // This should fail until LQ is implemented
-    CHECK_THROWS_AS(tci::lq(ctx, matrix, 2, l, q), std::runtime_error);
+    tci::lq(ctx, matrix, 2, l, q);
+
+    CHECK(tci::rank(ctx, l) == 3);
+    CHECK(tci::rank(ctx, q) == 1);
   }
 
   tci::destroy_context(ctx);
