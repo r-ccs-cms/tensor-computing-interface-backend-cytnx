@@ -1846,3 +1846,135 @@ TEST_CASE("tci::move API compliance test") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("tci::scale API functionality") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  // Test 1: In-place scaling with positive factor
+  {
+    cytnx::Tensor tensor;
+    tci::fill(ctx, {2, 3}, cytnx::cytnx_complex128(4.0, 2.0), tensor);
+    tci::elem_t<cytnx::Tensor> scale_factor = cytnx::cytnx_complex128(2.5, 0.0);
+
+    CHECK_NOTHROW(tci::scale(ctx, tensor, scale_factor));
+
+    auto result = tci::get_elem(ctx, tensor, {0ULL, 0ULL});
+    auto expected = cytnx::cytnx_complex128(10.0, 5.0);  // (4.0 + 2.0i) * 2.5
+    CHECK(std::abs(result.real() - expected.real()) < 1e-10);
+    CHECK(std::abs(result.imag() - expected.imag()) < 1e-10);
+  }
+
+  // Test 2: In-place scaling with negative factor
+  {
+    cytnx::Tensor tensor;
+    tci::fill(ctx, {2, 2}, cytnx::cytnx_complex128(3.0, -1.0), tensor);
+    tci::elem_t<cytnx::Tensor> scale_factor = cytnx::cytnx_complex128(-1.5, 0.0);
+
+    CHECK_NOTHROW(tci::scale(ctx, tensor, scale_factor));
+
+    auto result = tci::get_elem(ctx, tensor, {1ULL, 1ULL});
+    auto expected = cytnx::cytnx_complex128(-4.5, 1.5);  // (3.0 - 1.0i) * -1.5
+    CHECK(std::abs(result.real() - expected.real()) < 1e-10);
+    CHECK(std::abs(result.imag() - expected.imag()) < 1e-10);
+  }
+
+  // Test 3: In-place scaling with complex factor
+  {
+    cytnx::Tensor tensor;
+    tci::fill(ctx, {1, 2}, cytnx::cytnx_complex128(2.0, 3.0), tensor);
+    tci::elem_t<cytnx::Tensor> scale_factor = cytnx::cytnx_complex128(1.0, 2.0);
+
+    CHECK_NOTHROW(tci::scale(ctx, tensor, scale_factor));
+
+    auto result = tci::get_elem(ctx, tensor, {0ULL, 0ULL});
+    // (2.0 + 3.0i) * (1.0 + 2.0i) = 2.0 + 4.0i + 3.0i + 6.0i² = 2.0 + 7.0i - 6.0 = -4.0 + 7.0i
+    auto expected = cytnx::cytnx_complex128(-4.0, 7.0);
+    CHECK(std::abs(result.real() - expected.real()) < 1e-10);
+    CHECK(std::abs(result.imag() - expected.imag()) < 1e-10);
+  }
+
+  // Test 4: In-place scaling with zero
+  {
+    cytnx::Tensor tensor;
+    tci::fill(ctx, {2, 2}, cytnx::cytnx_complex128(5.0, -2.0), tensor);
+    tci::elem_t<cytnx::Tensor> scale_factor = cytnx::cytnx_complex128(0.0, 0.0);
+
+    CHECK_NOTHROW(tci::scale(ctx, tensor, scale_factor));
+
+    auto result = tci::get_elem(ctx, tensor, {0ULL, 1ULL});
+    CHECK(std::abs(result.real()) < 1e-15);
+    CHECK(std::abs(result.imag()) < 1e-15);
+  }
+
+  // Test 5: In-place scaling with identity (1.0)
+  {
+    cytnx::Tensor original;
+    tci::fill(ctx, {3, 1}, cytnx::cytnx_complex128(7.0, -3.0), original);
+    auto tensor = tci::copy(ctx, original);
+    tci::elem_t<cytnx::Tensor> scale_factor = cytnx::cytnx_complex128(1.0, 0.0);
+
+    CHECK_NOTHROW(tci::scale(ctx, tensor, scale_factor));
+
+    // Should remain unchanged
+    auto original_elem = tci::get_elem(ctx, original, {2ULL, 0ULL});
+    auto result_elem = tci::get_elem(ctx, tensor, {2ULL, 0ULL});
+    CHECK(std::abs(original_elem.real() - result_elem.real()) < 1e-15);
+    CHECK(std::abs(original_elem.imag() - result_elem.imag()) < 1e-15);
+  }
+
+  // Test 6: Out-of-place scaling with different tensors
+  {
+    cytnx::Tensor input, output;
+    tci::fill(ctx, {2, 3}, cytnx::cytnx_complex128(8.0, 1.0), input);
+    tci::allocate(ctx, {2, 3}, output);
+    tci::elem_t<cytnx::Tensor> scale_factor = cytnx::cytnx_complex128(0.5, -0.25);
+
+    CHECK_NOTHROW(tci::scale(ctx, input, scale_factor, output));
+
+    // Input should remain unchanged
+    auto input_elem = tci::get_elem(ctx, input, {0ULL, 0ULL});
+    auto input_expected = cytnx::cytnx_complex128(8.0, 1.0);
+    CHECK(std::abs(input_elem.real() - input_expected.real()) < 1e-15);
+    CHECK(std::abs(input_elem.imag() - input_expected.imag()) < 1e-15);
+
+    // Output should contain scaled values
+    auto output_elem = tci::get_elem(ctx, output, {0ULL, 0ULL});
+    // (8.0 + 1.0i) * (0.5 - 0.25i) = 4.0 - 2.0i + 0.5i - 0.25i² = 4.0 - 1.5i + 0.25 = 4.25 - 1.5i
+    auto output_expected = cytnx::cytnx_complex128(4.25, -1.5);
+    CHECK(std::abs(output_elem.real() - output_expected.real()) < 1e-10);
+    CHECK(std::abs(output_elem.imag() - output_expected.imag()) < 1e-10);
+  }
+
+  // Test 7: Out-of-place scaling with larger tensor shapes
+  {
+    cytnx::Tensor input;
+    tci::zeros(ctx, {4, 5}, input);
+    tci::set_elem(ctx, input, {0ULL, 0ULL}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, input, {3ULL, 4ULL}, cytnx::cytnx_complex128(0.0, 1.0));
+
+    cytnx::Tensor output;
+    tci::allocate(ctx, {4, 5}, output);
+    tci::elem_t<cytnx::Tensor> scale_factor = cytnx::cytnx_complex128(3.0, 4.0);
+
+    CHECK_NOTHROW(tci::scale(ctx, input, scale_factor, output));
+
+    // Check specific elements
+    auto result1 = tci::get_elem(ctx, output, {0ULL, 0ULL});
+    auto expected1 = cytnx::cytnx_complex128(3.0, 4.0);  // (1.0 + 0.0i) * (3.0 + 4.0i)
+    CHECK(std::abs(result1.real() - expected1.real()) < 1e-10);
+    CHECK(std::abs(result1.imag() - expected1.imag()) < 1e-10);
+
+    auto result2 = tci::get_elem(ctx, output, {3ULL, 4ULL});
+    auto expected2 = cytnx::cytnx_complex128(-4.0, 3.0);  // (0.0 + 1.0i) * (3.0 + 4.0i) = 3.0i + 4.0i² = -4.0 + 3.0i
+    CHECK(std::abs(result2.real() - expected2.real()) < 1e-10);
+    CHECK(std::abs(result2.imag() - expected2.imag()) < 1e-10);
+
+    // Check zero elements remain zero
+    auto result_zero = tci::get_elem(ctx, output, {1ULL, 1ULL});
+    CHECK(std::abs(result_zero.real()) < 1e-15);
+    CHECK(std::abs(result_zero.imag()) < 1e-15);
+  }
+
+  tci::destroy_context(ctx);
+}
+
