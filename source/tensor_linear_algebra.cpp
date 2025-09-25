@@ -245,13 +245,12 @@ namespace tci {
     matrix.reshape_(
         {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
-    // Perform SVD using Cytnx
+    // Perform SVD using Cytnx. Return order is [S, U, V^T].
     auto svd_result = cytnx::linalg::Svd(matrix);
 
-    // Extract results
-    u = svd_result[0];       // U matrix
-    s_diag = svd_result[1];  // Singular values (already real)
-    v_dag = svd_result[2];   // V† matrix (already conjugate transpose)
+    s_diag = svd_result[0];  // Singular values as a rank-1 tensor
+    u = svd_result[1];       // Left singular vectors
+    v_dag = svd_result[2];   // Right singular vectors (already transposed)
 
     // Reshape U to match original bond structure
     std::vector<cytnx::cytnx_uint64> u_shape;
