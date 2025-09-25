@@ -940,3 +940,95 @@ TEST_CASE("tci::linear_combine API compliance test") {
 
   tci::destroy_context(ctx);
 }
+
+TEST_CASE("tci::normalize API compliance test") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("normalize in-place version - basic normalization") {
+    // Create test tensor with known values
+    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+    cytnx::Tensor tensor;
+    tci::zeros(ctx, shape, tensor);
+
+    // Set tensor = [[3, 4], [0, 0]] with norm = 5
+    tci::set_elem(ctx, tensor, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+    tci::set_elem(ctx, tensor, {0, 1}, cytnx::cytnx_complex128(4.0, 0.0));
+    tci::set_elem(ctx, tensor, {1, 0}, cytnx::cytnx_complex128(0.0, 0.0));
+    tci::set_elem(ctx, tensor, {1, 1}, cytnx::cytnx_complex128(0.0, 0.0));
+
+    // Normalize and check returned original norm
+    auto original_norm = tci::normalize(ctx, tensor);
+
+    // Verify original norm was 5 (3² + 4² = 9 + 16 = 25, √25 = 5)
+    CHECK(std::abs(original_norm.real() - 5.0) < 1e-10);
+    CHECK(std::abs(original_norm.imag()) < 1e-10);
+
+    // Verify normalized tensor: [[3/5, 4/5], [0, 0]] = [[0.6, 0.8], [0, 0]]
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 0}).real() - 0.6) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 1}).real() - 0.8) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 0}).real() - 0.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 1}).real() - 0.0) < 1e-10);
+
+    // Verify new norm is 1
+    auto new_norm = tci::norm(ctx, tensor);
+    CHECK(std::abs(new_norm - 1.0) < 1e-10);
+  }
+
+  SUBCASE("normalize out-of-place version - preserve original") {
+    // Create test tensor with known values
+    tci::shape_t<cytnx::Tensor> shape = {3, 1};
+    cytnx::Tensor original, normalized;
+    tci::zeros(ctx, shape, original);
+
+    // Set original = [[2], [2], [1]] with norm = 3 (2² + 2² + 1² = 9, √9 = 3)
+    tci::set_elem(ctx, original, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, original, {1, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, original, {2, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+
+    // Normalize out-of-place
+    auto original_norm = tci::normalize(ctx, original, normalized);
+
+    // Verify original norm was 3
+    CHECK(std::abs(original_norm.real() - 3.0) < 1e-10);
+
+    // Verify original tensor is unchanged
+    CHECK(std::abs(tci::get_elem(ctx, original, {0, 0}).real() - 2.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, original, {1, 0}).real() - 2.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, original, {2, 0}).real() - 1.0) < 1e-10);
+
+    // Verify normalized tensor: [[2/3], [2/3], [1/3]]
+    CHECK(std::abs(tci::get_elem(ctx, normalized, {0, 0}).real() - (2.0/3.0)) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, normalized, {1, 0}).real() - (2.0/3.0)) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, normalized, {2, 0}).real() - (1.0/3.0)) < 1e-10);
+
+    // Verify normalized tensor has norm 1
+    auto new_norm = tci::norm(ctx, normalized);
+    CHECK(std::abs(new_norm - 1.0) < 1e-10);
+  }
+
+  SUBCASE("normalize edge cases") {
+    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+
+    // Test with single non-zero element
+    cytnx::Tensor single_elem;
+    tci::zeros(ctx, shape, single_elem);
+    tci::set_elem(ctx, single_elem, {1, 1}, cytnx::cytnx_complex128(7.0, 0.0));
+
+    auto norm1 = tci::normalize(ctx, single_elem);
+    CHECK(std::abs(norm1.real() - 7.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, single_elem, {1, 1}).real() - 1.0) < 1e-10);
+
+    // Test with zero tensor (should not crash, original implementation handles this)
+    cytnx::Tensor zero_tensor;
+    tci::zeros(ctx, shape, zero_tensor);
+
+    auto norm_zero = tci::normalize(ctx, zero_tensor);
+    CHECK(std::abs(norm_zero.real() - 0.0) < 1e-10);
+    // Zero tensor should remain zero after normalization
+    CHECK(std::abs(tci::get_elem(ctx, zero_tensor, {0, 0}).real() - 0.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, zero_tensor, {1, 1}).real() - 0.0) < 1e-10);
+  }
+
+  tci::destroy_context(ctx);
+}
