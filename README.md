@@ -95,7 +95,6 @@ cmake -S . -B build \
 cmake --build build --parallel 8
 ```
 
-
 ## Usage Example
 
 ```cpp
@@ -146,6 +145,18 @@ g++ -std=c++17 -I<tci-install>/include your_code.cpp -lTCI -lcytnx
 │   └── macos-homebrew.cmake       # Homebrew dependency configuration
 ├── CMakePresets.json              # CMake preset configurations
 └── CMakeLists.txt                 # Build configuration
+```
+
+## Documentation
+
+Currently, document generation depends on Doxygen and uv.
+
+```bash
+# generate docs
+cmake -S documentation -B build/doc
+cmake --build build/doc --target GenerateDocs
+# view the docs
+open build/doc/doxygen/html/index.html
 ```
 
 ## Contributing
