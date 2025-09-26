@@ -155,9 +155,49 @@ namespace tci {
       throw std::invalid_argument("Cannot stack empty list of tensors");
     }
 
-    // TODO: Implement general stacking - for now throw not implemented
-    throw std::runtime_error(
-        "General stacking not yet implemented - use concatenate for basic 2D operations");
+    // Implement stacking by creating a new dimension at stack_bdidx
+    // First verify all tensors have the same shape
+    const auto& first_shape = ins[0].shape();
+    for (size_t i = 1; i < ins.size(); ++i) {
+      if (ins[i].shape() != first_shape) {
+        throw std::invalid_argument("All tensors must have the same shape for stacking");
+      }
+    }
+
+    // Create new shape with additional dimension for stacking
+    std::vector<cytnx::cytnx_uint64> new_shape;
+    for (size_t i = 0; i < first_shape.size(); ++i) {
+      if (i == static_cast<size_t>(stack_bdidx)) {
+        new_shape.push_back(ins.size()); // Number of tensors to stack
+      }
+      new_shape.push_back(first_shape[i]);
+    }
+    // Handle case where stack_bdidx is at the end
+    if (static_cast<size_t>(stack_bdidx) >= first_shape.size()) {
+      new_shape.push_back(ins.size());
+    }
+
+    // Create output tensor
+    out = cytnx::zeros(new_shape, ins[0].dtype(), ins[0].device());
+
+    // Copy data from each tensor
+    for (size_t tensor_idx = 0; tensor_idx < ins.size(); ++tensor_idx) {
+      // Create index for where to place this tensor in the stacked result
+      std::vector<cytnx::Accessor> accessors;
+      size_t dim_idx = 0;
+
+      for (size_t i = 0; i < new_shape.size(); ++i) {
+        if (i == static_cast<size_t>(stack_bdidx)) {
+          accessors.push_back(cytnx::Accessor(static_cast<cytnx::cytnx_int64>(tensor_idx)));
+        } else {
+          accessors.push_back(cytnx::Accessor::all());
+          dim_idx++;
+        }
+      }
+
+      // Copy the tensor data to the appropriate slice
+      out.get(accessors) = ins[tensor_idx];
+    }
   }
 
   // Note: for_each functions require template specialization for specific function types
