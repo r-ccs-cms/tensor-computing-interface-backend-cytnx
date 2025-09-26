@@ -3,3 +3,5 @@
 /cpm_modules
 .DS_Store
 test/build*
+/documentation/@DOXYGEN_OUTPUT_DIRECTORY@
+/documentation/build
