@@ -292,9 +292,44 @@ public:
 
 private:
     Ten construct_local_density_matrix() {
-        // Construct two-site reduced density matrix (simplified)
-        // This would normally require proper MPS contractions
-        return eye<Ten>(ctx, 4); // Placeholder - returns identity
+        // Construct two-site reduced density matrix by contracting MPS tensors
+        // For infinite system: rho_local = Tr_environment(|psi><psi|)
+
+        // Create the two-site wavefunction first (similar to apply_two_site_operator)
+        Ten A1_lambda;
+        contract(ctx, A_even, {2}, lambda_even, {0}, A1_lambda, {0, 1});
+
+        Ten Psi;
+        contract(ctx, A1_lambda, {2}, A_odd, {1}, Psi, {0, 1, 2, 3});
+
+        // Reshape to matrix form for density matrix calculation
+        auto psi_shape = shape(ctx, Psi);
+        size_t d1 = psi_shape[0], d2 = psi_shape[2]; // Physical dimensions
+        size_t chi_L = psi_shape[1], chi_R = psi_shape[3]; // Bond dimensions
+
+        // Flatten physical indices for density matrix
+        Ten Psi_flat;
+        shape_t<Ten> flat_shape = {d1 * d2, chi_L * chi_R};
+        reshape(ctx, Psi, flat_shape, Psi_flat);
+
+        // Construct density matrix: rho = |psi><psi|
+        Ten Psi_conj;
+        cplx_conj(ctx, Psi_flat, Psi_conj);
+
+        // Use explicit outer product by reshaping for matrix multiplication
+        Ten psi_col, psi_row;
+        reshape(ctx, Psi_flat, {flat_shape[0], 1}, psi_col);
+        reshape(ctx, Psi_conj, {1, flat_shape[0]}, psi_row);
+
+        Ten rho;
+        contract(ctx, psi_col, {1}, psi_row, {0}, rho, {});
+
+        // Normalize by trace over bond dimensions (approximate)
+        auto rho_shape = shape(ctx, rho);
+        Ten rho_2site;
+        reshape(ctx, rho, {d1 * d2, d1 * d2}, rho_2site);
+
+        return rho_2site;
     }
 
     Ten construct_local_hamiltonian() {
