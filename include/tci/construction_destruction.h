@@ -5,6 +5,7 @@
 #include <functional>
 #include <complex>
 #include <utility>
+#include <type_traits>
 
 namespace tci {
 
@@ -83,6 +84,56 @@ namespace tci {
   template <typename TenT, typename RandomIt, typename Func>
   TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
                              RandomIt init_elems_begin, Func&& coors2idx);
+
+  // Template function implementations for assign_from_container
+  // Generic implementation that works with any tensor type
+
+  template <typename TenT, typename RandomIt, typename Func>
+  void assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
+                             RandomIt init_elems_begin, Func&& coors2idx, TenT& a) {
+    if constexpr (std::is_same_v<TenT, cytnx::Tensor>) {
+      // Create tensor with the specified shape
+      allocate(ctx, shape, a);
+
+      // Generate all coordinate combinations and assign values
+      std::function<void(elem_coors_t<TenT>, std::size_t)> assign_recursive;
+      assign_recursive = [&](elem_coors_t<TenT> current_coords, std::size_t dim) {
+        if (dim == shape.size()) {
+          // Base case: all dimensions set, assign the element
+          auto index = std::invoke(coors2idx, current_coords);
+          auto value = *(init_elems_begin + index);
+
+          // Convert coordinates to cytnx format and set element
+          std::vector<cytnx::cytnx_uint64> cytnx_coords;
+          cytnx_coords.reserve(current_coords.size());
+          for (const auto& coord : current_coords) {
+            cytnx_coords.push_back(static_cast<cytnx::cytnx_uint64>(coord));
+          }
+
+          a.template at<elem_t<TenT>>(cytnx_coords) = static_cast<elem_t<TenT>>(value);
+        } else {
+          // Recursive case: iterate through current dimension
+          for (bond_dim_t<TenT> i = 0; i < shape[dim]; ++i) {
+            current_coords.push_back(i);
+            assign_recursive(current_coords, dim + 1);
+            current_coords.pop_back();
+          }
+        }
+      };
+
+      assign_recursive({}, 0);
+    } else {
+      static_assert(sizeof(TenT) == 0, "assign_from_container not implemented for this tensor type");
+    }
+  }
+
+  template <typename TenT, typename RandomIt, typename Func>
+  TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
+                             RandomIt init_elems_begin, Func&& coors2idx) {
+    TenT result;
+    assign_from_container(ctx, shape, init_elems_begin, std::forward<Func>(coors2idx), result);
+    return result;
+  }
 
   /**
    * @brief Create a tensor with random values (in-place version)
