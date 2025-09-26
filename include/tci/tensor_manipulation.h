@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tci/tensor_traits.h"
+#include "tci/cytnx_tensor_traits.h"
 
 namespace tci {
 
@@ -316,5 +317,30 @@ namespace tci {
    */
   template <typename TenT, typename Func>
   void for_each_with_coors(context_handle_t<TenT>& ctx, const TenT& in, Func&& f);
+
+  // Template function implementations for for_each
+  // These must be in the header for template instantiation
+
+  template <typename Func>
+  void for_each(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout, Func&& f) {
+    auto& storage = inout.storage();
+    const auto total = storage.size();
+
+    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
+      auto& elem = storage.at<elem_t<cytnx::Tensor>>(idx);
+      f(elem);
+    }
+  }
+
+  template <typename Func>
+  void for_each(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in, Func&& f) {
+    const auto& storage = in.storage();
+    const auto total = storage.size();
+
+    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
+      const auto& elem = storage.at<elem_t<cytnx::Tensor>>(idx);
+      f(elem);
+    }
+  }
 
 }  // namespace tci
