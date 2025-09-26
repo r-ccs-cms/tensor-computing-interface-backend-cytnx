@@ -1,7 +1,5 @@
 #include "tci/tensor_linear_algebra.h"
 
-// #define TCI_DEBUG_CONTRACT
-
 #include <cytnx.hpp>
 #include <iostream>
 #include <map>
@@ -99,14 +97,31 @@ namespace tci {
         output_permutation.clear();
         size_t current_pos = 0;
 
+        // For abnormal NCON, we need to handle negative labels carefully
+        if (is_abnormal_ncon) {
+          // Resize to accommodate all output positions
+          if (!bd_labs_c.empty()) {
+            size_t max_pos = 0;
+            for (auto label : bd_labs_c) {
+              if (target_pos.count(label)) {
+                max_pos = std::max(max_pos, target_pos[label]);
+              }
+            }
+            output_permutation.resize(max_pos + 1);
+            std::fill(output_permutation.begin(), output_permutation.end(), static_cast<cytnx::cytnx_uint64>(-1));
+          }
+        }
+
         // Add free axes from tensor a
         for (size_t i = 0; i < bd_labs_a.size(); ++i) {
           auto label = bd_labs_a[i];
           if (target_pos.count(label)) {
-            while (output_permutation.size() <= target_pos[label]) {
-              output_permutation.push_back(-1);
+            if (!is_abnormal_ncon || target_pos[label] < output_permutation.size()) {
+              while (output_permutation.size() <= target_pos[label]) {
+                output_permutation.push_back(static_cast<cytnx::cytnx_uint64>(-1));
+              }
+              output_permutation[target_pos[label]] = current_pos;
             }
-            output_permutation[target_pos[label]] = current_pos;
           }
           if (std::find(contract_axes_a.begin(), contract_axes_a.end(), i)
               == contract_axes_a.end()) {
@@ -118,10 +133,12 @@ namespace tci {
         for (size_t i = 0; i < bd_labs_b.size(); ++i) {
           auto label = bd_labs_b[i];
           if (target_pos.count(label)) {
-            while (output_permutation.size() <= target_pos[label]) {
-              output_permutation.push_back(-1);
+            if (!is_abnormal_ncon || target_pos[label] < output_permutation.size()) {
+              while (output_permutation.size() <= target_pos[label]) {
+                output_permutation.push_back(static_cast<cytnx::cytnx_uint64>(-1));
+              }
+              output_permutation[target_pos[label]] = current_pos;
             }
-            output_permutation[target_pos[label]] = current_pos;
           }
           if (std::find(contract_axes_b.begin(), contract_axes_b.end(), i)
               == contract_axes_b.end()) {
@@ -190,7 +207,16 @@ namespace tci {
 
         cytnx::Tensor result = outer_matrix.reshape(target_shape);
         if (!analysis.output_permutation.empty() && analysis.is_abnormal_ncon) {
-          result = result.permute(analysis.output_permutation);
+          // Filter out invalid permutation indices
+          std::vector<cytnx::cytnx_uint64> valid_perm;
+          for (auto idx : analysis.output_permutation) {
+            if (idx < static_cast<cytnx::cytnx_uint64>(result.shape().size())) {
+              valid_perm.push_back(idx);
+            }
+          }
+          if (valid_perm.size() == result.shape().size()) {
+            result = result.permute(valid_perm);
+          }
         }
         c = std::move(result);
         return;
@@ -204,7 +230,16 @@ namespace tci {
         cytnx::Tensor result = cytnx::linalg::Tensordot(a, b, analysis.contract_axes_a,
                                                         analysis.contract_axes_b);
         if (!analysis.output_permutation.empty() && analysis.is_abnormal_ncon) {
-          result = result.permute(analysis.output_permutation);
+          // Filter out invalid permutation indices
+          std::vector<cytnx::cytnx_uint64> valid_perm;
+          for (auto idx : analysis.output_permutation) {
+            if (idx < static_cast<cytnx::cytnx_uint64>(result.shape().size())) {
+              valid_perm.push_back(idx);
+            }
+          }
+          if (valid_perm.size() == result.shape().size()) {
+            result = result.permute(valid_perm);
+          }
         }
         c = std::move(result);
       } catch (const std::exception& e) {
@@ -240,15 +275,6 @@ namespace tci {
 
     auto contract_axes_a = convert_axes(rank_a, bd_labs_a, "first tensor");
     auto contract_axes_b = convert_axes(rank_b, bd_labs_b, "second tensor");
-
-#ifdef TCI_DEBUG_CONTRACT
-    std::cerr << "contract axis-mode | rank_a=" << rank_a << " rank_b=" << rank_b << "\n";
-    std::cerr << "  axes_a:";
-    for (auto v : contract_axes_a) std::cerr << ' ' << v;
-    std::cerr << "\n  axes_b:";
-    for (auto v : contract_axes_b) std::cerr << ' ' << v;
-    std::cerr << "\n";
-#endif
 
     if (contract_axes_a.size() != contract_axes_b.size()) {
       throw std::invalid_argument("contract: axis lists must have equal length");
