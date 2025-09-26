@@ -244,17 +244,6 @@ namespace tci {
                                     std::vector<cytnx::cytnx_uint64>& sub_coords,
                                     const std::vector<cytnx::cytnx_uint64>& sub_shape);
 
-    void for_each_recursive(
-        cytnx::Tensor& tensor,
-        const std::function<void(elem_t<cytnx::Tensor>&, const elem_coors_t<cytnx::Tensor>&)>& f,
-        std::size_t dim, std::vector<cytnx::cytnx_uint64>& coords,
-        const std::vector<cytnx::cytnx_uint64>& shape);
-
-    void for_each_recursive_const(const cytnx::Tensor& tensor,
-                                  const std::function<void(const elem_t<cytnx::Tensor>&,
-                                                           const elem_coors_t<cytnx::Tensor>&)>& f,
-                                  std::size_t dim, std::vector<cytnx::cytnx_uint64>& coords,
-                                  const std::vector<cytnx::cytnx_uint64>& shape);
 
   }  // namespace
 
@@ -390,27 +379,6 @@ namespace tci {
     replace_sub(ctx, out, sub, begin_pt);
   }
 
-  template <>
-  void for_each_with_coors<cytnx::Tensor, std::function<void(elem_t<cytnx::Tensor>&,
-                                                             const elem_coors_t<cytnx::Tensor>&)>>(
-      context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout,
-      std::function<void(elem_t<cytnx::Tensor>&, const elem_coors_t<cytnx::Tensor>&)>&& f) {
-    auto shape = inout.shape();
-    std::vector<cytnx::cytnx_uint64> coords(shape.size(), 0);
-
-    for_each_recursive(inout, f, 0, coords, shape);
-  }
-
-  template <>
-  void for_each_with_coors<cytnx::Tensor, std::function<void(const elem_t<cytnx::Tensor>&,
-                                                             const elem_coors_t<cytnx::Tensor>&)>>(
-      context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
-      std::function<void(const elem_t<cytnx::Tensor>&, const elem_coors_t<cytnx::Tensor>&)>&& f) {
-    auto shape = in.shape();
-    std::vector<cytnx::cytnx_uint64> coords(shape.size(), 0);
-
-    for_each_recursive_const(in, f, 0, coords, shape);
-  }
 
   // Implementation of helper functions
   namespace {
@@ -453,57 +421,6 @@ namespace tci {
       }
     }
 
-    void for_each_recursive(
-        cytnx::Tensor& tensor,
-        const std::function<void(elem_t<cytnx::Tensor>&, const elem_coors_t<cytnx::Tensor>&)>& f,
-        std::size_t dim, std::vector<cytnx::cytnx_uint64>& coords,
-        const std::vector<cytnx::cytnx_uint64>& shape) {
-      if (dim == shape.size()) {
-        // Base case: apply function to element - use storage for direct access
-        auto& storage = tensor.storage();
-        cytnx::cytnx_uint64 idx = 0;
-        cytnx::cytnx_uint64 multiplier = 1;
-        for (int i = shape.size() - 1; i >= 0; --i) {
-          idx += coords[i] * multiplier;
-          multiplier *= shape[i];
-        }
-        auto& elem = storage.at<elem_t<cytnx::Tensor>>(idx);
-        elem_coors_t<cytnx::Tensor> tci_coords(coords.begin(), coords.end());
-        f(elem, tci_coords);
-        return;
-      }
-
-      for (cytnx::cytnx_uint64 i = 0; i < shape[dim]; ++i) {
-        coords[dim] = i;
-        for_each_recursive(tensor, f, dim + 1, coords, shape);
-      }
-    }
-
-    void for_each_recursive_const(const cytnx::Tensor& tensor,
-                                  const std::function<void(const elem_t<cytnx::Tensor>&,
-                                                           const elem_coors_t<cytnx::Tensor>&)>& f,
-                                  std::size_t dim, std::vector<cytnx::cytnx_uint64>& coords,
-                                  const std::vector<cytnx::cytnx_uint64>& shape) {
-      if (dim == shape.size()) {
-        // Base case: apply function to element - use storage for direct access
-        const auto& storage = tensor.storage();
-        cytnx::cytnx_uint64 idx = 0;
-        cytnx::cytnx_uint64 multiplier = 1;
-        for (int i = shape.size() - 1; i >= 0; --i) {
-          idx += coords[i] * multiplier;
-          multiplier *= shape[i];
-        }
-        const auto& elem = storage.at<elem_t<cytnx::Tensor>>(idx);
-        elem_coors_t<cytnx::Tensor> tci_coords(coords.begin(), coords.end());
-        f(elem, tci_coords);
-        return;
-      }
-
-      for (cytnx::cytnx_uint64 i = 0; i < shape[dim]; ++i) {
-        coords[dim] = i;
-        for_each_recursive_const(tensor, f, dim + 1, coords, shape);
-      }
-    }
 
     void replace_elements_recursive(cytnx::Tensor& main_tensor, const cytnx::Tensor& sub_tensor,
                                     std::size_t dim, const elem_coors_t<cytnx::Tensor>& begin_pt,
