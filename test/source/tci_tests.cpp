@@ -213,6 +213,104 @@ TEST_CASE("TCI Trace Operations") {
     CHECK(std::abs(tci::get_elem(ctx, matrix, {}).real() - 9.0) < 1e-10);
   }
 
+  SUBCASE("3D tensor trace calculation") {
+    // Create a 2x3x2 tensor and trace over first and last dimensions
+    tci::shape_t<cytnx::Tensor> shape = {2, 3, 2};
+    cytnx::Tensor tensor3d;
+    tci::zeros(ctx, shape, tensor3d);
+
+    // Set diagonal elements T[i,j,i] where i=0,1 and j=0,1,2
+    tci::set_elem(ctx, tensor3d, {0, 0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, tensor3d, {0, 1, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, tensor3d, {0, 2, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+    tci::set_elem(ctx, tensor3d, {1, 0, 1}, cytnx::cytnx_complex128(4.0, 0.0));
+    tci::set_elem(ctx, tensor3d, {1, 1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
+    tci::set_elem(ctx, tensor3d, {1, 2, 1}, cytnx::cytnx_complex128(6.0, 0.0));
+
+    // Set some non-diagonal elements
+    tci::set_elem(ctx, tensor3d, {0, 0, 1}, cytnx::cytnx_complex128(10.0, 0.0));
+    tci::set_elem(ctx, tensor3d, {1, 1, 0}, cytnx::cytnx_complex128(20.0, 0.0));
+
+    // Calculate trace over dimensions 0 and 2
+    tci::bond_idx_pairs_t<cytnx::Tensor> pairs = {{0, 2}};
+    cytnx::Tensor result;
+    tci::trace(ctx, tensor3d, pairs, result);
+
+    // Result should be 1D tensor with shape [3] containing [1+4, 2+5, 3+6] = [5, 7, 9]
+    auto result_shape = tci::shape(ctx, result);
+    CHECK(result_shape.size() == 1);
+    CHECK(result_shape[0] == 3);
+
+    CHECK(std::abs(tci::get_elem(ctx, result, {0}).real() - 5.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, result, {1}).real() - 7.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, result, {2}).real() - 9.0) < 1e-10);
+  }
+
+  SUBCASE("4D tensor trace calculation") {
+    // Create a 2x2x3x2 tensor and trace over dimensions 0 and 3
+    tci::shape_t<cytnx::Tensor> shape = {2, 2, 3, 2};
+    cytnx::Tensor tensor4d;
+    tci::zeros(ctx, shape, tensor4d);
+
+    // Set diagonal elements T[i,j,k,i] where i=0,1, j=0,1, k=0,1,2
+    for (size_t j = 0; j < 2; ++j) {
+      for (size_t k = 0; k < 3; ++k) {
+        tci::set_elem(ctx, tensor4d, {0, j, k, 0}, cytnx::cytnx_complex128(1.0 + j + k, 0.0));
+        tci::set_elem(ctx, tensor4d, {1, j, k, 1}, cytnx::cytnx_complex128(10.0 + j + k, 0.0));
+      }
+    }
+
+    // Calculate trace over dimensions 0 and 3
+    tci::bond_idx_pairs_t<cytnx::Tensor> pairs = {{0, 3}};
+    cytnx::Tensor result;
+    tci::trace(ctx, tensor4d, pairs, result);
+
+    // Result should be 2D tensor with shape [2, 3]
+    auto result_shape = tci::shape(ctx, result);
+    CHECK(result_shape.size() == 2);
+    CHECK(result_shape[0] == 2);
+    CHECK(result_shape[1] == 3);
+
+    // Check specific values: result[j,k] = T[0,j,k,0] + T[1,j,k,1]
+    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 11.0) < 1e-10);  // (1+0+0) + (10+0+0) = 11
+    CHECK(std::abs(tci::get_elem(ctx, result, {0, 1}).real() - 13.0) < 1e-10);  // (1+0+1) + (10+0+1) = 13
+    CHECK(std::abs(tci::get_elem(ctx, result, {1, 2}).real() - 17.0) < 1e-10);  // (1+1+2) + (10+1+2) = 17
+  }
+
+  SUBCASE("Complex tensor trace calculation") {
+    // Test with complex numbers
+    tci::shape_t<cytnx::Tensor> shape = {3, 2, 3};
+    cytnx::Tensor tensor_complex;
+    tci::zeros(ctx, shape, tensor_complex);
+
+    // Set complex diagonal elements T[i,j,i]
+    tci::set_elem(ctx, tensor_complex, {0, 0, 0}, cytnx::cytnx_complex128(1.0, 2.0));
+    tci::set_elem(ctx, tensor_complex, {0, 1, 0}, cytnx::cytnx_complex128(2.0, -1.0));
+    tci::set_elem(ctx, tensor_complex, {1, 0, 1}, cytnx::cytnx_complex128(-1.0, 3.0));
+    tci::set_elem(ctx, tensor_complex, {1, 1, 1}, cytnx::cytnx_complex128(0.5, -2.5));
+    tci::set_elem(ctx, tensor_complex, {2, 0, 2}, cytnx::cytnx_complex128(3.0, 1.0));
+    tci::set_elem(ctx, tensor_complex, {2, 1, 2}, cytnx::cytnx_complex128(-0.5, 4.0));
+
+    // Calculate trace over dimensions 0 and 2
+    tci::bond_idx_pairs_t<cytnx::Tensor> pairs = {{0, 2}};
+    cytnx::Tensor result;
+    tci::trace(ctx, tensor_complex, pairs, result);
+
+    // Result should be 1D tensor with shape [2]
+    auto result_shape = tci::shape(ctx, result);
+    CHECK(result_shape.size() == 1);
+    CHECK(result_shape[0] == 2);
+
+    // Check complex trace values
+    auto elem0 = tci::get_elem(ctx, result, {0});  // (1+2i) + (-1+3i) + (3+1i) = 3+6i
+    auto elem1 = tci::get_elem(ctx, result, {1});  // (2-1i) + (0.5-2.5i) + (-0.5+4i) = 2+0.5i
+
+    CHECK(std::abs(elem0.real() - 3.0) < 1e-10);
+    CHECK(std::abs(elem0.imag() - 6.0) < 1e-10);
+    CHECK(std::abs(elem1.real() - 2.0) < 1e-10);
+    CHECK(std::abs(elem1.imag() - 0.5) < 1e-10);
+  }
+
   tci::destroy_context(ctx);
 }
 
