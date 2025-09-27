@@ -168,7 +168,7 @@ namespace tci {
     std::vector<cytnx::cytnx_uint64> new_shape;
     for (size_t i = 0; i < first_shape.size(); ++i) {
       if (i == static_cast<size_t>(stack_bdidx)) {
-        new_shape.push_back(ins.size()); // Number of tensors to stack
+        new_shape.push_back(ins.size());  // Number of tensors to stack
       }
       new_shape.push_back(first_shape[i]);
     }
@@ -200,33 +200,6 @@ namespace tci {
     }
   }
 
-  // Note: for_each functions require template specialization for specific function types
-  // For now, implement basic versions that work with lambda functions
-
-  template <> void for_each<cytnx::Tensor, std::function<void(elem_t<cytnx::Tensor>&)>>(
-      context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout,
-      std::function<void(elem_t<cytnx::Tensor>&)>&& f) {
-    auto& storage = inout.storage();
-    const auto total = storage.size();
-
-    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
-      auto& elem = storage.at<elem_t<cytnx::Tensor>>(idx);
-      f(elem);
-    }
-  }
-
-  template <> void for_each<cytnx::Tensor, std::function<void(const elem_t<cytnx::Tensor>&)>>(
-      context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
-      std::function<void(const elem_t<cytnx::Tensor>&)>&& f) {
-    const auto& storage = in.storage();
-    const auto total = storage.size();
-
-    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
-      const auto& elem = storage.at<elem_t<cytnx::Tensor>>(idx);
-      f(elem);
-    }
-  }
-
   // Helper functions for complex operations
   namespace {
 
@@ -243,7 +216,6 @@ namespace tci {
                                     std::size_t dim, const elem_coors_t<cytnx::Tensor>& begin_pt,
                                     std::vector<cytnx::cytnx_uint64>& sub_coords,
                                     const std::vector<cytnx::cytnx_uint64>& sub_shape);
-
 
   }  // namespace
 
@@ -379,7 +351,6 @@ namespace tci {
     replace_sub(ctx, out, sub, begin_pt);
   }
 
-
   // Implementation of helper functions
   namespace {
 
@@ -420,7 +391,6 @@ namespace tci {
         dst_coords.pop_back();
       }
     }
-
 
     void replace_elements_recursive(cytnx::Tensor& main_tensor, const cytnx::Tensor& sub_tensor,
                                     std::size_t dim, const elem_coors_t<cytnx::Tensor>& begin_pt,
