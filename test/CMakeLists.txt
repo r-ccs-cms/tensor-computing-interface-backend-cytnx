@@ -65,6 +65,15 @@ endif()
 enable_testing()
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 
+# ---- AddressSanitizer ODR Detection Tests ----
+
+# Apply ASAN ODR configuration to test targets
+if(COMMAND configure_asan_odr_detection)
+    configure_asan_odr_detection(${PROJECT_NAME})
+endif()
+
+# ODR-related test targets removed as they are no longer needed
+
 # ---- code coverage ----
 
 if(ENABLE_TEST_COVERAGE)

@@ -79,16 +79,29 @@ llvm (LLVM Clang) is optional; Apple Clang may work.
 
 ```bash
 # Configure and build with Homebrew preset (automatically handles dependencies)
-cmake --preset brew
-cmake --build --preset brew
+cmake --preset brew-release
+cmake --build --preset brew-release
+ctest --preset brew-release
 ```
 
 #### Option B: Manual Configuration
+
+**For development (with debugging features):**
+
+```bash
+cmake --preset brew-debug
+cmake --build --preset brew-debug
+ctest --preset brew-debug
+```
+
+#### Manual Configuration (Alternative)
 
 ```bash
 # Configure with toolchain file
 cmake -S . -B build \
   -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos-homebrew.cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_STANDARD=20 \
   -DBUILD_PYTHON=OFF
 
 # Build
@@ -178,41 +191,62 @@ open build/doc/doxygen/html/index.html
 
 ### Testing
 
-#### Option A: Using CMake Presets (Recommended)
+#### Using CMake Presets (Recommended)
+
+**Production Testing**
 
 ```bash
-# Configure and build tests
-cmake --preset brew-test
-cmake --build --preset brew-test
-
-# Run tests directly
-./build-test/test/TCITests
+# Configure, build and run release tests
+cmake --preset brew-release
+cmake --build --preset brew-release
+ctest --preset brew-release
 ```
 
-#### Option B: Manual Test Configuration
+**Development Testing**
+
+```bash
+# Configure, build and run debug tests
+cmake --preset brew-debug
+cmake --build --preset brew-debug
+ctest --preset brew-debug
+
+# Run tests directly for more detailed output
+./build-debug/test/TCITests
+
+# Run specific test cases
+./build-debug/test/TCITests --test-case="*template*"
+```
+
+#### Manual Test Configuration
 
 ```bash
 # Configure test build manually
 cmake -S . -B build-test \
   -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos-homebrew.cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_STANDARD=20 \
   -DTCI_BUILD_TESTS=ON \
   -DBUILD_PYTHON=OFF
 
-# Build test suite
+# Build and run tests
 cmake --build build-test --parallel 8
-
-# Run tests
 ./build-test/test/TCITests
-
-# With doctest, you can run specific test cases
-./build-test/test/TCITests --test-case="*Context*"
 ```
 
 #### Test Development Workflow
 
+**Quick development cycle:**
+
 ```bash
-# Quick test development cycle
-cmake --preset brew-test && cmake --build --preset brew-test && ./build-test/test/TCITests
+# Debug build
+cmake --preset brew-debug && cmake --build --preset brew-debug && ctest --preset brew-debug
+```
+
+**Release validation:**
+
+```bash
+# Release build testing
+cmake --preset brew-release && cmake --build --preset brew-release && ctest --preset brew-release
 ```
 
 ## License
