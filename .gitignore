@@ -5,3 +5,4 @@
 test/build*
 /documentation/@DOXYGEN_OUTPUT_DIRECTORY@
 /documentation/build
+/.cache
