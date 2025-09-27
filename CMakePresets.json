@@ -24,18 +24,26 @@
         "CMAKE_TOOLCHAIN_FILE": "cmake/toolchains/macos-homebrew.cmake",
         "BUILD_PYTHON": "OFF",
         "BUILD_EXAMPLES": "OFF",
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_STANDARD": "20"
       }
     },
     {
-      "name": "brew-test",
-      "displayName": "Debug build with test suite",
-      "description": "Homebrew toolchain with tests enabled",
-      "inherits": "brew",
-      "binaryDir": "build-test",
+      "name": "brew-debug",
+      "displayName": "Debug build with Homebrew dependencies",
+      "description": "macOS debug build using Homebrew toolchain with ASAN ODR detection",
+      "generator": "Ninja",
+      "binaryDir": "build-debug",
       "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "cmake/toolchains/macos-homebrew.cmake",
+        "BUILD_PYTHON": "OFF",
+        "BUILD_EXAMPLES": "ON",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_STANDARD": "20",
         "TCI_BUILD_TESTS": "ON",
-        "BUILD_EXAMPLES": "OFF"
+        "ENABLE_ASAN_ODR": "ON",
+        "ENABLE_ASAN_ODR_STRICT": "OFF",
+        "ENABLE_ODR_INDICATOR": "ON"
       }
     }
   ],
@@ -51,17 +59,25 @@
       "jobs": 8
     },
     {
-      "name": "brew-test",
-      "configurePreset": "brew-test",
+      "name": "brew-debug",
+      "configurePreset": "brew-debug",
       "jobs": 8
     }
   ],
   "testPresets": [
     {
-      "name": "brew-test",
-      "configurePreset": "brew-test",
+      "name": "brew-release",
+      "configurePreset": "brew-release",
       "environment": {
         "CTEST_OUTPUT_ON_FAILURE": "1"
+      }
+    },
+    {
+      "name": "brew-debug",
+      "configurePreset": "brew-debug",
+      "environment": {
+        "CTEST_OUTPUT_ON_FAILURE": "1",
+        "ASAN_OPTIONS": "detect_odr_violation=1:abort_on_error=0:halt_on_error=0:log_path=./asan_odr_debug"
       }
     }
   ]

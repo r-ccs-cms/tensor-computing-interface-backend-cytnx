@@ -8,6 +8,12 @@ project(
   LANGUAGES CXX
 )
 
+# ---- Build Options ----
+
+option(ENABLE_ASAN_ODR "Enable AddressSanitizer ODR violation detection" OFF)
+option(ENABLE_ASAN_ODR_STRICT "Enable strict ASAN ODR detection (level 2)" OFF)
+option(ENABLE_ODR_INDICATOR "Enable ODR indicator symbols (default ON for non-Windows)" ON)
+
 # ---- Include guards ----
 
 if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
@@ -41,6 +47,61 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 
 # being a cross-platform target, we enforce standards conformance on MSVC
 target_compile_options(${PROJECT_NAME} PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
+
+# ---- AddressSanitizer ODR Detection Configuration ----
+
+# Function to configure ASAN ODR detection
+function(configure_asan_odr_detection target)
+    if(ENABLE_ASAN_ODR OR ENABLE_ASAN_ODR_STRICT)
+        # Check if compiler supports AddressSanitizer
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+            message(STATUS "Enabling AddressSanitizer ODR detection for ${target}")
+
+            # Basic AddressSanitizer flags
+            target_compile_options(${target} PUBLIC
+                -fsanitize=address
+                -g
+                -O1
+                -fno-omit-frame-pointer
+                -fno-optimize-sibling-calls
+            )
+
+            target_link_options(${target} PUBLIC
+                -fsanitize=address
+            )
+
+            # ODR indicator symbols (enabled by default on non-Windows)
+            if(ENABLE_ODR_INDICATOR AND NOT WIN32)
+                target_compile_options(${target} PUBLIC
+                    -fsanitize-address-use-odr-indicator
+                )
+            elseif(NOT ENABLE_ODR_INDICATOR)
+                target_compile_options(${target} PUBLIC
+                    -fno-sanitize-address-use-odr-indicator
+                )
+            endif()
+
+            # Additional flags for better ODR detection
+            target_compile_options(${target} PUBLIC
+                -fno-sanitize-recover=address  # Stop on first violation
+                -fno-common                    # Prevent common symbol merging
+            )
+
+            # Set runtime environment variables via CMake
+            set_target_properties(${target} PROPERTIES
+                ENVIRONMENT "ASAN_OPTIONS=detect_odr_violation=$<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2,1>:abort_on_error=1:halt_on_error=1"
+            )
+
+            message(STATUS "ASAN ODR detection level: $<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2 (strict),1 (normal)>")
+
+        else()
+            message(WARNING "AddressSanitizer ODR detection requested but compiler ${CMAKE_CXX_COMPILER_ID} may not support it")
+        endif()
+    endif()
+endfunction()
+
+# Apply ASAN ODR configuration to main target
+configure_asan_odr_detection(${PROJECT_NAME})
 
 # Link dependencies
 target_link_libraries(${PROJECT_NAME} PUBLIC cytnx)
