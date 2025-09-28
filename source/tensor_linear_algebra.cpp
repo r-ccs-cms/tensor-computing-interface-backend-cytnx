@@ -87,15 +87,14 @@ namespace tci {
       void calculate_output_permutation(const List<bond_label_t<cytnx::Tensor>>& bd_labs_a,
                                         const List<bond_label_t<cytnx::Tensor>>& bd_labs_b,
                                         const List<bond_label_t<cytnx::Tensor>>& bd_labs_c) {
-        // Create mapping from output label to desired position
-        std::map<cytnx::cytnx_int64, size_t> target_pos;
-        for (size_t i = 0; i < bd_labs_c.size(); ++i) {
-          target_pos[bd_labs_c[i]] = i;
+        output_permutation.clear();
+
+        if (bd_labs_c.empty()) {
+          return; // No output reordering needed
         }
 
-        // Build permutation array
-        output_permutation.clear();
-        size_t current_pos = 0;
+        // Build list of free axes in natural order (tensor a first, then tensor b)
+        std::vector<cytnx::cytnx_int64> natural_order;
 
         // For abnormal NCON, we need to handle negative labels carefully
         if (is_abnormal_ncon) {
@@ -115,34 +114,29 @@ namespace tci {
         // Add free axes from tensor a
         for (size_t i = 0; i < bd_labs_a.size(); ++i) {
           auto label = bd_labs_a[i];
-          if (target_pos.count(label)) {
-            if (!is_abnormal_ncon || target_pos[label] < output_permutation.size()) {
-              while (output_permutation.size() <= target_pos[label]) {
-                output_permutation.push_back(static_cast<cytnx::cytnx_uint64>(-1));
-              }
-              output_permutation[target_pos[label]] = current_pos;
-            }
-          }
-          if (std::find(contract_axes_a.begin(), contract_axes_a.end(), i)
-              == contract_axes_a.end()) {
-            current_pos++;
+          if (std::find(contract_axes_a.begin(), contract_axes_a.end(), i) == contract_axes_a.end()) {
+            natural_order.push_back(label);
           }
         }
 
         // Add free axes from tensor b
         for (size_t i = 0; i < bd_labs_b.size(); ++i) {
           auto label = bd_labs_b[i];
-          if (target_pos.count(label)) {
-            if (!is_abnormal_ncon || target_pos[label] < output_permutation.size()) {
-              while (output_permutation.size() <= target_pos[label]) {
-                output_permutation.push_back(static_cast<cytnx::cytnx_uint64>(-1));
-              }
-              output_permutation[target_pos[label]] = current_pos;
-            }
+          if (std::find(contract_axes_b.begin(), contract_axes_b.end(), i) == contract_axes_b.end()) {
+            natural_order.push_back(label);
           }
-          if (std::find(contract_axes_b.begin(), contract_axes_b.end(), i)
-              == contract_axes_b.end()) {
-            current_pos++;
+        }
+
+        // Create permutation: for each position in bd_labs_c, find where it is in natural_order
+        output_permutation.resize(bd_labs_c.size());
+        for (size_t i = 0; i < bd_labs_c.size(); ++i) {
+          auto desired_label = bd_labs_c[i];
+          auto it = std::find(natural_order.begin(), natural_order.end(), desired_label);
+          if (it != natural_order.end()) {
+            size_t natural_pos = std::distance(natural_order.begin(), it);
+            output_permutation[i] = static_cast<cytnx::cytnx_uint64>(natural_pos);
+          } else {
+            throw std::invalid_argument("contract: output label not found in free axes");
           }
         }
       }
@@ -206,7 +200,7 @@ namespace tci {
         target_shape.insert(target_shape.end(), b_shape.begin(), b_shape.end());
 
         cytnx::Tensor result = outer_matrix.reshape(target_shape);
-        if (!analysis.output_permutation.empty() && analysis.is_abnormal_ncon) {
+        if (!analysis.output_permutation.empty()) {
           // Filter out invalid permutation indices
           std::vector<cytnx::cytnx_uint64> valid_perm;
           for (auto idx : analysis.output_permutation) {
@@ -226,10 +220,11 @@ namespace tci {
         throw std::invalid_argument("contract: no valid contraction axes found");
       }
 
+
       try {
         cytnx::Tensor result = cytnx::linalg::Tensordot(a, b, analysis.contract_axes_a,
                                                         analysis.contract_axes_b);
-        if (!analysis.output_permutation.empty() && analysis.is_abnormal_ncon) {
+        if (!analysis.output_permutation.empty()) {
           // Filter out invalid permutation indices
           std::vector<cytnx::cytnx_uint64> valid_perm;
           for (auto idx : analysis.output_permutation) {
@@ -609,31 +604,29 @@ namespace tci {
     }
 
     // Reshape results to match original tensor structure
-    if (u.shape().size() != 2) {
-      auto u_shape_vec = u.shape();
-      std::vector<cytnx::cytnx_int64> new_u_shape;
+    // Always reshape U to tensor structure (not just when != 2D)
+    auto u_shape_vec = u.shape();
+    std::vector<cytnx::cytnx_int64> new_u_shape;
 
-      // For U matrix: row dimensions from original tensor + kept singular values
-      for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
-        new_u_shape.push_back(static_cast<cytnx::cytnx_int64>(shape[i]));
-      }
-      new_u_shape.push_back(u_shape_vec[1]);  // Number of kept singular values
+    // For U matrix: row dimensions from original tensor + kept singular values
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
+      new_u_shape.push_back(static_cast<cytnx::cytnx_int64>(shape[i]));
+    }
+    new_u_shape.push_back(u_shape_vec[1]);  // Number of kept singular values
 
-      u.reshape_(new_u_shape);
+    u.reshape_(new_u_shape);
+
+    // Always reshape V† to tensor structure (not just when != 2D)
+    auto v_dag_shape_vec = v_dag.shape();
+    std::vector<cytnx::cytnx_int64> new_v_dag_shape;
+
+    // For V† matrix: kept singular values + column dimensions from original tensor
+    new_v_dag_shape.push_back(v_dag_shape_vec[0]);  // Number of kept singular values
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+      new_v_dag_shape.push_back(static_cast<cytnx::cytnx_int64>(shape[i]));
     }
 
-    if (v_dag.shape().size() != 2) {
-      auto v_dag_shape_vec = v_dag.shape();
-      std::vector<cytnx::cytnx_int64> new_v_dag_shape;
-
-      // For V† matrix: kept singular values + column dimensions from original tensor
-      new_v_dag_shape.push_back(v_dag_shape_vec[0]);  // Number of kept singular values
-      for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
-        new_v_dag_shape.push_back(static_cast<cytnx::cytnx_int64>(shape[i]));
-      }
-
-      v_dag.reshape_(new_v_dag_shape);
-    }
+    v_dag.reshape_(new_v_dag_shape);
   }
 
   template <> void qr(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
