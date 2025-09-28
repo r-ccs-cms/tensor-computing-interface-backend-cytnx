@@ -96,21 +96,6 @@ namespace tci {
         // Build list of free axes in natural order (tensor a first, then tensor b)
         std::vector<cytnx::cytnx_int64> natural_order;
 
-        // For abnormal NCON, we need to handle negative labels carefully
-        if (is_abnormal_ncon) {
-          // Resize to accommodate all output positions
-          if (!bd_labs_c.empty()) {
-            size_t max_pos = 0;
-            for (auto label : bd_labs_c) {
-              if (target_pos.count(label)) {
-                max_pos = std::max(max_pos, target_pos[label]);
-              }
-            }
-            output_permutation.resize(max_pos + 1);
-            std::fill(output_permutation.begin(), output_permutation.end(), static_cast<cytnx::cytnx_uint64>(-1));
-          }
-        }
-
         // Add free axes from tensor a
         for (size_t i = 0; i < bd_labs_a.size(); ++i) {
           auto label = bd_labs_a[i];
