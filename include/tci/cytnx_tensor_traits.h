@@ -1,6 +1,7 @@
 #pragma once
 
 #include <complex>
+#include <variant>
 #include <cytnx.hpp>
 
 #include "tci/tensor_traits.h"
@@ -21,7 +22,12 @@ namespace tci {
     using bond_idx_t = cytnx::cytnx_uint64;
     using bond_label_t = cytnx::cytnx_int64;
     using ten_size_t = cytnx::cytnx_uint64;
-    using elem_t = cytnx::cytnx_complex128;  // Default to complex for generality
+    using elem_t = std::variant<
+        cytnx::cytnx_double,
+        cytnx::cytnx_float,
+        cytnx::cytnx_complex128,
+        cytnx::cytnx_complex64
+    >;
     using elem_coor_t = cytnx::cytnx_uint64;
     using elem_coors_t = List<cytnx::cytnx_uint64>;
     using real_t = cytnx::cytnx_double;
@@ -46,7 +52,12 @@ namespace tci {
     using bond_idx_t = cytnx::cytnx_uint64;
     using bond_label_t = cytnx::cytnx_int64;
     using ten_size_t = cytnx::cytnx_uint64;
-    using elem_t = cytnx::cytnx_complex128;  // Default to complex for generality
+    using elem_t = std::variant<
+        cytnx::cytnx_double,
+        cytnx::cytnx_float,
+        cytnx::cytnx_complex128,
+        cytnx::cytnx_complex64
+    >;
     using elem_coor_t = cytnx::cytnx_uint64;
     using elem_coors_t = List<cytnx::cytnx_uint64>;
     using real_t = cytnx::cytnx_double;
