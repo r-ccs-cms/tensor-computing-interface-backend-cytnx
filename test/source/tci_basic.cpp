@@ -351,6 +351,38 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     CHECK(result_shape == expected_horizontal_shape);  // 3+3 = 6 columns
   }
 
+  SUBCASE("Concatenate multiple tensors with value verification") {
+    // Based on documentation example: {2,3,4} + {2,1,4} + {2,2,4} = {2,6,4}
+    cytnx::Tensor a, b, c, d;
+
+    // Create tensors with specific shapes as in the documentation
+    tci::shape_t<cytnx::Tensor> shape_a = {2, 3, 4};
+    tci::shape_t<cytnx::Tensor> shape_b = {2, 1, 4};
+    tci::shape_t<cytnx::Tensor> shape_c = {2, 2, 4};
+
+    tci::fill(ctx, shape_a, cytnx::cytnx_complex128(1.0, 0.0), a);
+    tci::fill(ctx, shape_b, cytnx::cytnx_complex128(2.0, 0.0), b);
+    tci::fill(ctx, shape_c, cytnx::cytnx_complex128(3.0, 0.0), c);
+
+    // Concatenate along bond 1 (middle dimension)
+    std::vector<cytnx::Tensor> tensors = {a, b, c};
+    CHECK_NOTHROW(tci::concatenate(ctx, tensors, 1, d));
+
+    // Verify final shape
+    auto result_shape = tci::shape(ctx, d);
+    tci::shape_t<cytnx::Tensor> expected_shape = {2, 6, 4};  // 3+1+2=6
+    CHECK(result_shape == expected_shape);
+
+    // Verify element values at specific positions
+    auto el1 = tci::get_elem(ctx, b, {0, 0, 0});  // Should be 2.0
+    auto el2 = tci::get_elem(ctx, d, {0, 3, 0});  // b starts at position 3 in concatenated tensor
+    CHECK(el1 == el2);
+
+    auto el3 = tci::get_elem(ctx, c, {0, 0, 0});  // Should be 3.0
+    auto el4 = tci::get_elem(ctx, d, {0, 4, 0});  // c starts at position 4 in concatenated tensor
+    CHECK(el3 == el4);
+  }
+
   SUBCASE("Concatenate error cases") {
     tci::shape_t<cytnx::Tensor> shape_3d = {2, 3, 4};
     cytnx::Tensor tensor_3d;
@@ -359,12 +391,20 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     std::vector<cytnx::Tensor> tensors_3d = {tensor_3d};
     cytnx::Tensor result;
 
-    // Test unsupported dimension
-    CHECK_THROWS_AS(tci::concatenate(ctx, tensors_3d, 2, result), std::runtime_error);
+    // Test out of bounds dimension index
+    CHECK_THROWS_AS(tci::concatenate(ctx, tensors_3d, 3, result), std::invalid_argument);
+    CHECK_THROWS_AS(tci::concatenate(ctx, tensors_3d, 100, result), std::invalid_argument);
 
     // Test empty tensor list
     std::vector<cytnx::Tensor> empty_tensors;
     CHECK_THROWS_AS(tci::concatenate(ctx, empty_tensors, 0, result), std::invalid_argument);
+
+    // Test incompatible shapes
+    cytnx::Tensor tensor_incompatible;
+    tci::shape_t<cytnx::Tensor> incompatible_shape = {3, 3, 4};  // Different first dimension
+    tci::fill(ctx, incompatible_shape, cytnx::cytnx_complex128(1.0, 0.0), tensor_incompatible);
+    std::vector<cytnx::Tensor> incompatible_tensors = {tensor_3d, tensor_incompatible};
+    CHECK_THROWS_AS(tci::concatenate(ctx, incompatible_tensors, 1, result), std::invalid_argument);
   }
 
   SUBCASE("Extract sub-tensor") {
