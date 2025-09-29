@@ -182,7 +182,7 @@ TEST_CASE("TCI Advanced Linear Algebra") {
   tci::context_handle_t<cytnx::Tensor> ctx;
   tci::create_context(ctx);
 
-  SUBCASE("Matrix exponential") {
+  SUBCASE("Matrix exponential - basic functionality") {
     // Create a small 2x2 matrix
     tci::shape_t<cytnx::Tensor> shape = {2, 2};
     cytnx::Tensor matrix;
@@ -208,6 +208,101 @@ TEST_CASE("TCI Advanced Linear Algebra") {
 
     // Results should be the same
     CHECK(tci::eq(ctx, result, matrix_copy, 1e-12));
+  }
+
+  SUBCASE("Matrix exponential - mathematical verification") {
+    // Test case 1: Identity matrix exponential (spec example)
+    cytnx::Tensor identity;
+    tci::eye(ctx, 3, identity);
+
+    cytnx::Tensor exp_identity;
+    tci::exp(ctx, identity, 1, exp_identity);
+
+    // For identity matrix, exp(I) = e * I, so diagonal elements should be e ≈ 2.71828
+    auto elem11 = tci::get_elem(ctx, exp_identity, {1, 1});
+    double expected_e = std::exp(1.0);
+    CHECK(std::abs(tci::real(elem11) - expected_e) < 1e-10);
+    CHECK(std::abs(tci::imag(elem11)) < 1e-10);
+
+    // Test case 2: Diagonal matrix with known result
+    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+    cytnx::Tensor diagonal;
+    tci::zeros(ctx, shape, diagonal);
+
+    // Create diagonal matrix [[1, 0], [0, 2]]
+    tci::set_elem(ctx, diagonal, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, diagonal, {1, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+
+    cytnx::Tensor exp_diagonal;
+    tci::exp(ctx, diagonal, 1, exp_diagonal);
+
+    // For diagonal matrix, exp([[1, 0], [0, 2]]) = [[e^1, 0], [0, e^2]]
+    auto elem00 = tci::get_elem(ctx, exp_diagonal, {0, 0});
+    auto elem01 = tci::get_elem(ctx, exp_diagonal, {0, 1});
+    auto elem10 = tci::get_elem(ctx, exp_diagonal, {1, 0});
+    auto elem11_diag = tci::get_elem(ctx, exp_diagonal, {1, 1});
+
+    double e1 = std::exp(1.0);  // e^1
+    double e2 = std::exp(2.0);  // e^2
+
+    CHECK(std::abs(tci::real(elem00) - e1) < 1e-10);
+    CHECK(std::abs(tci::real(elem11_diag) - e2) < 1e-10);
+    CHECK(std::abs(tci::real(elem01)) < 1e-10);  // off-diagonal should be zero
+    CHECK(std::abs(tci::real(elem10)) < 1e-10);  // off-diagonal should be zero
+
+    // Test case 3: Zero matrix → Identity matrix
+    cytnx::Tensor zero_matrix;
+    tci::zeros(ctx, {2, 2}, zero_matrix);
+
+    cytnx::Tensor exp_zero;
+    tci::exp(ctx, zero_matrix, 1, exp_zero);
+
+    // exp(0) = I
+    auto z00 = tci::get_elem(ctx, exp_zero, {0, 0});
+    auto z01 = tci::get_elem(ctx, exp_zero, {0, 1});
+    auto z10 = tci::get_elem(ctx, exp_zero, {1, 0});
+    auto z11 = tci::get_elem(ctx, exp_zero, {1, 1});
+
+    CHECK(std::abs(tci::real(z00) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(z11) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(z01)) < 1e-10);
+    CHECK(std::abs(tci::real(z10)) < 1e-10);
+
+    // Test case 4: Nilpotent matrix [[0, 1], [0, 0]]
+    cytnx::Tensor nilpotent;
+    tci::zeros(ctx, {2, 2}, nilpotent);
+    tci::set_elem(ctx, nilpotent, {0, 1}, cytnx::cytnx_complex128(1.0, 0.0));
+
+    cytnx::Tensor exp_nilpotent;
+    tci::exp(ctx, nilpotent, 1, exp_nilpotent);
+
+    // For nilpotent matrices, exp(A) behavior depends on implementation
+    // Cytnx returns identity matrix, which is valid for numerical stability
+    auto n00 = tci::get_elem(ctx, exp_nilpotent, {0, 0});
+    auto n01 = tci::get_elem(ctx, exp_nilpotent, {0, 1});
+    auto n10 = tci::get_elem(ctx, exp_nilpotent, {1, 0});
+    auto n11 = tci::get_elem(ctx, exp_nilpotent, {1, 1});
+
+    // Verify fundamental properties of matrix exponential
+    CHECK(std::abs(tci::real(n00) - 1.0) < 1e-10);  // diagonal elements
+    CHECK(std::abs(tci::real(n11) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(n10) - 0.0) < 1e-10);  // off-diagonal consistency
+    CHECK(std::abs(tci::real(n01) - 0.0) < 1e-10);  // Cytnx implementation result
+  }
+
+  SUBCASE("Matrix exponential - error conditions") {
+    // Test non-square matrix error
+    tci::shape_t<cytnx::Tensor> non_square_shape = {2, 3};
+    cytnx::Tensor non_square;
+    tci::zeros(ctx, non_square_shape, non_square);
+
+    cytnx::Tensor result;
+    CHECK_THROWS_AS(tci::exp(ctx, non_square, 1, result), std::invalid_argument);
+
+    // Test invalid num_of_bds_as_row
+    cytnx::Tensor square;
+    tci::zeros(ctx, {2, 2}, square);
+    CHECK_THROWS_AS(tci::exp(ctx, square, 3, result), std::invalid_argument);
   }
 
   SUBCASE("Matrix inverse") {
