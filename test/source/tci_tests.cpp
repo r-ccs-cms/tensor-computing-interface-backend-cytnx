@@ -896,7 +896,11 @@ TEST_CASE("tci::for_each API compliance test") {
 
     // Define function to double each element
     std::function<void(tci::elem_t<cytnx::Tensor>&)> double_func =
-        [](tci::elem_t<cytnx::Tensor>& elem) { elem *= 2.0; };
+        [](tci::elem_t<cytnx::Tensor>& elem) {
+            auto real_part = tci::real(elem) * 2.0;
+            auto imag_part = tci::imag(elem) * 2.0;
+            elem = cytnx::cytnx_complex128(real_part, imag_part);
+        };
 
     // Apply for_each to modify all elements
     CHECK_NOTHROW(tci::for_each(ctx, tensor, std::move(double_func)));

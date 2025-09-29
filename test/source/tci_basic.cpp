@@ -445,8 +445,8 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     tci::zeros(ctx, shape, tensor);
 
     // Set values based on coordinates using for_each_with_coors
-    std::function<void(cytnx::cytnx_complex128&, const tci::elem_coors_t<cytnx::Tensor>&)> set_coords
-        = [](cytnx::cytnx_complex128& elem, const tci::elem_coors_t<cytnx::Tensor>& coords) {
+    std::function<void(tci::elem_t<cytnx::Tensor>&, const tci::elem_coors_t<cytnx::Tensor>&)> set_coords
+        = [](tci::elem_t<cytnx::Tensor>& elem, const tci::elem_coors_t<cytnx::Tensor>& coords) {
             elem = cytnx::cytnx_complex128(coords[0] * 10 + coords[1], 0.0);
           };
 

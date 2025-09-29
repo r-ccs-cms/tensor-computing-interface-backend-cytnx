@@ -398,12 +398,16 @@ namespace tci {
 
   template <> void scale(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout,
                          const elem_t<cytnx::Tensor> s) {
-    inout = inout * s;
+    // Convert variant to Cytnx-compatible type
+    auto complex_val = tci::to_complex128(s);
+    inout = inout * complex_val;
   }
 
   template <> void scale(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
                          const elem_t<cytnx::Tensor> s, cytnx::Tensor& out) {
-    out = in * s;
+    // Convert variant to Cytnx-compatible type
+    auto complex_val = tci::to_complex128(s);
+    out = in * complex_val;
   }
 
   template <> void linear_combine(context_handle_t<cytnx::Tensor>& ctx,
@@ -421,9 +425,12 @@ namespace tci {
                                   const List<elem_t<cytnx::Tensor>>& coefs, cytnx::Tensor& out) {
     if (ins.empty() || coefs.empty()) return;
 
-    out = ins[0] * coefs[0];
+    // Convert variant to Cytnx-compatible type
+    auto coef0 = tci::to_complex128(coefs[0]);
+    out = ins[0] * coef0;
     for (size_t i = 1; i < std::min(ins.size(), coefs.size()); ++i) {
-      out = out + (ins[i] * coefs[i]);
+      auto coefi = tci::to_complex128(coefs[i]);
+      out = out + (ins[i] * coefi);
     }
   }
 

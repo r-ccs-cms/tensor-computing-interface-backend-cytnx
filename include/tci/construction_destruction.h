@@ -2,6 +2,8 @@
 
 #include "tci/tensor_traits.h"
 #include "tci/cytnx_tensor_traits.h"
+#include "tci/read_only_getters.h"
+#include "tci/tensor_manipulation.h"
 #include <functional>
 #include <complex>
 #include <utility>
@@ -148,14 +150,41 @@ namespace tci {
   template <typename TenT, typename RandNumGen>
   void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen, TenT& a) {
     allocate(ctx, shape, a);
-    auto& storage = a.storage();
-    const auto total = storage.size();
 
-    // Fill tensor with random values using perfect forwarding to support any callable type
-    // std::invoke enables compatibility with lambdas, function pointers, functors, and std::function
-    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
-      // 'template' keyword required for dependent template name resolution in template context
-      storage.template at<elem_t<TenT>>(idx) = static_cast<elem_t<TenT>>(std::invoke(gen));
+    // Use coordinate-based approach to avoid storage compatibility issues
+    auto total_size = size(ctx, a);
+    elem_coors_t<TenT> coords(shape.size(), 0);
+
+    for (size_t flat_idx = 0; flat_idx < total_size; ++flat_idx) {
+      // Generate random value and convert to appropriate elem_t
+      auto raw_val = std::invoke(gen);
+      elem_t<TenT> elem_val;
+
+      if constexpr (std::is_same_v<TenT, cytnx::Tensor>) {
+        // Handle different types of raw_val for Cytnx tensors
+        if constexpr (std::is_arithmetic_v<decltype(raw_val)>) {
+          elem_val = cytnx::cytnx_complex128(static_cast<double>(raw_val), 0.0);
+        } else if constexpr (std::is_same_v<decltype(raw_val), std::complex<double>>) {
+          elem_val = cytnx::cytnx_complex128(raw_val.real(), raw_val.imag());
+        } else if constexpr (std::is_same_v<decltype(raw_val), std::complex<float>>) {
+          elem_val = cytnx::cytnx_complex128(static_cast<double>(raw_val.real()), static_cast<double>(raw_val.imag()));
+        } else {
+          // Fallback: try direct conversion
+          elem_val = static_cast<cytnx::cytnx_complex128>(raw_val);
+        }
+      } else {
+        elem_val = static_cast<elem_t<TenT>>(raw_val);
+      }
+
+      set_elem(ctx, a, coords, elem_val);
+
+      // Advance to next coordinate (row-major order)
+      for (int dim = static_cast<int>(coords.size()) - 1; dim >= 0; --dim) {
+        if (++coords[dim] < shape[dim]) {
+          break;
+        }
+        coords[dim] = 0;
+      }
     }
   }
 
