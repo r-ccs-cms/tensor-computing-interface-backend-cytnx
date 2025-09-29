@@ -182,17 +182,57 @@ namespace tci {
       throw std::invalid_argument("Cannot concatenate empty list of tensors");
     }
 
-    // For now, implement basic concatenation for 2D tensors
-    if (concat_bdidx == 0) {
-      // Vertical stacking
-      std::vector<cytnx::Tensor> cytnx_tensors(ins.begin(), ins.end());
-      out = cytnx::algo::Vstack(cytnx_tensors);
-    } else if (concat_bdidx == 1) {
-      // Horizontal stacking
-      std::vector<cytnx::Tensor> cytnx_tensors(ins.begin(), ins.end());
-      out = cytnx::algo::Hstack(cytnx_tensors);
-    } else {
-      throw std::runtime_error("General N-dimensional concatenation not yet implemented");
+    const auto& first = ins[0];
+    auto first_shape = first.shape();
+
+    if (concat_bdidx >= first_shape.size()) {
+      throw std::invalid_argument("concat_bdidx exceeds tensor rank");
+    }
+
+    // Check all tensors have compatible shapes
+    size_t total_concat_dim = 0;
+    for (size_t i = 0; i < ins.size(); ++i) {
+      const auto& tensor = ins[i];
+      auto shape = tensor.shape();
+
+      if (shape.size() != first_shape.size()) {
+        throw std::invalid_argument("All tensors must have the same rank");
+      }
+
+      for (size_t j = 0; j < shape.size(); ++j) {
+        if (j != concat_bdidx && shape[j] != first_shape[j]) {
+          throw std::invalid_argument("All tensors must have the same shape except along concat dimension");
+        }
+      }
+
+      total_concat_dim += shape[concat_bdidx];
+    }
+
+    // Calculate output shape
+    auto out_shape = first_shape;
+    out_shape[concat_bdidx] = total_concat_dim;
+
+    // Create output tensor
+    out = cytnx::zeros(out_shape, first.dtype(), first.device());
+
+    // Copy data from each input tensor to appropriate slice of output
+    size_t offset = 0;
+    for (const auto& tensor : ins) {
+      auto tensor_shape = tensor.shape();
+
+      // Create coordinate vectors for slicing
+      std::vector<cytnx::Accessor> accessors(out_shape.size());
+      for (size_t i = 0; i < out_shape.size(); ++i) {
+        if (i == concat_bdidx) {
+          accessors[i] = cytnx::Accessor::range(offset, offset + tensor_shape[i]);
+        } else {
+          accessors[i] = cytnx::Accessor::all();
+        }
+      }
+
+      // Assign the tensor to the appropriate slice
+      out.set(accessors, tensor);
+      offset += tensor_shape[concat_bdidx];
     }
   }
 
