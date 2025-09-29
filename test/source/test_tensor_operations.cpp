@@ -32,6 +32,97 @@ TEST_CASE("TCI Norm Calculation") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("TCI Expand Operations") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("Expand tensor dimensions - in-place version") {
+    // Test based on documentation example: {2, 2, 2} -> {3, 4, 2}
+    cytnx::Tensor a;
+    tci::zeros(ctx, {2, 2, 2}, a);
+
+    // Apply expand operation: {{1, 2}, {0, 1}} means bond 1 +2, bond 0 +1
+    tci::Map<tci::bond_idx_t<cytnx::Tensor>, tci::bond_dim_t<cytnx::Tensor>> bond_map
+        = {{1, 2}, {0, 1}};
+    CHECK_NOTHROW(tci::expand(ctx, a, bond_map));
+
+    // Verify new shape is {3, 4, 2}
+    auto s = tci::shape(ctx, a);
+    tci::shape_t<cytnx::Tensor> expected_shape = {3, 4, 2};
+    CHECK(s == expected_shape);
+
+    // Verify expanded elements are zero (as documented)
+    auto el = tci::get_elem(ctx, a, {2, 3, 0});
+    CHECK(std::abs(tci::real(el) - 0.0) < 1e-10);
+  }
+
+  SUBCASE("Expand tensor dimensions - out-of-place version") {
+    cytnx::Tensor a, expanded;
+    tci::zeros(ctx, {2, 2, 2}, a);
+
+    // Set a non-zero element to verify preservation
+    tci::set_elem(ctx, a, {1, 1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
+
+    tci::Map<tci::bond_idx_t<cytnx::Tensor>, tci::bond_dim_t<cytnx::Tensor>> bond_map
+        = {{1, 2}, {0, 1}};
+    CHECK_NOTHROW(tci::expand(ctx, a, bond_map, expanded));
+
+    // Verify new shape
+    auto s = tci::shape(ctx, expanded);
+    tci::shape_t<cytnx::Tensor> expected_shape = {3, 4, 2};
+    CHECK(s == expected_shape);
+
+    // Verify original data is preserved
+    auto preserved_el = tci::get_elem(ctx, expanded, {1, 1, 1});
+    CHECK(std::abs(tci::real(preserved_el) - 5.0) < 1e-10);
+
+    // Verify expanded region is zero
+    auto zero_el = tci::get_elem(ctx, expanded, {2, 3, 0});
+    CHECK(std::abs(tci::real(zero_el) - 0.0) < 1e-10);
+  }
+
+  SUBCASE("Expand single dimension") {
+    cytnx::Tensor a;
+    tci::zeros(ctx, {3, 3}, a);
+
+    // Set some test data
+    tci::set_elem(ctx, a, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, a, {2, 2}, cytnx::cytnx_complex128(2.0, 0.0));
+
+    // Expand only dimension 1 by 2
+    tci::Map<tci::bond_idx_t<cytnx::Tensor>, tci::bond_dim_t<cytnx::Tensor>> bond_map
+        = {{1, 2}};
+    tci::expand(ctx, a, bond_map);
+
+    // Verify shape changes from {3, 3} to {3, 5}
+    auto s = tci::shape(ctx, a);
+    tci::shape_t<cytnx::Tensor> expected_shape = {3, 5};
+    CHECK(s == expected_shape);
+
+    // Verify original data preservation
+    auto el1 = tci::get_elem(ctx, a, {0, 0});
+    CHECK(std::abs(tci::real(el1) - 1.0) < 1e-10);
+    auto el2 = tci::get_elem(ctx, a, {2, 2});
+    CHECK(std::abs(tci::real(el2) - 2.0) < 1e-10);
+
+    // Verify expanded area is zero
+    auto zero_el = tci::get_elem(ctx, a, {0, 4});
+    CHECK(std::abs(tci::real(zero_el) - 0.0) < 1e-10);
+  }
+
+  SUBCASE("Expand with invalid bond index should throw") {
+    cytnx::Tensor a;
+    tci::zeros(ctx, {2, 2}, a);
+
+    // Try to expand bond index 3 which doesn't exist (tensor is 2D)
+    tci::Map<tci::bond_idx_t<cytnx::Tensor>, tci::bond_dim_t<cytnx::Tensor>> invalid_map
+        = {{3, 1}};
+    CHECK_THROWS(tci::expand(ctx, a, invalid_map));
+  }
+
+  tci::destroy_context(ctx);
+}
+
 TEST_CASE("TCI Diagonal Operations") {
   tci::context_handle_t<cytnx::Tensor> ctx;
   tci::create_context(ctx);
