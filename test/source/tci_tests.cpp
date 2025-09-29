@@ -2442,3 +2442,182 @@ TEST_CASE("tci::to_cplx API functionality") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("TCI SVD Decomposition") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("Basic 3x3 matrix SVD") {
+    // Create a 3x3 real matrix for SVD test
+    cytnx::Tensor matrix;
+    tci::zeros(ctx, {3, 3}, matrix);
+
+    // Set up a simple test matrix with known properties
+    tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, matrix, {0, 2}, cytnx::cytnx_complex128(3.0, 0.0));
+    tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(4.0, 0.0));
+    tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
+    tci::set_elem(ctx, matrix, {1, 2}, cytnx::cytnx_complex128(6.0, 0.0));
+    tci::set_elem(ctx, matrix, {2, 0}, cytnx::cytnx_complex128(7.0, 0.0));
+    tci::set_elem(ctx, matrix, {2, 1}, cytnx::cytnx_complex128(8.0, 0.0));
+    tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(9.0, 0.0));
+
+    // Declare output tensors for SVD
+    cytnx::Tensor u, v_dag;
+    tci::real_ten_t<cytnx::Tensor> s_diag;
+
+    // Perform SVD: A = U * S * V^dagger
+    // num_of_bds_as_row = 1 means first 1 bond (rows) vs rest (columns)
+    CHECK_NOTHROW(tci::svd(ctx, matrix, 1, u, s_diag, v_dag));
+
+    // Check that dimensions are correct
+    auto u_shape = tci::shape(ctx, u);
+    auto s_shape = tci::shape(ctx, s_diag);
+    auto v_shape = tci::shape(ctx, v_dag);
+
+    // U should be 3x3 (or 3x rank)
+    CHECK(u_shape[0] == 3);
+    // s_diag should be rank-1 with singular values
+    CHECK(s_shape.size() == 1);
+    // V^dagger should have appropriate dimensions
+    CHECK(v_shape.size() >= 1);
+
+    // Singular values should be in descending order and non-negative
+    if (s_shape[0] >= 2) {
+      auto s1 = tci::real(tci::get_elem(ctx, s_diag, {0}));
+      auto s2 = tci::real(tci::get_elem(ctx, s_diag, {1}));
+      CHECK(s1 >= s2);
+      CHECK(s1 >= 0.0);
+      CHECK(s2 >= 0.0);
+    }
+  }
+
+  SUBCASE("2x3 rectangular matrix SVD") {
+    // Test SVD on a rectangular matrix
+    cytnx::Tensor rect_matrix;
+    tci::zeros(ctx, {2, 3}, rect_matrix);
+
+    // Create a rank-2 matrix for testing
+    tci::set_elem(ctx, rect_matrix, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, rect_matrix, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, rect_matrix, {0, 2}, cytnx::cytnx_complex128(3.0, 0.0));
+    tci::set_elem(ctx, rect_matrix, {1, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, rect_matrix, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
+    tci::set_elem(ctx, rect_matrix, {1, 2}, cytnx::cytnx_complex128(6.0, 0.0));
+
+    cytnx::Tensor u, v_dag;
+    tci::real_ten_t<cytnx::Tensor> s_diag;
+
+    // Should not throw for rectangular matrix
+    CHECK_NOTHROW(tci::svd(ctx, rect_matrix, 1, u, s_diag, v_dag));
+
+    // Check basic properties
+    auto s_shape = tci::shape(ctx, s_diag);
+    CHECK(s_shape.size() == 1);
+
+    // For 2x3 matrix, we should have at most 2 singular values
+    CHECK(s_shape[0] <= 2);
+
+    // All singular values should be non-negative
+    for (size_t i = 0; i < s_shape[0]; ++i) {
+      auto sv = tci::real(tci::get_elem(ctx, s_diag, {i}));
+      CHECK(sv >= 0.0);
+    }
+  }
+
+  SUBCASE("Identity matrix SVD") {
+    // SVD of identity matrix should give identity factors
+    cytnx::Tensor identity;
+    tci::eye(ctx, 2, identity);
+
+    cytnx::Tensor u, v_dag;
+    tci::real_ten_t<cytnx::Tensor> s_diag;
+
+    CHECK_NOTHROW(tci::svd(ctx, identity, 1, u, s_diag, v_dag));
+
+    // Identity matrix should have all singular values equal to 1
+    auto s_shape = tci::shape(ctx, s_diag);
+    for (size_t i = 0; i < s_shape[0]; ++i) {
+      auto sv = tci::real(tci::get_elem(ctx, s_diag, {i}));
+      CHECK(std::abs(sv - 1.0) < 1e-10);
+    }
+  }
+
+  tci::destroy_context(ctx);
+}
+
+TEST_CASE("TCI SVD Type Investigation") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("Investigate s_diag element types") {
+    // Create a simple 2x2 matrix
+    cytnx::Tensor matrix;
+    tci::zeros(ctx, {2, 2}, matrix);
+
+    // Set up a diagonal matrix with known singular values
+    tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+    tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(1.0, 0.0));
+
+    cytnx::Tensor u, v_dag;
+    tci::real_ten_t<cytnx::Tensor> s_diag;
+
+    CHECK_NOTHROW(tci::svd(ctx, matrix, 1, u, s_diag, v_dag));
+
+    // Get the raw element and investigate its type
+    auto raw_elem = tci::get_elem(ctx, s_diag, {0});
+
+    // Check if the raw element is already real
+    // If s_diag is truly a real tensor, the element should be a real variant
+    auto real_val = tci::real(raw_elem);
+    auto imag_val = tci::imag(raw_elem);
+
+    // For a properly implemented real tensor, imaginary part should be exactly zero
+    CHECK(std::abs(imag_val) < 1e-15);
+    CHECK(real_val > 0.0);
+
+    // Test with second singular value if it exists
+    auto s_shape = tci::shape(ctx, s_diag);
+    if (s_shape[0] >= 2) {
+      auto raw_elem2 = tci::get_elem(ctx, s_diag, {1});
+      auto real_val2 = tci::real(raw_elem2);
+      auto imag_val2 = tci::imag(raw_elem2);
+
+      CHECK(std::abs(imag_val2) < 1e-15);
+      CHECK(real_val2 > 0.0);
+      CHECK(real_val >= real_val2); // Descending order
+    }
+  }
+
+  SUBCASE("Complex input matrix SVD type check") {
+    // Create a matrix with complex elements
+    cytnx::Tensor matrix;
+    tci::zeros(ctx, {2, 2}, matrix);
+
+    // Set complex values
+    tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(1.0, 0.5));
+    tci::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(2.0, -0.3));
+    tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(-1.0, 0.2));
+    tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(0.5, 1.0));
+
+    cytnx::Tensor u, v_dag;
+    tci::real_ten_t<cytnx::Tensor> s_diag;
+
+    CHECK_NOTHROW(tci::svd(ctx, matrix, 1, u, s_diag, v_dag));
+
+    // Even with complex input, singular values must be real
+    auto s_shape = tci::shape(ctx, s_diag);
+    for (size_t i = 0; i < s_shape[0]; ++i) {
+      auto raw_elem = tci::get_elem(ctx, s_diag, {i});
+      auto real_val = tci::real(raw_elem);
+      auto imag_val = tci::imag(raw_elem);
+
+      // Singular values must be real and non-negative
+      CHECK(std::abs(imag_val) < 1e-15);
+      CHECK(real_val >= 0.0);
+    }
+  }
+
+  tci::destroy_context(ctx);
+}
+
