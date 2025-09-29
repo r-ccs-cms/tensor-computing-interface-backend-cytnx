@@ -271,19 +271,17 @@ namespace tci {
     for (size_t tensor_idx = 0; tensor_idx < ins.size(); ++tensor_idx) {
       // Create index for where to place this tensor in the stacked result
       std::vector<cytnx::Accessor> accessors;
-      size_t dim_idx = 0;
 
       for (size_t i = 0; i < new_shape.size(); ++i) {
         if (i == static_cast<size_t>(stack_bdidx)) {
           accessors.push_back(cytnx::Accessor(static_cast<cytnx::cytnx_int64>(tensor_idx)));
         } else {
           accessors.push_back(cytnx::Accessor::all());
-          dim_idx++;
         }
       }
 
-      // Copy the tensor data to the appropriate slice
-      out.get(accessors) = ins[tensor_idx];
+      // Copy the tensor data to the appropriate slice using set method
+      out.set(accessors, ins[tensor_idx]);
     }
   }
 
