@@ -104,15 +104,19 @@ namespace tci {
           // Base case: all dimensions set, assign the element
           auto index = std::invoke(coors2idx, current_coords);
           auto value = *(init_elems_begin + index);
+          elem_t<TenT> elem_val;
 
-          // Convert coordinates to cytnx format and set element
-          std::vector<cytnx::cytnx_uint64> cytnx_coords;
-          cytnx_coords.reserve(current_coords.size());
-          for (const auto& coord : current_coords) {
-            cytnx_coords.push_back(static_cast<cytnx::cytnx_uint64>(coord));
+          if constexpr (std::is_arithmetic_v<decltype(value)>) {
+            elem_val = cytnx::cytnx_complex128(static_cast<double>(value), 0.0);
+          } else if constexpr (std::is_same_v<decltype(value), std::complex<double>>) {
+            elem_val = cytnx::cytnx_complex128(value.real(), value.imag());
+          } else if constexpr (std::is_same_v<decltype(value), std::complex<float>>) {
+            elem_val = cytnx::cytnx_complex128(static_cast<double>(value.real()), static_cast<double>(value.imag()));
+          } else {
+            elem_val = static_cast<elem_t<TenT>>(value);
           }
 
-          a.template at<elem_t<TenT>>(cytnx_coords) = static_cast<elem_t<TenT>>(value);
+          set_elem(ctx, a, current_coords, elem_val);
         } else {
           // Recursive case: iterate through current dimension
           for (bond_dim_t<TenT> i = 0; i < shape[dim]; ++i) {
