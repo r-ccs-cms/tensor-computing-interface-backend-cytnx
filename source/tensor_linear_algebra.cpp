@@ -8,6 +8,7 @@
 #include <sstream>
 
 #include "tci/cytnx_tensor_traits.h"
+#include "tci/variant_helpers.h"
 
 namespace tci {
 
@@ -487,7 +488,7 @@ namespace tci {
       auto [idx1, idx2] = bdidx_pairs[0];
       if ((idx1 == 0 && idx2 == 1) || (idx1 == 1 && idx2 == 0)) {
         // Standard matrix trace
-        elem_t<cytnx::Tensor> trace_sum = 0.0;
+        cytnx::cytnx_complex128 trace_sum = cytnx::cytnx_complex128(0.0, 0.0);
         auto n = std::min(shape[0], shape[1]);
 
         for (cytnx::cytnx_uint64 i = 0; i < n; ++i) {

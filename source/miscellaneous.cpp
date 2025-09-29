@@ -8,6 +8,7 @@
 
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/debugging.h"
+#include "tci/variant_helpers.h"
 
 namespace tci {
 
@@ -51,7 +52,7 @@ namespace tci {
       if (i > 0) info << ",";
       info << shape[i];
     }
-    info << "], epsilon=" << std::abs(epsilon);
+    info << "], epsilon=" << tci::abs(epsilon);
 
     TCI_TIME_FUNCTION_WITH_INFO("tci::eq", info.str());
 
@@ -79,7 +80,7 @@ namespace tci {
     }
 
     // Compare with epsilon tolerance
-    double eps_magnitude = std::abs(epsilon);
+    double eps_magnitude = tci::abs(epsilon);
     return diff_norm <= eps_magnitude;
   }
 
