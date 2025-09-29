@@ -393,3 +393,131 @@ TEST_CASE("TCI Tensor Contraction") {
 
   tci::destroy_context(ctx);
 }
+
+TEST_CASE("TCI Stack Operations") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("Stack three 2x4 tensors along axis 1") {
+    // Create three tensors with identical shape {2, 4} - matching documentation example
+    tci::shape_t<cytnx::Tensor> shape = {2, 4};
+    cytnx::Tensor a, b, c, d;
+
+    // Create simple tensors with known values for debugging
+    tci::zeros(ctx, shape, a);
+    tci::zeros(ctx, shape, b);
+    tci::zeros(ctx, shape, c);
+
+    // Fill with simple test patterns
+    tci::set_elem(ctx, a, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, b, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, c, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+
+    // Stack tensors along axis 1 (matching documentation example)
+    tci::List<cytnx::Tensor> tensors = {a, b, c};
+    tci::stack(ctx, tensors, 1, d);
+
+    // Verify output shape is {2, 3, 4} - new dimension of size 3 at position 1
+    auto result_shape = tci::shape(ctx, d);
+    CHECK(result_shape.size() == 3);
+    CHECK(result_shape[0] == 2);  // Original dimension 0
+    CHECK(result_shape[1] == 3);  // New stacking dimension (3 tensors)
+    CHECK(result_shape[2] == 4);  // Original dimension 1
+
+    // Verify element correspondence: tensor a[0,0] should equal d[0,0,0]
+    auto el_a = tci::get_elem(ctx, a, {0, 0});
+    auto el_d_a = tci::get_elem(ctx, d, {0, 0, 0});
+    CHECK(std::abs(tci::real(el_a) - tci::real(el_d_a)) < 1e-10);
+
+    // Verify tensor b[0,0] should equal d[0,1,0]
+    auto el_b = tci::get_elem(ctx, b, {0, 0});
+    auto el_d_b = tci::get_elem(ctx, d, {0, 1, 0});
+    CHECK(std::abs(tci::real(el_b) - tci::real(el_d_b)) < 1e-10);
+
+    // Verify tensor c[0,0] should equal d[0,2,0]
+    auto el_c = tci::get_elem(ctx, c, {0, 0});
+    auto el_d_c = tci::get_elem(ctx, d, {0, 2, 0});
+    CHECK(std::abs(tci::real(el_c) - tci::real(el_d_c)) < 1e-10);
+  }
+
+  SUBCASE("Stack two 3x3 tensors along axis 0") {
+    // Create two simple test tensors
+    tci::shape_t<cytnx::Tensor> shape = {3, 3};
+    cytnx::Tensor a, b, result;
+    tci::zeros(ctx, shape, a);
+    tci::zeros(ctx, shape, b);
+
+    // Set specific test values
+    tci::set_elem(ctx, a, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
+    tci::set_elem(ctx, b, {2, 2}, cytnx::cytnx_complex128(6.0, 0.0));
+
+    // Stack along axis 0
+    tci::List<cytnx::Tensor> tensors = {a, b};
+    tci::stack(ctx, tensors, 0, result);
+
+    // Verify output shape is {2, 3, 3}
+    auto result_shape = tci::shape(ctx, result);
+    CHECK(result_shape.size() == 3);
+    CHECK(result_shape[0] == 2);  // New stacking dimension
+    CHECK(result_shape[1] == 3);  // Original dimension 0
+    CHECK(result_shape[2] == 3);  // Original dimension 1
+
+    // Verify element values
+    auto el_a11 = tci::get_elem(ctx, result, {0, 1, 1});  // First tensor at (1,1)
+    auto el_b22 = tci::get_elem(ctx, result, {1, 2, 2});  // Second tensor at (2,2)
+    CHECK(std::abs(tci::real(el_a11) - 5.0) < 1e-10);
+    CHECK(std::abs(tci::real(el_b22) - 6.0) < 1e-10);
+  }
+
+  SUBCASE("Stack along last dimension (axis 2)") {
+    // Create two 2x3 tensors
+    tci::shape_t<cytnx::Tensor> shape = {2, 3};
+    cytnx::Tensor a, b, result;
+    tci::zeros(ctx, shape, a);
+    tci::zeros(ctx, shape, b);
+
+    // Set specific test values
+    tci::set_elem(ctx, a, {1, 2}, cytnx::cytnx_complex128(7.0, 0.0));
+    tci::set_elem(ctx, b, {1, 2}, cytnx::cytnx_complex128(8.0, 0.0));
+
+    // Stack along axis 2 (end)
+    tci::List<cytnx::Tensor> tensors = {a, b};
+    tci::stack(ctx, tensors, 2, result);
+
+    // Verify output shape is {2, 3, 2}
+    auto result_shape = tci::shape(ctx, result);
+    CHECK(result_shape.size() == 3);
+    CHECK(result_shape[0] == 2);  // Original dimension 0
+    CHECK(result_shape[1] == 3);  // Original dimension 1
+    CHECK(result_shape[2] == 2);  // New stacking dimension
+
+    // Verify element values
+    auto el_zeros = tci::get_elem(ctx, result, {1, 2, 0});  // From first tensor
+    auto el_ones = tci::get_elem(ctx, result, {1, 2, 1});   // From second tensor
+    CHECK(std::abs(tci::real(el_zeros) - 7.0) < 1e-10);
+    CHECK(std::abs(tci::real(el_ones) - 8.0) < 1e-10);
+  }
+
+  SUBCASE("Error handling: empty tensor list") {
+    cytnx::Tensor result;
+    tci::List<cytnx::Tensor> empty_tensors = {};
+
+    // Should throw exception for empty input
+    CHECK_THROWS_AS(tci::stack(ctx, empty_tensors, 0, result), std::invalid_argument);
+  }
+
+  SUBCASE("Error handling: mismatched tensor shapes") {
+    tci::shape_t<cytnx::Tensor> shape1 = {2, 3};
+    tci::shape_t<cytnx::Tensor> shape2 = {2, 4};  // Different shape
+    cytnx::Tensor a, b, result;
+    tci::zeros(ctx, shape1, a);
+    tci::zeros(ctx, shape2, b);
+
+    tci::List<cytnx::Tensor> tensors = {a, b};
+
+    // Should throw exception for mismatched shapes
+    CHECK_THROWS_AS(tci::stack(ctx, tensors, 0, result), std::invalid_argument);
+  }
+
+  tci::destroy_context(ctx);
+}
