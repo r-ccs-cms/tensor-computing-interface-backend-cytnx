@@ -2,6 +2,7 @@
 
 #include "tci/tensor_traits.h"
 #include "tci/cytnx_tensor_traits.h"
+#include "tci/read_only_getters.h"
 
 namespace tci {
 
@@ -323,22 +324,47 @@ namespace tci {
 
   template <typename Func>
   void for_each(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout, Func&& f) {
-    auto& storage = inout.storage();
-    const auto total = storage.size();
+    auto shape = inout.shape();
+    auto total_size = static_cast<cytnx::cytnx_uint64>(inout.storage().size());
 
-    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
-      auto& elem = storage.at<elem_t<cytnx::Tensor>>(idx);
+    // Convert linear index to multi-dimensional coordinates and process each element
+    for (cytnx::cytnx_uint64 idx = 0; idx < total_size; ++idx) {
+      // Convert linear index to coordinates
+      elem_coors_t<cytnx::Tensor> coords;
+      coords.reserve(shape.size());
+      cytnx::cytnx_uint64 temp_idx = idx;
+
+      for (int i = shape.size() - 1; i >= 0; --i) {
+        coords.insert(coords.begin(), temp_idx % shape[i]);
+        temp_idx /= shape[i];
+      }
+
+      // Get element, apply function, set back
+      auto elem = get_elem(ctx, inout, coords);
       f(elem);
+      set_elem(ctx, inout, coords, elem);
     }
   }
 
   template <typename Func>
   void for_each(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in, Func&& f) {
-    const auto& storage = in.storage();
-    const auto total = storage.size();
+    auto shape = in.shape();
+    auto total_size = static_cast<cytnx::cytnx_uint64>(in.storage().size());
 
-    for (cytnx::cytnx_uint64 idx = 0; idx < total; ++idx) {
-      const auto& elem = storage.at<elem_t<cytnx::Tensor>>(idx);
+    // Convert linear index to multi-dimensional coordinates and process each element
+    for (cytnx::cytnx_uint64 idx = 0; idx < total_size; ++idx) {
+      // Convert linear index to coordinates
+      elem_coors_t<cytnx::Tensor> coords;
+      coords.reserve(shape.size());
+      cytnx::cytnx_uint64 temp_idx = idx;
+
+      for (int i = shape.size() - 1; i >= 0; --i) {
+        coords.insert(coords.begin(), temp_idx % shape[i]);
+        temp_idx /= shape[i];
+      }
+
+      // Get element and apply const function
+      const auto elem = get_elem(ctx, in, coords);
       f(elem);
     }
   }
@@ -346,24 +372,27 @@ namespace tci {
   // Helper function for for_each_with_coors (mutable version)
   namespace detail {
     template <typename Func>
-    void for_each_recursive(cytnx::Tensor& tensor, Func&& f, std::size_t dim,
+    void for_each_recursive(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& tensor, Func&& f, std::size_t dim,
                            std::vector<cytnx::cytnx_uint64>& coords,
                            const std::vector<cytnx::cytnx_uint64>& shape) {
       if (dim == shape.size()) {
         // Base case: apply function to element at current coordinates
-        auto& elem = tensor.template at<elem_t<cytnx::Tensor>>(coords);
         // Convert coords to elem_coors_t<cytnx::Tensor>
         elem_coors_t<cytnx::Tensor> tci_coords;
         tci_coords.reserve(coords.size());
         for (const auto& coord : coords) {
           tci_coords.push_back(static_cast<elem_coor_t<cytnx::Tensor>>(coord));
         }
-        std::invoke(f, elem, tci_coords);
+
+        // Get element, apply function, set back
+        auto elem = get_elem(ctx, tensor, tci_coords);
+        f(elem, tci_coords);
+        set_elem(ctx, tensor, tci_coords, elem);
       } else {
         // Recursive case: iterate through current dimension
         for (cytnx::cytnx_uint64 i = 0; i < shape[dim]; ++i) {
           coords.push_back(i);
-          for_each_recursive(tensor, std::forward<Func>(f), dim + 1, coords, shape);
+          for_each_recursive(ctx, tensor, std::forward<Func>(f), dim + 1, coords, shape);
           coords.pop_back();
         }
       }
@@ -371,24 +400,26 @@ namespace tci {
 
     // Helper function for for_each_with_coors (const version)
     template <typename Func>
-    void for_each_recursive_const(const cytnx::Tensor& tensor, Func&& f, std::size_t dim,
+    void for_each_recursive_const(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& tensor, Func&& f, std::size_t dim,
                                  std::vector<cytnx::cytnx_uint64>& coords,
                                  const std::vector<cytnx::cytnx_uint64>& shape) {
       if (dim == shape.size()) {
         // Base case: apply function to element at current coordinates
-        const auto& elem = tensor.template at<elem_t<cytnx::Tensor>>(coords);
         // Convert coords to elem_coors_t<cytnx::Tensor>
         elem_coors_t<cytnx::Tensor> tci_coords;
         tci_coords.reserve(coords.size());
         for (const auto& coord : coords) {
           tci_coords.push_back(static_cast<elem_coor_t<cytnx::Tensor>>(coord));
         }
-        std::invoke(f, elem, tci_coords);
+
+        // Get element and apply const function
+        const auto elem = get_elem(ctx, tensor, tci_coords);
+        f(elem, tci_coords);
       } else {
         // Recursive case: iterate through current dimension
         for (cytnx::cytnx_uint64 i = 0; i < shape[dim]; ++i) {
           coords.push_back(i);
-          for_each_recursive_const(tensor, std::forward<Func>(f), dim + 1, coords, shape);
+          for_each_recursive_const(ctx, tensor, std::forward<Func>(f), dim + 1, coords, shape);
           coords.pop_back();
         }
       }
@@ -401,7 +432,7 @@ namespace tci {
     std::vector<cytnx::cytnx_uint64> coords;
     coords.reserve(shape.size());
 
-    detail::for_each_recursive(inout, std::forward<Func>(f), 0, coords, shape);
+    detail::for_each_recursive(ctx, inout, std::forward<Func>(f), 0, coords, shape);
   }
 
   template <typename Func>
@@ -410,7 +441,7 @@ namespace tci {
     std::vector<cytnx::cytnx_uint64> coords;
     coords.reserve(shape.size());
 
-    detail::for_each_recursive_const(in, std::forward<Func>(f), 0, coords, shape);
+    detail::for_each_recursive_const(ctx, in, std::forward<Func>(f), 0, coords, shape);
   }
 
 }  // namespace tci

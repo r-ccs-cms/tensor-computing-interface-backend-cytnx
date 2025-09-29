@@ -2,6 +2,7 @@
 
 #include "tci/tensor_traits.h"
 #include "tci/read_only_getters.h"
+#include "tci/variant_helpers.h"
 
 namespace tci {
 
@@ -56,8 +57,9 @@ namespace tci {
       // Use lambda to convert coordinates to container index
       auto container_idx = std::invoke(coors2idx, coors);
 
-      // Store element in container
-      *(first + container_idx) = static_cast<typename std::iterator_traits<RandomIt>::value_type>(elem);
+      // Store element in container (convert variant to appropriate type)
+      *(first + container_idx) = static_cast<typename std::iterator_traits<RandomIt>::value_type>(
+          tci::to_complex128(elem));
 
       // Advance to next coordinate (row-major order)
       for (int dim = static_cast<int>(coors.size()) - 1; dim >= 0; --dim) {
