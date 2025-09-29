@@ -21,14 +21,14 @@ TEST_CASE("Template Function Completeness Test") {
       tci::for_each_with_coors(ctx, a, [&test_passed](tci::elem_t<Ten>& elem, const tci::elem_coors_t<Ten>& coors) {
         // Simple operation: set diagonal elements to 2.0
         if (coors[0] == coors[1]) {
-          elem = tci::elem_t<Ten>(2.0, 0.0);
+          elem = cytnx::cytnx_complex128(2.0, 0.0);
         }
         test_passed = true;
       });
 
       // If we reach here, the function worked
       auto elem_00 = tci::get_elem(ctx, a, {0, 0});
-      CHECK(std::abs(elem_00.real() - 2.0) < 1e-10);
+      CHECK(std::abs(tci::real(elem_00) - 2.0) < 1e-10);
       CHECK(test_passed);
 
     } catch (const std::exception& e) {
@@ -49,7 +49,7 @@ TEST_CASE("Template Function Completeness Test") {
       tci::for_each_with_coors(ctx, const_a, [&sum_diagonal](const tci::elem_t<Ten>& elem, const tci::elem_coors_t<Ten>& coors) {
         // Sum diagonal elements
         if (coors[0] == coors[1]) {
-          sum_diagonal += elem.real();
+          sum_diagonal += tci::real(elem);
         }
       });
 

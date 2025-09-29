@@ -22,8 +22,8 @@ TEST_CASE("TCI Element Access") {
     auto retrieved_value = tci::get_elem(ctx, tensor, coord);
 
     // This will FAIL if get_elem is a placeholder returning (1.0, 0.0)
-    CHECK(std::abs(retrieved_value.real() - expected_value.real()) < 1e-10);
-    CHECK(std::abs(retrieved_value.imag() - expected_value.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(retrieved_value) - tci::real(expected_value)) < 1e-10);
+    CHECK(std::abs(tci::imag(retrieved_value) - tci::imag(expected_value)) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -120,8 +120,8 @@ TEST_CASE("TCI SVD Decomposition") {
     auto s_1 = tci::get_elem(ctx, s_diag, {1});
 
     // Now SVD is properly implemented, not a placeholder
-    CHECK(std::abs(s_0.real() - 1.0) < 1e-10);
-    CHECK(std::abs(s_1.real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(s_0) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(s_1) - 1.0) < 1e-10);
 
     // Verify s_diag is rank-1 (vector of singular values)
     CHECK(tci::rank(ctx, s_diag) == 1);
@@ -156,13 +156,13 @@ TEST_CASE("TCI Diagonal Operations") {
     CHECK(tci::shape(ctx, vector)[1] == 3);
 
     // Check diagonal elements
-    CHECK(std::abs(tci::get_elem(ctx, vector, {0, 0}).real() - 1.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, vector, {1, 1}).real() - 2.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, vector, {2, 2}).real() - 3.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, vector, {0, 0})) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, vector, {1, 1})) - 2.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, vector, {2, 2})) - 3.0) < 1e-10);
 
     // Check off-diagonal elements are zero
-    CHECK(std::abs(tci::get_elem(ctx, vector, {0, 1}).real()) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, vector, {1, 0}).real()) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, vector, {0, 1}))) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, vector, {1, 0}))) < 1e-10);
   }
 
   SUBCASE("Diagonal matrix to vector conversion") {
@@ -177,9 +177,9 @@ TEST_CASE("TCI Diagonal Operations") {
     CHECK(tci::size(ctx, identity) == 3);
 
     // Check elements are [1, 1, 1]
-    CHECK(std::abs(tci::get_elem(ctx, identity, {0}).real() - 1.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, identity, {1}).real() - 1.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, identity, {2}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, identity, {0})) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, identity, {1})) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, identity, {2})) - 1.0) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -210,7 +210,7 @@ TEST_CASE("TCI Trace Operations") {
 
     // Should now be scalar with value 2+3+4 = 9
     CHECK(tci::rank(ctx, matrix) == 0);  // Scalar tensor
-    CHECK(std::abs(tci::get_elem(ctx, matrix, {}).real() - 9.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, matrix, {})) - 9.0) < 1e-10);
   }
 
   SUBCASE("3D tensor trace calculation") {
@@ -241,9 +241,9 @@ TEST_CASE("TCI Trace Operations") {
     CHECK(result_shape.size() == 1);
     CHECK(result_shape[0] == 3);
 
-    CHECK(std::abs(tci::get_elem(ctx, result, {0}).real() - 5.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, result, {1}).real() - 7.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, result, {2}).real() - 9.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0})) - 5.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {1})) - 7.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {2})) - 9.0) < 1e-10);
   }
 
   SUBCASE("4D tensor trace calculation") {
@@ -272,9 +272,9 @@ TEST_CASE("TCI Trace Operations") {
     CHECK(result_shape[1] == 3);
 
     // Check specific values: result[j,k] = T[0,j,k,0] + T[1,j,k,1]
-    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 11.0) < 1e-10);  // (1+0+0) + (10+0+0) = 11
-    CHECK(std::abs(tci::get_elem(ctx, result, {0, 1}).real() - 13.0) < 1e-10);  // (1+0+1) + (10+0+1) = 13
-    CHECK(std::abs(tci::get_elem(ctx, result, {1, 2}).real() - 17.0) < 1e-10);  // (1+1+2) + (10+1+2) = 17
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 0})) - 11.0) < 1e-10);  // (1+0+0) + (10+0+0) = 11
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 1})) - 13.0) < 1e-10);  // (1+0+1) + (10+0+1) = 13
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {1, 2})) - 17.0) < 1e-10);  // (1+1+2) + (10+1+2) = 17
   }
 
   SUBCASE("Complex tensor trace calculation") {
@@ -305,10 +305,10 @@ TEST_CASE("TCI Trace Operations") {
     auto elem0 = tci::get_elem(ctx, result, {0});  // (1+2i) + (-1+3i) + (3+1i) = 3+6i
     auto elem1 = tci::get_elem(ctx, result, {1});  // (2-1i) + (0.5-2.5i) + (-0.5+4i) = 2+0.5i
 
-    CHECK(std::abs(elem0.real() - 3.0) < 1e-10);
-    CHECK(std::abs(elem0.imag() - 6.0) < 1e-10);
-    CHECK(std::abs(elem1.real() - 2.0) < 1e-10);
-    CHECK(std::abs(elem1.imag() - 0.5) < 1e-10);
+    CHECK(std::abs(tci::real(elem0) - 3.0) < 1e-10);
+    CHECK(std::abs(tci::imag(elem0) - 6.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem1) - 2.0) < 1e-10);
+    CHECK(std::abs(tci::imag(elem1) - 0.5) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -457,14 +457,14 @@ TEST_CASE("TCI Eigenvalue Problems") {
 
     CHECK(tci::rank(ctx, eigenvals) == 1);
     CHECK(tci::size(ctx, eigenvals) == 2);
-    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {0}).real() - 1.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {1}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvals, {0})) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvals, {1})) - 1.0) < 1e-10);
 
     CHECK(tci::rank(ctx, eigenvecs) == 2);
     CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
     CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
-    CHECK(std::abs(tci::get_elem(ctx, eigenvecs, {0, 0}).real() - 1.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, eigenvecs, {1, 1}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvecs, {0, 0})) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvecs, {1, 1})) - 1.0) < 1e-10);
   }
 
   SUBCASE("Symmetric eigendecomposition") {
@@ -476,14 +476,14 @@ TEST_CASE("TCI Eigenvalue Problems") {
 
     CHECK(tci::rank(ctx, eigenvals) == 1);
     CHECK(tci::size(ctx, eigenvals) == 2);
-    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {0}).real() - 1.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {1}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvals, {0})) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvals, {1})) - 1.0) < 1e-10);
 
     CHECK(tci::rank(ctx, eigenvecs) == 2);
     CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
     CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
-    CHECK(std::abs(tci::get_elem(ctx, eigenvecs, {0, 0}).real() - 1.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, eigenvecs, {1, 1}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvecs, {0, 0})) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvecs, {1, 1})) - 1.0) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -774,10 +774,10 @@ TEST_CASE("TCI Tensor Contraction") {
     auto c10 = tci::get_elem(ctx, c, {1, 0});
     auto c11 = tci::get_elem(ctx, c, {1, 1});
 
-    CHECK(std::abs(c00.real() - 19.0) < 1e-10);
-    CHECK(std::abs(c01.real() - 22.0) < 1e-10);
-    CHECK(std::abs(c10.real() - 43.0) < 1e-10);
-    CHECK(std::abs(c11.real() - 50.0) < 1e-10);
+    CHECK(std::abs(tci::real(c00) - 19.0) < 1e-10);
+    CHECK(std::abs(tci::real(c01) - 22.0) < 1e-10);
+    CHECK(std::abs(tci::real(c10) - 43.0) < 1e-10);
+    CHECK(std::abs(tci::real(c11) - 50.0) < 1e-10);
   }
 
   SUBCASE("Abnormal NCON: mixing positive and negative output labels") {
@@ -839,7 +839,7 @@ TEST_CASE("TCI Tensor Contraction") {
     CHECK(c.shape().size() == 1);  // Cytnx scalar result is [1] shape
     CHECK(c.shape()[0] == 1);      // Single element
     auto dot_result = tci::get_elem(ctx, c, {0});  // Access single element
-    CHECK(std::abs(dot_result.real() - 32.0) < 1e-10);
+    CHECK(std::abs(tci::real(dot_result) - 32.0) < 1e-10);
   }
 
   SUBCASE("Outer product via contraction: i,j->ij") {
@@ -869,8 +869,8 @@ TEST_CASE("TCI Tensor Contraction") {
     // Check specific values: c[0,0] = 1*3 = 3, c[1,2] = 2*5 = 10
     auto c00 = tci::get_elem(ctx, c, {0, 0});
     auto c12 = tci::get_elem(ctx, c, {1, 2});
-    CHECK(std::abs(c00.real() - 3.0) < 1e-10);
-    CHECK(std::abs(c12.real() - 10.0) < 1e-10);
+    CHECK(std::abs(tci::real(c00) - 3.0) < 1e-10);
+    CHECK(std::abs(tci::real(c12) - 10.0) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -902,12 +902,12 @@ TEST_CASE("tci::for_each API compliance test") {
     CHECK_NOTHROW(tci::for_each(ctx, tensor, std::move(double_func)));
 
     // Verify all elements were doubled: [2, 4, 6, 8, 10, 12]
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 0}).real() - 2.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 1}).real() - 4.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 2}).real() - 6.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 0}).real() - 8.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 1}).real() - 10.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 2}).real() - 12.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0, 0})) - 2.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0, 1})) - 4.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0, 2})) - 6.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {1, 0})) - 8.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {1, 1})) - 10.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {1, 2})) - 12.0) < 1e-10);
   }
 
   SUBCASE("for_each basic functionality verification") {
@@ -928,7 +928,7 @@ TEST_CASE("tci::for_each API compliance test") {
     std::function<void(tci::elem_t<cytnx::Tensor>&)> count_and_sum =
         [&count, &sum](tci::elem_t<cytnx::Tensor>& elem) {
           count++;
-          sum += elem.real();
+          sum += tci::real(elem);
         };
 
     CHECK_NOTHROW(tci::for_each(ctx, tensor, std::move(count_and_sum)));
@@ -977,10 +977,10 @@ TEST_CASE("tci::linear_combine API compliance test") {
     CHECK_NOTHROW(tci::linear_combine(ctx, tensors, result));
 
     // Expected result: [[7, 9], [11, 13]] = [[1+5+1, 2+6+1], [3+7+1, 4+8+1]]
-    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 7.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, result, {0, 1}).real() - 9.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, result, {1, 0}).real() - 11.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, result, {1, 1}).real() - 13.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 0})) - 7.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 1})) - 9.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {1, 0})) - 11.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {1, 1})) - 13.0) < 1e-10);
   }
 
   SUBCASE("linear_combine with specified coefficients - weighted combination") {
@@ -1013,10 +1013,10 @@ TEST_CASE("tci::linear_combine API compliance test") {
     CHECK_NOTHROW(tci::linear_combine(ctx, tensors, coefficients, result));
 
     // Expected result: [[3, 8], [13, 18]] = [[0.5*2+2*1, 0.5*4+2*3], [0.5*6+2*5, 0.5*8+2*7]]
-    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 3.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, result, {0, 1}).real() - 8.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, result, {1, 0}).real() - 13.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, result, {1, 1}).real() - 18.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 0})) - 3.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 1})) - 8.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {1, 0})) - 13.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {1, 1})) - 18.0) < 1e-10);
   }
 
   SUBCASE("linear_combine edge cases") {
@@ -1028,12 +1028,12 @@ TEST_CASE("tci::linear_combine API compliance test") {
     // Test single tensor uniform combination
     tci::List<cytnx::Tensor> single_list = {single_tensor};
     CHECK_NOTHROW(tci::linear_combine(ctx, single_list, result));
-    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 5.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 0})) - 5.0) < 1e-10);
 
     // Test single tensor with coefficient
     tci::List<tci::elem_t<cytnx::Tensor>> single_coef = {cytnx::cytnx_complex128(3.0, 0.0)};
     CHECK_NOTHROW(tci::linear_combine(ctx, single_list, single_coef, result));
-    CHECK(std::abs(tci::get_elem(ctx, result, {0, 0}).real() - 15.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 0})) - 15.0) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -1059,14 +1059,14 @@ TEST_CASE("tci::normalize API compliance test") {
     auto original_norm = tci::normalize(ctx, tensor);
 
     // Verify original norm was 5 (3² + 4² = 9 + 16 = 25, √25 = 5)
-    CHECK(std::abs(original_norm.real() - 5.0) < 1e-10);
-    CHECK(std::abs(original_norm.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(original_norm) - 5.0) < 1e-10);
+    CHECK(std::abs(tci::imag(original_norm)) < 1e-10);
 
     // Verify normalized tensor: [[3/5, 4/5], [0, 0]] = [[0.6, 0.8], [0, 0]]
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 0}).real() - 0.6) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 1}).real() - 0.8) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 0}).real() - 0.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 1}).real() - 0.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0, 0})) - 0.6) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0, 1})) - 0.8) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {1, 0})) - 0.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {1, 1})) - 0.0) < 1e-10);
 
     // Verify new norm is 1
     auto new_norm = tci::norm(ctx, tensor);
@@ -1088,17 +1088,17 @@ TEST_CASE("tci::normalize API compliance test") {
     auto original_norm = tci::normalize(ctx, original, normalized);
 
     // Verify original norm was 3
-    CHECK(std::abs(original_norm.real() - 3.0) < 1e-10);
+    CHECK(std::abs(tci::real(original_norm) - 3.0) < 1e-10);
 
     // Verify original tensor is unchanged
-    CHECK(std::abs(tci::get_elem(ctx, original, {0, 0}).real() - 2.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, original, {1, 0}).real() - 2.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, original, {2, 0}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, original, {0, 0})) - 2.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, original, {1, 0})) - 2.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, original, {2, 0})) - 1.0) < 1e-10);
 
     // Verify normalized tensor: [[2/3], [2/3], [1/3]]
-    CHECK(std::abs(tci::get_elem(ctx, normalized, {0, 0}).real() - (2.0/3.0)) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, normalized, {1, 0}).real() - (2.0/3.0)) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, normalized, {2, 0}).real() - (1.0/3.0)) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, normalized, {0, 0})) - (2.0/3.0)) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, normalized, {1, 0})) - (2.0/3.0)) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, normalized, {2, 0})) - (1.0/3.0)) < 1e-10);
 
     // Verify normalized tensor has norm 1
     auto new_norm = tci::norm(ctx, normalized);
@@ -1114,18 +1114,18 @@ TEST_CASE("tci::normalize API compliance test") {
     tci::set_elem(ctx, single_elem, {1, 1}, cytnx::cytnx_complex128(7.0, 0.0));
 
     auto norm1 = tci::normalize(ctx, single_elem);
-    CHECK(std::abs(norm1.real() - 7.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, single_elem, {1, 1}).real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(norm1) - 7.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, single_elem, {1, 1})) - 1.0) < 1e-10);
 
     // Test with zero tensor (should not crash, original implementation handles this)
     cytnx::Tensor zero_tensor;
     tci::zeros(ctx, shape, zero_tensor);
 
     auto norm_zero = tci::normalize(ctx, zero_tensor);
-    CHECK(std::abs(norm_zero.real() - 0.0) < 1e-10);
+    CHECK(std::abs(tci::real(norm_zero) - 0.0) < 1e-10);
     // Zero tensor should remain zero after normalization
-    CHECK(std::abs(tci::get_elem(ctx, zero_tensor, {0, 0}).real() - 0.0) < 1e-10);
-    CHECK(std::abs(tci::get_elem(ctx, zero_tensor, {1, 1}).real() - 0.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, zero_tensor, {0, 0})) - 0.0) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, zero_tensor, {1, 1})) - 0.0) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -1409,7 +1409,7 @@ TEST_CASE("tci::load API compliance test") {
       for (int j = 0; j < 3; ++j) {
         auto expected = tci::get_elem(ctx, reference_tensor, {static_cast<unsigned long long>(i), static_cast<unsigned long long>(j)});
         auto actual = tci::get_elem(ctx, loaded_tensor, {static_cast<unsigned long long>(i), static_cast<unsigned long long>(j)});
-        CHECK(std::abs(expected.real() - actual.real()) < 1e-10);
+        CHECK(std::abs(tci::real(expected) - tci::real(actual)) < 1e-10);
       }
     }
   }
@@ -1425,11 +1425,11 @@ TEST_CASE("tci::load API compliance test") {
     // Verify first and last elements
     auto expected_first = tci::get_elem(ctx, reference_tensor, {0ULL, 0ULL});
     auto actual_first = tci::get_elem(ctx, loaded_tensor, {0ULL, 0ULL});
-    CHECK(std::abs(expected_first.real() - actual_first.real()) < 1e-10);
+    CHECK(std::abs(tci::real(expected_first) - tci::real(actual_first)) < 1e-10);
 
     auto expected_last = tci::get_elem(ctx, reference_tensor, {1ULL, 2ULL});
     auto actual_last = tci::get_elem(ctx, loaded_tensor, {1ULL, 2ULL});
-    CHECK(std::abs(expected_last.real() - actual_last.real()) < 1e-10);
+    CHECK(std::abs(tci::real(expected_last) - tci::real(actual_last)) < 1e-10);
   }
 
   // Test 3: Load from filesystem::path - in-place version
@@ -1491,7 +1491,7 @@ TEST_CASE("tci::load API compliance test") {
     // Verify some values
     auto expected = tci::get_elem(ctx, reference_tensor, {0ULL, 1ULL});
     auto actual = tci::get_elem(ctx, loaded_tensor, {0ULL, 1ULL});
-    CHECK(std::abs(expected.real() - actual.real()) < 1e-10);
+    CHECK(std::abs(tci::real(expected) - tci::real(actual)) < 1e-10);
   }
 
   // Test 8: Load from stringstream (out-of-place)
@@ -1540,8 +1540,8 @@ TEST_CASE("tci::load API compliance test") {
     // Verify specific values
     auto val1 = tci::get_elem(ctx, loaded_large, {0ULL, 0ULL, 0ULL});
     auto val2 = tci::get_elem(ctx, loaded_large, {4ULL, 3ULL, 2ULL});
-    CHECK(std::abs(val1.real() - 100.0) < 1e-10);
-    CHECK(std::abs(val2.real() - 200.0) < 1e-10);
+    CHECK(std::abs(tci::real(val1) - 100.0) < 1e-10);
+    CHECK(std::abs(tci::real(val2) - 200.0) < 1e-10);
 
     std::filesystem::remove(large_filename);
   }
@@ -1764,8 +1764,8 @@ TEST_CASE("tci::move API compliance test") {
     // Verify data integrity
     auto moved_val_00 = tci::get_elem(ctx, dest_tensor, {0ULL, 0ULL});
     auto moved_val_12 = tci::get_elem(ctx, dest_tensor, {1ULL, 2ULL});
-    CHECK(std::abs(moved_val_00.real() - orig_val_00.real()) < 1e-10);
-    CHECK(std::abs(moved_val_12.real() - orig_val_12.real()) < 1e-10);
+    CHECK(std::abs(tci::real(moved_val_00) - tci::real(orig_val_00)) < 1e-10);
+    CHECK(std::abs(tci::real(moved_val_12) - tci::real(orig_val_12)) < 1e-10);
 
     // Verify source is cleared (moved from)
     bool source_cleared = false;
@@ -1804,10 +1804,10 @@ TEST_CASE("tci::move API compliance test") {
     // Verify data integrity
     auto moved_val_00 = tci::get_elem(ctx, moved_tensor, {0ULL, 0ULL});
     auto moved_val_21 = tci::get_elem(ctx, moved_tensor, {2ULL, 1ULL});
-    CHECK(std::abs(moved_val_00.real() - orig_val_00.real()) < 1e-10);
-    CHECK(std::abs(moved_val_00.imag() - orig_val_00.imag()) < 1e-10);
-    CHECK(std::abs(moved_val_21.real() - orig_val_21.real()) < 1e-10);
-    CHECK(std::abs(moved_val_21.imag() - orig_val_21.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(moved_val_00) - tci::real(orig_val_00)) < 1e-10);
+    CHECK(std::abs(tci::imag(moved_val_00) - tci::imag(orig_val_00)) < 1e-10);
+    CHECK(std::abs(tci::real(moved_val_21) - tci::real(orig_val_21)) < 1e-10);
+    CHECK(std::abs(tci::imag(moved_val_21) - tci::imag(orig_val_21)) < 1e-10);
 
     // Verify source is cleared
     bool source_cleared = false;
@@ -1841,8 +1841,8 @@ TEST_CASE("tci::move API compliance test") {
     // Verify specific values
     auto val1 = tci::get_elem(ctx, dest_large, {0ULL, 0ULL, 0ULL});
     auto val2 = tci::get_elem(ctx, dest_large, {9ULL, 9ULL, 4ULL});
-    CHECK(std::abs(val1.real() - 100.0) < 1e-10);
-    CHECK(std::abs(val2.real() - 999.0) < 1e-10);
+    CHECK(std::abs(tci::real(val1) - 100.0) < 1e-10);
+    CHECK(std::abs(tci::real(val2) - 999.0) < 1e-10);
   }
 
   // Test 4: Move complex tensor preserving type
@@ -1862,10 +1862,10 @@ TEST_CASE("tci::move API compliance test") {
     // Verify complex values
     auto val1 = tci::get_elem(ctx, moved, {0ULL, 0ULL});
     auto val2 = tci::get_elem(ctx, moved, {1ULL, 1ULL});
-    CHECK(std::abs(val1.real() - 1.0) < 1e-10);
-    CHECK(std::abs(val1.imag() - 2.0) < 1e-10);
-    CHECK(std::abs(val2.real() + 3.0) < 1e-10);  // -3.0
-    CHECK(std::abs(val2.imag() - 4.0) < 1e-10);
+    CHECK(std::abs(tci::real(val1) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::imag(val1) - 2.0) < 1e-10);
+    CHECK(std::abs(tci::real(val2) + 3.0) < 1e-10);  // -3.0
+    CHECK(std::abs(tci::imag(val2) - 4.0) < 1e-10);
   }
 
   // Test 5: Move tensor created by different construction methods
@@ -1881,13 +1881,13 @@ TEST_CASE("tci::move API compliance test") {
     auto diag00 = tci::get_elem(ctx, moved_eye, {0ULL, 0ULL});
     auto diag11 = tci::get_elem(ctx, moved_eye, {1ULL, 1ULL});
     auto diag22 = tci::get_elem(ctx, moved_eye, {2ULL, 2ULL});
-    CHECK(std::abs(diag00.real() - 1.0) < 1e-10);
-    CHECK(std::abs(diag11.real() - 1.0) < 1e-10);
-    CHECK(std::abs(diag22.real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(diag00) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(diag11) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(diag22) - 1.0) < 1e-10);
 
     // Verify off-diagonal elements are 0
     auto off_diag01 = tci::get_elem(ctx, moved_eye, {0ULL, 1ULL});
-    CHECK(std::abs(off_diag01.real()) < 1e-10);
+    CHECK(std::abs(tci::real(off_diag01)) < 1e-10);
   }
 
   // Test 6: Move tensor to already occupied destination
@@ -1910,7 +1910,7 @@ TEST_CASE("tci::move API compliance test") {
     CHECK(tci::rank(ctx, tensor2) == 2);
 
     auto val = tci::get_elem(ctx, tensor2, {0ULL, 0ULL});
-    CHECK(std::abs(val.real() - 42.0) < 1e-10);
+    CHECK(std::abs(tci::real(val) - 42.0) < 1e-10);
 
     // tensor1 should be cleared
     bool tensor1_cleared = false;
@@ -1958,8 +1958,8 @@ TEST_CASE("tci::scale API functionality") {
 
     auto result = tci::get_elem(ctx, tensor, {0ULL, 0ULL});
     auto expected = cytnx::cytnx_complex128(10.0, 5.0);  // (4.0 + 2.0i) * 2.5
-    CHECK(std::abs(result.real() - expected.real()) < 1e-10);
-    CHECK(std::abs(result.imag() - expected.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(result) - tci::real(expected)) < 1e-10);
+    CHECK(std::abs(tci::imag(result) - tci::imag(expected)) < 1e-10);
   }
 
   // Test 2: In-place scaling with negative factor
@@ -1972,8 +1972,8 @@ TEST_CASE("tci::scale API functionality") {
 
     auto result = tci::get_elem(ctx, tensor, {1ULL, 1ULL});
     auto expected = cytnx::cytnx_complex128(-4.5, 1.5);  // (3.0 - 1.0i) * -1.5
-    CHECK(std::abs(result.real() - expected.real()) < 1e-10);
-    CHECK(std::abs(result.imag() - expected.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(result) - tci::real(expected)) < 1e-10);
+    CHECK(std::abs(tci::imag(result) - tci::imag(expected)) < 1e-10);
   }
 
   // Test 3: In-place scaling with complex factor
@@ -1987,8 +1987,8 @@ TEST_CASE("tci::scale API functionality") {
     auto result = tci::get_elem(ctx, tensor, {0ULL, 0ULL});
     // (2.0 + 3.0i) * (1.0 + 2.0i) = 2.0 + 4.0i + 3.0i + 6.0i² = 2.0 + 7.0i - 6.0 = -4.0 + 7.0i
     auto expected = cytnx::cytnx_complex128(-4.0, 7.0);
-    CHECK(std::abs(result.real() - expected.real()) < 1e-10);
-    CHECK(std::abs(result.imag() - expected.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(result) - tci::real(expected)) < 1e-10);
+    CHECK(std::abs(tci::imag(result) - tci::imag(expected)) < 1e-10);
   }
 
   // Test 4: In-place scaling with zero
@@ -2000,8 +2000,8 @@ TEST_CASE("tci::scale API functionality") {
     CHECK_NOTHROW(tci::scale(ctx, tensor, scale_factor));
 
     auto result = tci::get_elem(ctx, tensor, {0ULL, 1ULL});
-    CHECK(std::abs(result.real()) < 1e-15);
-    CHECK(std::abs(result.imag()) < 1e-15);
+    CHECK(std::abs(tci::real(result)) < 1e-15);
+    CHECK(std::abs(tci::imag(result)) < 1e-15);
   }
 
   // Test 5: In-place scaling with identity (1.0)
@@ -2016,8 +2016,8 @@ TEST_CASE("tci::scale API functionality") {
     // Should remain unchanged
     auto original_elem = tci::get_elem(ctx, original, {2ULL, 0ULL});
     auto result_elem = tci::get_elem(ctx, tensor, {2ULL, 0ULL});
-    CHECK(std::abs(original_elem.real() - result_elem.real()) < 1e-15);
-    CHECK(std::abs(original_elem.imag() - result_elem.imag()) < 1e-15);
+    CHECK(std::abs(tci::real(original_elem) - tci::real(result_elem)) < 1e-15);
+    CHECK(std::abs(tci::imag(original_elem) - tci::imag(result_elem)) < 1e-15);
   }
 
   // Test 6: Out-of-place scaling with different tensors
@@ -2032,15 +2032,15 @@ TEST_CASE("tci::scale API functionality") {
     // Input should remain unchanged
     auto input_elem = tci::get_elem(ctx, input, {0ULL, 0ULL});
     auto input_expected = cytnx::cytnx_complex128(8.0, 1.0);
-    CHECK(std::abs(input_elem.real() - input_expected.real()) < 1e-15);
-    CHECK(std::abs(input_elem.imag() - input_expected.imag()) < 1e-15);
+    CHECK(std::abs(tci::real(input_elem) - tci::real(input_expected)) < 1e-15);
+    CHECK(std::abs(tci::imag(input_elem) - tci::imag(input_expected)) < 1e-15);
 
     // Output should contain scaled values
     auto output_elem = tci::get_elem(ctx, output, {0ULL, 0ULL});
     // (8.0 + 1.0i) * (0.5 - 0.25i) = 4.0 - 2.0i + 0.5i - 0.25i² = 4.0 - 1.5i + 0.25 = 4.25 - 1.5i
     auto output_expected = cytnx::cytnx_complex128(4.25, -1.5);
-    CHECK(std::abs(output_elem.real() - output_expected.real()) < 1e-10);
-    CHECK(std::abs(output_elem.imag() - output_expected.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(output_elem) - tci::real(output_expected)) < 1e-10);
+    CHECK(std::abs(tci::imag(output_elem) - tci::imag(output_expected)) < 1e-10);
   }
 
   // Test 7: Out-of-place scaling with larger tensor shapes
@@ -2059,18 +2059,18 @@ TEST_CASE("tci::scale API functionality") {
     // Check specific elements
     auto result1 = tci::get_elem(ctx, output, {0ULL, 0ULL});
     auto expected1 = cytnx::cytnx_complex128(3.0, 4.0);  // (1.0 + 0.0i) * (3.0 + 4.0i)
-    CHECK(std::abs(result1.real() - expected1.real()) < 1e-10);
-    CHECK(std::abs(result1.imag() - expected1.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(result1) - tci::real(expected1)) < 1e-10);
+    CHECK(std::abs(tci::imag(result1) - tci::imag(expected1)) < 1e-10);
 
     auto result2 = tci::get_elem(ctx, output, {3ULL, 4ULL});
     auto expected2 = cytnx::cytnx_complex128(-4.0, 3.0);  // (0.0 + 1.0i) * (3.0 + 4.0i) = 3.0i + 4.0i² = -4.0 + 3.0i
-    CHECK(std::abs(result2.real() - expected2.real()) < 1e-10);
-    CHECK(std::abs(result2.imag() - expected2.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(result2) - tci::real(expected2)) < 1e-10);
+    CHECK(std::abs(tci::imag(result2) - tci::imag(expected2)) < 1e-10);
 
     // Check zero elements remain zero
     auto result_zero = tci::get_elem(ctx, output, {1ULL, 1ULL});
-    CHECK(std::abs(result_zero.real()) < 1e-15);
-    CHECK(std::abs(result_zero.imag()) < 1e-15);
+    CHECK(std::abs(tci::real(result_zero)) < 1e-15);
+    CHECK(std::abs(tci::imag(result_zero)) < 1e-15);
   }
 
   tci::destroy_context(ctx);
@@ -2110,10 +2110,10 @@ TEST_CASE("tci::shrink API functionality") {
     auto elem_10 = tci::get_elem(ctx, tensor, {1ULL, 0ULL});
     auto elem_11 = tci::get_elem(ctx, tensor, {1ULL, 1ULL});
 
-    CHECK(std::abs(elem_00.real() - 11.0) < 1e-15);
-    CHECK(std::abs(elem_01.real() - 12.0) < 1e-15);
-    CHECK(std::abs(elem_10.real() - 21.0) < 1e-15);
-    CHECK(std::abs(elem_11.real() - 22.0) < 1e-15);
+    CHECK(std::abs(tci::real(elem_00) - 11.0) < 1e-15);
+    CHECK(std::abs(tci::real(elem_01) - 12.0) < 1e-15);
+    CHECK(std::abs(tci::real(elem_10) - 21.0) < 1e-15);
+    CHECK(std::abs(tci::real(elem_11) - 22.0) < 1e-15);
   }
 
   // Test 2: In-place shrinking with partial dimension specification
@@ -2146,10 +2146,10 @@ TEST_CASE("tci::shrink API functionality") {
 
     // Check specific values
     auto elem = tci::get_elem(ctx, tensor, {0ULL, 0ULL, 1ULL});
-    CHECK(std::abs(elem.real() - 11.0) < 1e-15);  // was [0,1,1] = 0*100 + 1*10 + 1 = 11
+    CHECK(std::abs(tci::real(elem) - 11.0) < 1e-15);  // was [0,1,1] = 0*100 + 1*10 + 1 = 11
 
     elem = tci::get_elem(ctx, tensor, {0ULL, 2ULL, 0ULL});
-    CHECK(std::abs(elem.real() - 30.0) < 1e-15);  // was [0,3,0] = 0*100 + 3*10 + 0 = 30
+    CHECK(std::abs(tci::real(elem) - 30.0) < 1e-15);  // was [0,3,0] = 0*100 + 3*10 + 0 = 30
   }
 
   // Test 3: Out-of-place shrinking preserves original
@@ -2174,7 +2174,7 @@ TEST_CASE("tci::shrink API functionality") {
     CHECK(input_shape[1] == 3ULL);
 
     auto input_corner = tci::get_elem(ctx, input, {2ULL, 2ULL});
-    CHECK(std::abs(input_corner.real() - 9.0) < 1e-15);
+    CHECK(std::abs(tci::real(input_corner) - 9.0) < 1e-15);
 
     // Output should have shrunk dimensions
     auto output_shape = tci::shape(ctx, output);
@@ -2183,11 +2183,11 @@ TEST_CASE("tci::shrink API functionality") {
 
     // Output should contain the extracted values
     auto output_elem = tci::get_elem(ctx, output, {0ULL, 0ULL});
-    CHECK(std::abs(output_elem.real() - 1.0) < 1e-15);
+    CHECK(std::abs(tci::real(output_elem) - 1.0) < 1e-15);
 
     auto output_fill = tci::get_elem(ctx, output, {1ULL, 1ULL});
-    CHECK(std::abs(output_fill.real() - 42.0) < 1e-15);
-    CHECK(std::abs(output_fill.imag() - 7.0) < 1e-15);
+    CHECK(std::abs(tci::real(output_fill) - 42.0) < 1e-15);
+    CHECK(std::abs(tci::imag(output_fill) - 7.0) < 1e-15);
   }
 
   // Test 4: Single element extraction
@@ -2209,8 +2209,8 @@ TEST_CASE("tci::shrink API functionality") {
     CHECK(shape[1] == 1ULL);
 
     auto elem = tci::get_elem(ctx, tensor, {0ULL, 0ULL});
-    CHECK(std::abs(elem.real() - 123.456) < 1e-10);
-    CHECK(std::abs(elem.imag() + 78.9) < 1e-10);
+    CHECK(std::abs(tci::real(elem) - 123.456) < 1e-10);
+    CHECK(std::abs(tci::imag(elem) + 78.9) < 1e-10);
   }
 
   // Test 5: Full slice extraction (should be no-op)
@@ -2236,8 +2236,8 @@ TEST_CASE("tci::shrink API functionality") {
     // Values should match
     auto orig_elem = tci::get_elem(ctx, original, {1ULL, 2ULL, 3ULL});
     auto shrunk_elem = tci::get_elem(ctx, shrunk, {1ULL, 2ULL, 3ULL});
-    CHECK(std::abs(orig_elem.real() - shrunk_elem.real()) < 1e-15);
-    CHECK(std::abs(orig_elem.imag() - shrunk_elem.imag()) < 1e-15);
+    CHECK(std::abs(tci::real(orig_elem) - tci::real(shrunk_elem)) < 1e-15);
+    CHECK(std::abs(tci::imag(orig_elem) - tci::imag(shrunk_elem)) < 1e-15);
   }
 
   // Test 6: Edge case - extract first row only
@@ -2259,9 +2259,9 @@ TEST_CASE("tci::shrink API functionality") {
     CHECK(shape[0] == 1ULL);
     CHECK(shape[1] == 3ULL);
 
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {0ULL, 0ULL}).real() - 10.0) < 1e-15);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {0ULL, 1ULL}).real() - 20.0) < 1e-15);
-    CHECK(std::abs(tci::get_elem(ctx, tensor, {0ULL, 2ULL}).real() - 30.0) < 1e-15);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0ULL, 0ULL})) - 10.0) < 1e-15);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0ULL, 1ULL})) - 20.0) < 1e-15);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0ULL, 2ULL})) - 30.0) < 1e-15);
   }
 
   // Test 7: Edge case - extract last column only
@@ -2283,9 +2283,9 @@ TEST_CASE("tci::shrink API functionality") {
     CHECK(shape[0] == 3ULL);
     CHECK(shape[1] == 1ULL);
 
-    CHECK(std::abs(tci::get_elem(ctx, result, {0ULL, 0ULL}).real() - 100.0) < 1e-15);
-    CHECK(std::abs(tci::get_elem(ctx, result, {1ULL, 0ULL}).real() - 200.0) < 1e-15);
-    CHECK(std::abs(tci::get_elem(ctx, result, {2ULL, 0ULL}).real() - 300.0) < 1e-15);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0ULL, 0ULL})) - 100.0) < 1e-15);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {1ULL, 0ULL})) - 200.0) < 1e-15);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {2ULL, 0ULL})) - 300.0) < 1e-15);
   }
 
   tci::destroy_context(ctx);
@@ -2317,12 +2317,12 @@ TEST_CASE("tci::to_cplx API functionality") {
     auto elem2 = tci::get_elem(ctx, complex_output, {1ULL, 2ULL});
     auto elem_zero = tci::get_elem(ctx, complex_output, {0ULL, 1ULL});
 
-    CHECK(std::abs(elem1.real() - 3.14) < 1e-15);
-    CHECK(std::abs(elem1.imag()) < 1e-15);  // Imaginary part should be zero
-    CHECK(std::abs(elem2.real() + 2.71) < 1e-15);
-    CHECK(std::abs(elem2.imag()) < 1e-15);
-    CHECK(std::abs(elem_zero.real()) < 1e-15);
-    CHECK(std::abs(elem_zero.imag()) < 1e-15);
+    CHECK(std::abs(tci::real(elem1) - 3.14) < 1e-15);
+    CHECK(std::abs(tci::imag(elem1)) < 1e-15);  // Imaginary part should be zero
+    CHECK(std::abs(tci::real(elem2) + 2.71) < 1e-15);
+    CHECK(std::abs(tci::imag(elem2)) < 1e-15);
+    CHECK(std::abs(tci::real(elem_zero)) < 1e-15);
+    CHECK(std::abs(tci::imag(elem_zero)) < 1e-15);
   }
 
   // Test 2: Out-of-place conversion from complex to complex (copy)
@@ -2341,15 +2341,15 @@ TEST_CASE("tci::to_cplx API functionality") {
     auto input_elem2 = tci::get_elem(ctx, complex_input, {1ULL, 0ULL});
     auto result_elem2 = tci::get_elem(ctx, complex_result, {1ULL, 0ULL});
 
-    CHECK(std::abs(input_elem1.real() - result_elem1.real()) < 1e-15);
-    CHECK(std::abs(input_elem1.imag() - result_elem1.imag()) < 1e-15);
-    CHECK(std::abs(input_elem2.real() - result_elem2.real()) < 1e-15);
-    CHECK(std::abs(input_elem2.imag() - result_elem2.imag()) < 1e-15);
+    CHECK(std::abs(tci::real(input_elem1) - tci::real(result_elem1)) < 1e-15);
+    CHECK(std::abs(tci::imag(input_elem1) - tci::imag(result_elem1)) < 1e-15);
+    CHECK(std::abs(tci::real(input_elem2) - tci::real(result_elem2)) < 1e-15);
+    CHECK(std::abs(tci::imag(input_elem2) - tci::imag(result_elem2)) < 1e-15);
 
-    CHECK(std::abs(result_elem1.real() - 7.0) < 1e-15);
-    CHECK(std::abs(result_elem1.imag() + 3.0) < 1e-15);
-    CHECK(std::abs(result_elem2.real()) < 1e-15);
-    CHECK(std::abs(result_elem2.imag() - 5.5) < 1e-15);
+    CHECK(std::abs(tci::real(result_elem1) - 7.0) < 1e-15);
+    CHECK(std::abs(tci::imag(result_elem1) + 3.0) < 1e-15);
+    CHECK(std::abs(tci::real(result_elem2)) < 1e-15);
+    CHECK(std::abs(tci::imag(result_elem2) - 5.5) < 1e-15);
   }
 
   // Test 3: Complex tensor with both real and imaginary parts
@@ -2369,17 +2369,17 @@ TEST_CASE("tci::to_cplx API functionality") {
     auto elem2 = tci::get_elem(ctx, output, {1ULL, 1ULL});
     auto elem3 = tci::get_elem(ctx, output, {0ULL, 2ULL});
 
-    CHECK(std::abs(elem1.real() - 1.5) < 1e-15);
-    CHECK(std::abs(elem1.imag() - 2.5) < 1e-15);
-    CHECK(std::abs(elem2.real() + 3.0) < 1e-15);
-    CHECK(std::abs(elem2.imag() - 4.0) < 1e-15);
-    CHECK(std::abs(elem3.real()) < 1e-15);
-    CHECK(std::abs(elem3.imag() + 7.5) < 1e-15);
+    CHECK(std::abs(tci::real(elem1) - 1.5) < 1e-15);
+    CHECK(std::abs(tci::imag(elem1) - 2.5) < 1e-15);
+    CHECK(std::abs(tci::real(elem2) + 3.0) < 1e-15);
+    CHECK(std::abs(tci::imag(elem2) - 4.0) < 1e-15);
+    CHECK(std::abs(tci::real(elem3)) < 1e-15);
+    CHECK(std::abs(tci::imag(elem3) + 7.5) < 1e-15);
 
     // Verify input is unchanged
     auto input_elem = tci::get_elem(ctx, input, {0ULL, 0ULL});
-    CHECK(std::abs(input_elem.real() - 1.5) < 1e-15);
-    CHECK(std::abs(input_elem.imag() - 2.5) < 1e-15);
+    CHECK(std::abs(tci::real(input_elem) - 1.5) < 1e-15);
+    CHECK(std::abs(tci::imag(input_elem) - 2.5) < 1e-15);
   }
 
   // Test 4: Larger tensor test
@@ -2405,14 +2405,14 @@ TEST_CASE("tci::to_cplx API functionality") {
     auto elem_mid = tci::get_elem(ctx, large_output, {1ULL, 2ULL, 1ULL});
     auto elem_end = tci::get_elem(ctx, large_output, {2ULL, 3ULL, 1ULL});
 
-    CHECK(std::abs(elem_start.real() - 0.0) < 1e-15);
-    CHECK(std::abs(elem_start.imag() - 0.0) < 1e-15);
+    CHECK(std::abs(tci::real(elem_start) - 0.0) < 1e-15);
+    CHECK(std::abs(tci::imag(elem_start) - 0.0) < 1e-15);
 
-    CHECK(std::abs(elem_mid.real() - 121.0) < 1e-15);  // 1*100 + 2*10 + 1
-    CHECK(std::abs(elem_mid.imag() - 4.0) < 1e-15);    // 1 + 2 + 1
+    CHECK(std::abs(tci::real(elem_mid) - 121.0) < 1e-15);  // 1*100 + 2*10 + 1
+    CHECK(std::abs(tci::imag(elem_mid) - 4.0) < 1e-15);    // 1 + 2 + 1
 
-    CHECK(std::abs(elem_end.real() - 231.0) < 1e-15);  // 2*100 + 3*10 + 1
-    CHECK(std::abs(elem_end.imag() - 6.0) < 1e-15);    // 2 + 3 + 1
+    CHECK(std::abs(tci::real(elem_end) - 231.0) < 1e-15);  // 2*100 + 3*10 + 1
+    CHECK(std::abs(tci::imag(elem_end) - 6.0) < 1e-15);    // 2 + 3 + 1
 
     // Check shape preservation
     auto input_shape = tci::shape(ctx, large_input);
@@ -2431,8 +2431,8 @@ TEST_CASE("tci::to_cplx API functionality") {
     CHECK_NOTHROW(tci::to_cplx(ctx, scalar_input, scalar_output));
 
     auto result = tci::get_elem(ctx, scalar_output, {0ULL});
-    CHECK(std::abs(result.real() - 9.876) < 1e-15);
-    CHECK(std::abs(result.imag() + 1.234) < 1e-15);
+    CHECK(std::abs(tci::real(result) - 9.876) < 1e-15);
+    CHECK(std::abs(tci::imag(result) + 1.234) < 1e-15);
   }
 
   tci::destroy_context(ctx);

@@ -58,14 +58,14 @@ TEST_CASE("TCI Tensor Creation") {
     CHECK(result_shape == shape);
 
     auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
-    CHECK(std::abs(elem_00.real() - 0.0) < 1e-10);
-    CHECK(std::abs(elem_00.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(elem_00) - 0.0) < 1e-10);
+    CHECK(std::abs(tci::imag(elem_00)) < 1e-10);
 
     auto elem_01 = tci::get_elem(ctx, tensor, {0, 1});
-    CHECK(std::abs(elem_01.real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_01) - 1.0) < 1e-10);
 
     auto elem_12 = tci::get_elem(ctx, tensor, {1, 2});
-    CHECK(std::abs(elem_12.real() - 5.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_12) - 5.0) < 1e-10);
   }
 
   SUBCASE("Create random tensor (out-of-place)") {
@@ -84,8 +84,8 @@ TEST_CASE("TCI Tensor Creation") {
     CHECK(result_shape == shape);
 
     auto elem_11 = tci::get_elem(ctx, tensor, {1, 1});
-    CHECK(std::abs(elem_11.real() - 3.0) < 1e-10);
-    CHECK(std::abs(elem_11.imag()) < 1e-10);
+    CHECK(std::abs(tci::real(elem_11) - 3.0) < 1e-10);
+    CHECK(std::abs(tci::imag(elem_11)) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -147,8 +147,8 @@ TEST_CASE("TCI Tensor Operations") {
 
     // Get element back - should be exactly what we set
     auto elem = tci::get_elem(ctx, tensor, coord);
-    CHECK(std::abs(elem.real() - 1.0) < 1e-10);
-    CHECK(std::abs(elem.imag() - 0.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::imag(elem) - 0.0) < 1e-10);
   }
 
   SUBCASE("Norm calculation") {
@@ -158,7 +158,7 @@ TEST_CASE("TCI Tensor Operations") {
 
     auto norm_val = tci::norm(ctx, identity);
     // Frobenius norm of 3x3 identity should be sqrt(3)
-    CHECK(std::abs(norm_val - std::sqrt(3.0)) < 1e-10);
+    CHECK(std::abs(tci::real(norm_val) - std::sqrt(3.0)) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -194,16 +194,16 @@ TEST_CASE("TCI assign_from_container") {
 
     // Verify element values match container
     auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
-    CHECK(std::abs(elem_00.real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_00) - 1.0) < 1e-10);
 
     auto elem_01 = tci::get_elem(ctx, tensor, {0, 1});
-    CHECK(std::abs(elem_01.real() - 2.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_01) - 2.0) < 1e-10);
 
     auto elem_10 = tci::get_elem(ctx, tensor, {1, 0});
-    CHECK(std::abs(elem_10.real() - 4.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_10) - 4.0) < 1e-10);
 
     auto elem_12 = tci::get_elem(ctx, tensor, {1, 2});
-    CHECK(std::abs(elem_12.real() - 6.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_12) - 6.0) < 1e-10);
   }
 
   SUBCASE("Create tensor from std::vector with custom indexing") {
@@ -226,16 +226,16 @@ TEST_CASE("TCI assign_from_container") {
 
     // Verify element values with column-major layout
     auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
-    CHECK(std::abs(elem_00.real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_00) - 1.0) < 1e-10);
 
     auto elem_01 = tci::get_elem(ctx, tensor, {0, 1});
-    CHECK(std::abs(elem_01.real() - 2.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_01) - 2.0) < 1e-10);
 
     auto elem_10 = tci::get_elem(ctx, tensor, {1, 0});
-    CHECK(std::abs(elem_10.real() - 3.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_10) - 3.0) < 1e-10);
 
     auto elem_11 = tci::get_elem(ctx, tensor, {1, 1});
-    CHECK(std::abs(elem_11.real() - 4.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_11) - 4.0) < 1e-10);
   }
 
   SUBCASE("Out-of-place version") {
@@ -256,10 +256,10 @@ TEST_CASE("TCI assign_from_container") {
 
     // Verify elements
     auto elem_0 = tci::get_elem(ctx, tensor, {0});
-    CHECK(std::abs(elem_0.real() - 7.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_0) - 7.0) < 1e-10);
 
     auto elem_2 = tci::get_elem(ctx, tensor, {2});
-    CHECK(std::abs(elem_2.real() - 9.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem_2) - 9.0) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -315,11 +315,11 @@ TEST_CASE("TCI Tensor Manipulation") {
 
     // Verify real part
     auto real_elem = tci::get_elem(ctx, real_part, {0, 0});
-    CHECK(std::abs(real_elem.real() - 2.0) < 1e-10);
+    CHECK(std::abs(tci::real(real_elem) - 2.0) < 1e-10);
 
     // Verify imaginary part
     auto imag_elem = tci::get_elem(ctx, imag_part, {0, 0});
-    CHECK(std::abs(imag_elem.real() - 3.0) < 1e-10);
+    CHECK(std::abs(tci::real(imag_elem) - 3.0) < 1e-10);
   }
 
   tci::destroy_context(ctx);
@@ -388,7 +388,7 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
 
     // Verify extracted value
     auto extracted_elem = tci::get_elem(ctx, sub_result, {0, 0});  // Should be (1,2) from original
-    CHECK(std::abs(extracted_elem.real() - 5.0) < 1e-10);
+    CHECK(std::abs(tci::real(extracted_elem) - 5.0) < 1e-10);
   }
 
   SUBCASE("Replace sub-tensor") {
@@ -405,14 +405,14 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
 
     // Verify replacement
     auto replaced_elem = tci::get_elem(ctx, result, {1, 1});
-    CHECK(std::abs(replaced_elem.real() - 3.0) < 1e-10);
+    CHECK(std::abs(tci::real(replaced_elem) - 3.0) < 1e-10);
 
     auto replaced_elem2 = tci::get_elem(ctx, result, {2, 2});
-    CHECK(std::abs(replaced_elem2.real() - 3.0) < 1e-10);
+    CHECK(std::abs(tci::real(replaced_elem2) - 3.0) < 1e-10);
 
     // Verify non-replaced area
     auto non_replaced = tci::get_elem(ctx, result, {0, 0});
-    CHECK(std::abs(non_replaced.real() - 0.0) < 1e-10);
+    CHECK(std::abs(tci::real(non_replaced) - 0.0) < 1e-10);
   }
 
   SUBCASE("Expand tensor dimensions") {
@@ -432,11 +432,11 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
 
     // Verify original data is preserved (at beginning)
     auto elem = tci::get_elem(ctx, expanded, {0, 0});
-    CHECK(std::abs(elem.real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem) - 1.0) < 1e-10);
 
     // Verify expanded area is zero
     auto zero_elem = tci::get_elem(ctx, expanded, {2, 0});  // Expanded row
-    CHECK(std::abs(zero_elem.real() - 0.0) < 1e-10);
+    CHECK(std::abs(tci::real(zero_elem) - 0.0) < 1e-10);
   }
 
   SUBCASE("For each with coordinates") {
@@ -454,10 +454,10 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
 
     // Verify values
     auto elem_01 = tci::get_elem(ctx, tensor, {0, 1});
-    CHECK(std::abs(elem_01.real() - 1.0) < 1e-10);  // 0*10 + 1 = 1
+    CHECK(std::abs(tci::real(elem_01) - 1.0) < 1e-10);  // 0*10 + 1 = 1
 
     auto elem_12 = tci::get_elem(ctx, tensor, {1, 2});
-    CHECK(std::abs(elem_12.real() - 12.0) < 1e-10);  // 1*10 + 2 = 12
+    CHECK(std::abs(tci::real(elem_12) - 12.0) < 1e-10);  // 1*10 + 2 = 12
   }
 
   tci::destroy_context(ctx);

@@ -111,8 +111,8 @@ TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {
   E_iTEBD = -std::log(E_iTEBD) / dt / 2.0;
   std::printf("E_iTEBD = %.15f\n", E_iTEBD);
   // Integration test checks
-  CHECK(std::isfinite(E_iTEBD.real()));
-  CHECK(std::isfinite(E_iTEBD.imag()));
+  CHECK(std::isfinite(tci::real(E_iTEBD)));
+  CHECK(std::isfinite(tci::imag(E_iTEBD)));
 
   // Verify tensor shapes and properties
   auto gamma_shape = tci::shape(context, Gamma[0]);

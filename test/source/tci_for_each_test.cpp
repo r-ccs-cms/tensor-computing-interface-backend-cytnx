@@ -12,18 +12,18 @@ TEST_CASE("TCI for_each Function Test - Reproducing Link Error") {
 
         // Create a simple tensor
         Ten test_tensor;
-        tci::fill(ctx, {3}, std::complex<double>(1.0, 0.0), test_tensor);
+        tci::fill(ctx, {3}, cytnx::cytnx_complex128(1.0, 0.0), test_tensor);
 
         // This should cause the link error we've been seeing
         // for_each with a lambda that modifies elements
         try {
             tci::for_each(ctx, test_tensor, [](tci::elem_t<Ten>& elem) {
-                elem = elem * std::complex<double>(2.0, 0.0);  // Double each element
+                elem = elem * cytnx::cytnx_complex128(2.0, 0.0);  // Double each element
             });
 
             // If we reach here, for_each worked
             auto result_elem = tci::get_elem(ctx, test_tensor, {0});
-            CHECK(std::abs(result_elem - std::complex<double>(2.0, 0.0)) < 1e-10);
+            CHECK(tci::abs(result_elem - cytnx::cytnx_complex128(2.0, 0.0)) < 1e-10);
 
         } catch (const std::exception& e) {
             // If for_each isn't properly implemented, we'll get an exception
@@ -38,17 +38,17 @@ TEST_CASE("TCI for_each Function Test - Reproducing Link Error") {
         tci::create_context(ctx);
 
         Ten test_tensor;
-        tci::fill(ctx, {2, 2}, std::complex<double>(3.0, 1.0), test_tensor);
+        tci::fill(ctx, {2, 2}, cytnx::cytnx_complex128(3.0, 1.0), test_tensor);
 
         // Test case 1: Lambda with capture
         double multiplier = 0.5;
         try {
             tci::for_each(ctx, test_tensor, [multiplier](tci::elem_t<Ten>& elem) {
-                elem = elem * std::complex<double>(multiplier, 0.0);
+                elem = elem * cytnx::cytnx_complex128(multiplier, 0.0);
             });
 
             auto result = tci::get_elem(ctx, test_tensor, {0, 0});
-            CHECK(std::abs(result - std::complex<double>(1.5, 0.5)) < 1e-10);
+            CHECK(tci::abs(result - cytnx::cytnx_complex128(1.5, 0.5)) < 1e-10);
 
         } catch (const std::exception& e) {
             FAIL("for_each with capture lambda failed: " << e.what());
@@ -62,14 +62,14 @@ TEST_CASE("TCI for_each Function Test - Reproducing Link Error") {
         tci::create_context(ctx);
 
         Ten test_tensor;
-        tci::fill(ctx, {3}, std::complex<double>(2.0, 3.0), test_tensor);
+        tci::fill(ctx, {3}, cytnx::cytnx_complex128(2.0, 3.0), test_tensor);
 
         // Test const version - should not modify, just read
         double sum_real = 0.0;
         try {
             tci::for_each(ctx, static_cast<const Ten&>(test_tensor),
                 [&sum_real](const tci::elem_t<Ten>& elem) {
-                    sum_real += elem.real();
+                    sum_real += tci::real(elem);
                 });
 
             CHECK(std::abs(sum_real - 6.0) < 1e-10);  // 3 elements * 2.0 each
@@ -92,7 +92,7 @@ TEST_CASE("TCI for_each Function Test - Reproducing Link Error") {
         try {
             tci::for_each(ctx, test_tensor, [](tci::elem_t<Ten>& elem) {
                 // Simulate the operation we were trying to do in iTEBD
-                if (std::abs(elem) > 1e-12) {
+                if (tci::abs(elem) > 1e-12) {
                     elem = tci::elem_t<Ten>(1.0) / elem;  // Inversion
                 } else {
                     elem = tci::elem_t<Ten>(1.0);  // Avoid division by zero
@@ -101,7 +101,7 @@ TEST_CASE("TCI for_each Function Test - Reproducing Link Error") {
 
             // Verify the operation worked
             auto elem = tci::get_elem(ctx, test_tensor, {0, 0});
-            CHECK(std::abs(elem - std::complex<double>(2.0, 0.0)) < 1e-10);
+            CHECK(tci::abs(elem - cytnx::cytnx_complex128(2.0, 0.0)) < 1e-10);
 
         } catch (const std::exception& e) {
             INFO("This test reproduces the link error we encountered");

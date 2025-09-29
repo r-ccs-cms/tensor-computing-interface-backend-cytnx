@@ -62,7 +62,7 @@ TEST_CASE("Template Function const Type Issues") {
 
     // Should work with const tensor
     auto elem = get_elem(ctx, const_a, coords);
-    CHECK(std::abs(elem.real() - 1.0) < 1e-10);
+    CHECK(std::abs(tci::real(elem) - 1.0) < 1e-10);
   }
 
   destroy_context(ctx);
