@@ -77,23 +77,22 @@ namespace tci {
       cytnx_coors.push_back(static_cast<cytnx::cytnx_uint64>(coord));
     }
 
-    // Get element from Cytnx tensor
-    auto cytnx_scalar = a.at(cytnx_coors);
-
-    // Convert Cytnx scalar to complex128 using explicit cast
-    if (a.dtype() == cytnx::Type.ComplexDouble) {
-      // For complex types, get real and imaginary parts
-      double real_part = static_cast<double>(cytnx_scalar.real());
-      double imag_part = static_cast<double>(cytnx_scalar.imag());
-      elem = cytnx::cytnx_complex128(real_part, imag_part);
-    } else if (a.dtype() == cytnx::Type.Double) {
-      // For real types, imaginary part is zero
-      double real_part = static_cast<double>(cytnx_scalar.real());
-      elem = cytnx::cytnx_complex128(real_part, 0.0);
-    } else {
-      // For other types, convert to double first
-      double real_part = static_cast<double>(cytnx_scalar.real());
-      elem = cytnx::cytnx_complex128(real_part, 0.0);
+    // Store element based on tensor's actual dtype to preserve type information
+    switch (a.dtype()) {
+      case cytnx::Type.Double:
+        elem = a.at<cytnx::cytnx_double>(cytnx_coors);
+        break;
+      case cytnx::Type.Float:
+        elem = a.at<cytnx::cytnx_float>(cytnx_coors);
+        break;
+      case cytnx::Type.ComplexDouble:
+        elem = a.at<cytnx::cytnx_complex128>(cytnx_coors);
+        break;
+      case cytnx::Type.ComplexFloat:
+        elem = a.at<cytnx::cytnx_complex64>(cytnx_coors);
+        break;
+      default:
+        throw std::runtime_error("Unsupported tensor element type in get_elem");
     }
   }
 

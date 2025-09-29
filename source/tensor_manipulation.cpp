@@ -18,8 +18,55 @@ namespace tci {
       cytnx_coors.push_back(static_cast<cytnx::cytnx_uint64>(coord));
     }
 
-    // Set element in Cytnx tensor
-    a.at(cytnx_coors) = static_cast<cytnx::cytnx_complex128>(el);
+    // Use std::visit to handle variant types properly
+    std::visit([&a, &cytnx_coors](const auto& value) {
+      using ValueType = std::decay_t<decltype(value)>;
+
+      // Dynamic type dispatch based on tensor's actual dtype and value type
+      if (a.dtype() == cytnx::Type.Double) {
+        if constexpr (std::is_same_v<ValueType, cytnx::cytnx_double>) {
+          a.at<cytnx::cytnx_double>(cytnx_coors) = value;
+        } else if constexpr (std::is_same_v<ValueType, cytnx::cytnx_float>) {
+          a.at<cytnx::cytnx_double>(cytnx_coors) = static_cast<cytnx::cytnx_double>(value);
+        } else {
+          // Complex to real: take real part
+          a.at<cytnx::cytnx_double>(cytnx_coors) = static_cast<cytnx::cytnx_double>(value.real());
+        }
+      } else if (a.dtype() == cytnx::Type.Float) {
+        if constexpr (std::is_same_v<ValueType, cytnx::cytnx_float>) {
+          a.at<cytnx::cytnx_float>(cytnx_coors) = value;
+        } else if constexpr (std::is_same_v<ValueType, cytnx::cytnx_double>) {
+          a.at<cytnx::cytnx_float>(cytnx_coors) = static_cast<cytnx::cytnx_float>(value);
+        } else {
+          // Complex to real: take real part
+          a.at<cytnx::cytnx_float>(cytnx_coors) = static_cast<cytnx::cytnx_float>(value.real());
+        }
+      } else if (a.dtype() == cytnx::Type.ComplexDouble) {
+        if constexpr (std::is_same_v<ValueType, cytnx::cytnx_complex128>) {
+          a.at<cytnx::cytnx_complex128>(cytnx_coors) = value;
+        } else if constexpr (std::is_same_v<ValueType, cytnx::cytnx_complex64>) {
+          a.at<cytnx::cytnx_complex128>(cytnx_coors) = cytnx::cytnx_complex128(
+            static_cast<double>(value.real()), static_cast<double>(value.imag()));
+        } else {
+          // Real to complex: imaginary part is zero
+          a.at<cytnx::cytnx_complex128>(cytnx_coors) = cytnx::cytnx_complex128(
+            static_cast<double>(value), 0.0);
+        }
+      } else if (a.dtype() == cytnx::Type.ComplexFloat) {
+        if constexpr (std::is_same_v<ValueType, cytnx::cytnx_complex64>) {
+          a.at<cytnx::cytnx_complex64>(cytnx_coors) = value;
+        } else if constexpr (std::is_same_v<ValueType, cytnx::cytnx_complex128>) {
+          a.at<cytnx::cytnx_complex64>(cytnx_coors) = cytnx::cytnx_complex64(
+            static_cast<float>(value.real()), static_cast<float>(value.imag()));
+        } else {
+          // Real to complex: imaginary part is zero
+          a.at<cytnx::cytnx_complex64>(cytnx_coors) = cytnx::cytnx_complex64(
+            static_cast<float>(value), 0.0f);
+        }
+      } else {
+        throw std::runtime_error("Unsupported tensor element type in set_elem");
+      }
+    }, el);
   }
 
   template <> void reshape(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout,
