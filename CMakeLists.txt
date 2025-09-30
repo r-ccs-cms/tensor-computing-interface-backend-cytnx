@@ -117,8 +117,11 @@ add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 # ---- Add examples ----
 option(BUILD_EXAMPLES "Build example programs" ON)
+# Temporarily disabled during CytnxTensor migration
+if(FALSE)
 if(BUILD_EXAMPLES)
   add_subdirectory(examples)
+endif()
 endif()
 
 # ---- Optional test suite ----

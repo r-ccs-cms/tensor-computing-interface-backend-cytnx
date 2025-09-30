@@ -3,6 +3,7 @@
 #include <cytnx.hpp>
 
 #include "tci/cytnx_tensor_traits.h"
+#include "tci/cytnx_typed_tensor.h"
 
 namespace tci {
 
@@ -103,5 +104,8 @@ namespace tci {
     get_elem(ctx, a, coors, elem);
     return elem;
   }
+
+  // CytnxTensor<ElemT> template implementations are header-only
+  // See include/tci/cytnx_typed_tensor_impl.h
 
 }  // namespace tci

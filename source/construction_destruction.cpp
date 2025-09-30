@@ -5,6 +5,7 @@
 #include <complex>
 
 #include "tci/cytnx_tensor_traits.h"
+#include "tci/cytnx_typed_tensor.h"
 #include "tci/variant_helpers.h"
 
 namespace tci {
@@ -115,5 +116,7 @@ namespace tci {
     return result;
   }
 
+  // CytnxTensor<ElemT> template implementations are header-only
+  // See include/tci/cytnx_typed_tensor_impl.h
 
 }  // namespace tci
