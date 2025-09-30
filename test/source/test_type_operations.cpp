@@ -124,8 +124,8 @@ TEST_CASE("tci::shrink API functionality") {
 
     // Shrink to extract 2x2 sub-tensor from [0:2, 0:2]
     tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
-    shrink_map[0] = std::make_pair(0, 1);  // Bond 0: from 0 to 1 (2 elements)
-    shrink_map[1] = std::make_pair(0, 1);  // Bond 1: from 0 to 1 (2 elements)
+    shrink_map[0] = std::make_pair(0, 2);  // Bond 0: from 0 to 2 (range [0, 2), 2 elements)
+    shrink_map[1] = std::make_pair(0, 2);  // Bond 1: from 0 to 2 (range [0, 2), 2 elements)
 
     tci::shrink(ctx, tensor, shrink_map);
 
@@ -172,8 +172,8 @@ TEST_CASE("tci::shrink API functionality") {
 
     // Shrink to extract center 2x2 sub-tensor
     tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
-    shrink_map[0] = std::make_pair(1, 2);  // Bond 0: from 1 to 2 (2 elements)
-    shrink_map[1] = std::make_pair(1, 2);  // Bond 1: from 1 to 2 (2 elements)
+    shrink_map[0] = std::make_pair(1, 3);  // Bond 0: from 1 to 3 (range [1, 3), 2 elements)
+    shrink_map[1] = std::make_pair(1, 3);  // Bond 1: from 1 to 3 (range [1, 3), 2 elements)
 
     cytnx::Tensor output_tensor;
     tci::shrink(ctx, input_tensor, shrink_map, output_tensor);
@@ -221,8 +221,8 @@ TEST_CASE("tci::shrink API functionality") {
 
     // Shrink to 2x2
     tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
-    shrink_map[0] = std::make_pair(0, 1);
-    shrink_map[1] = std::make_pair(0, 1);
+    shrink_map[0] = std::make_pair(0, 2);  // Range [0, 2), 2 elements
+    shrink_map[1] = std::make_pair(0, 2);  // Range [0, 2), 2 elements
 
     cytnx::Tensor output;
     tci::shrink(ctx, tensor, shrink_map, output);

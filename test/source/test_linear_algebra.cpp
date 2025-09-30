@@ -82,7 +82,8 @@ TEST_CASE("TCI Matrix Decomposition - Truncated SVD") {
     double trunc_err;
 
     // Test truncated SVD implementation
-    CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err, 2, 0.1));
+    // For a 4x4 matrix, num_of_bds_as_row=1 means treat first dimension as row
+    CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, 2, 0.1));
 
     // Verify dimensions (should be truncated to at most chi_max=2)
     auto u_shape = tci::shape(ctx, u);

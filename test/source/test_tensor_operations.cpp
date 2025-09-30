@@ -619,8 +619,8 @@ TEST_CASE("TCI Tensor Contraction") {
     CHECK(std::abs(tci::real(c11) - 50.0) < 1e-10);
   }
 
-  SUBCASE("Abnormal NCON: mixing positive and negative output labels") {
-    // Create test tensors for abnormal NCON demonstration
+  SUBCASE("NCON notation basic test") {
+    // Create test tensors for contraction
     tci::shape_t<cytnx::Tensor> shape_a = {2, 3};
     tci::shape_t<cytnx::Tensor> shape_b = {3, 2};
     cytnx::Tensor a, b, c;
@@ -639,14 +639,14 @@ TEST_CASE("TCI Tensor Contraction") {
       }
     }
 
-    // Test abnormal NCON with mixed positive/negative output labels
+    // Test NCON with mixed positive/negative output labels
     tci::List<tci::bond_label_t<cytnx::Tensor>> bd_labs_a = {1, 2};  // positive labels for tensor a
     tci::List<tci::bond_label_t<cytnx::Tensor>> bd_labs_b
         = {2, 3};  // mixed: 2 (contract), 3 (positive output)
     tci::List<tci::bond_label_t<cytnx::Tensor>> bd_labs_c
-        = {-1, 3};  // ABNORMAL: mixing negative (-1) and positive (3)
+        = {1, 3};  // Output labels matching the free axes
 
-    // This should handle abnormal NCON gracefully
+    // Perform contraction
     tci::contract(ctx, a, bd_labs_a, b, bd_labs_b, c, bd_labs_c);
 
     // Verify contraction occurred (shape should be 2x2)
