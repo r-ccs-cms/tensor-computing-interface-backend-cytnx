@@ -114,24 +114,22 @@ cmake --build build --parallel 8
 
 ## Usage Example
 
+### Basic Usage with cytnx::Tensor
+
 ```cpp
 #include "tci/tci.h"
 #include <cytnx.hpp>
 
 int main() {
     // Create TCI context
-    tci::context_handle_t<cytnx::Tensor> ctx;
-    tci::create_context(ctx);
+    auto ctx = tci::create_context<tci::context_handle_t<cytnx::Tensor>>();
 
     // Create tensors using TCI API
-    tci::shape_t<cytnx::Tensor> shape = {3, 4};
-    cytnx::Tensor a, b, c;
-
-    // Initialize tensors
-    tci::zeros(ctx, shape, a);
-    tci::eye(ctx, 3, b);
+    cytnx::Tensor a = tci::zeros<cytnx::Tensor>(ctx, {3, 4});
+    cytnx::Tensor b = tci::eye<cytnx::Tensor>(ctx, 3);
 
     // Perform operations
+    cytnx::Tensor c;
     tci::copy(ctx, a, c);
     auto norm_val = tci::norm(ctx, b);
 
@@ -143,6 +141,39 @@ int main() {
     return 0;
 }
 ```
+
+### Advanced Usage with CytnxTensor (Type-Safe Arithmetic)
+
+For element-wise arithmetic operations, use `CytnxTensor<ElemT>`:
+
+```cpp
+#include "tci/tci.h"
+#include "tci/cytnx_typed_tensor.h"
+#include "tci/cytnx_typed_tensor_impl.h"
+
+int main() {
+    using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+    using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
+
+    auto ctx = -1;  // CPU context
+
+    // Create and initialize tensor
+    Tensor tensor;
+    tci::allocate(ctx, {100, 100}, tensor);
+
+    // Element-wise operations with direct arithmetic!
+    tci::for_each(ctx, tensor, [](Elem& elem) {
+        elem = std::sqrt(elem) * 2.0;  // Direct arithmetic works!
+        elem = elem / std::abs(elem);  // Normalization
+    });
+
+    return 0;
+}
+```
+
+**Key Difference:**
+- `cytnx::Tensor`: Runtime-typed, `elem_t` is `std::variant` (requires `std::visit`)
+- `CytnxTensor<ElemT>`: Compile-time typed, `elem_t` is `ElemT` (direct arithmetic)
 
 ### Compiling User Code (C++17)
 

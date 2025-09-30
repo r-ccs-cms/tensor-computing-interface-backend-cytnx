@@ -9,8 +9,7 @@ int main() {
   std::cout << "===============\n\n";
 
   // Create context
-  cytnx::Device ctx;
-  tci::create_context(ctx);
+  auto ctx = tci::create_context<tci::context_handle_t<cytnx::Tensor>>();
 
   try {
     // Create random number generator
@@ -67,7 +66,10 @@ int main() {
     std::cout << "\nFirst few singular values:\n";
     for (int i = 0; i < std::min(5, static_cast<int>(S_shape[0])); ++i) {
       auto sv = tci::get_elem(ctx, S_diag, {static_cast<tci::elem_coor_t<cytnx::Tensor>>(i)});
-      std::cout << "S[" << i << "] = " << std::real(sv) << "\n";
+      // Note: elem_t for cytnx::Tensor is std::variant, so we use std::visit
+      std::visit([i](auto&& val) {
+        std::cout << "S[" << i << "] = " << std::real(val) << "\n";
+      }, sv);
     }
 
     // Calculate norms for verification

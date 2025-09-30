@@ -29,18 +29,19 @@ The Tensor Computing Interface (TCI) provides a unified, high-level API for tens
 
 ```cpp
 #include <tci/tci.h>
+#include <tci/cytnx_typed_tensor.h>
+#include <tci/cytnx_typed_tensor_impl.h>
 
-using Ten = cytnx::Tensor;
-using namespace tci;
+// Use CytnxTensor for type-safe operations
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
 
 int main() {
-    // Create context
-    auto ctx = create_context<context_handle_t<Ten>>();
+    // Create context (CPU)
+    int ctx = -1;
 
     // Your tensor operations here
 
-    // Cleanup
-    destroy_context(ctx);
     return 0;
 }
 ```
@@ -81,6 +82,71 @@ using shape_t = tci::shape_t<Ten>;         // Shape type (vector<size_t>)
 using context_handle_t = tci::context_handle_t<Ten>; // Context type
 ```
 
+### CytnxTensor: Type-Safe Tensor Wrapper
+
+TCI provides `CytnxTensor<ElemT>`, a type-safe wrapper around Cytnx tensors that enables direct arithmetic operations on elements.
+
+#### Key Features
+
+- **Direct Arithmetic**: Use `+`, `-`, `*`, `/`, `std::sqrt`, `std::exp`, etc. on elements
+- **Compile-Time Type Safety**: Element type fixed at compile time
+- **Clean Code**: No need for `std::visit` or variant handling
+
+#### Basic Usage
+
+```cpp
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
+
+int ctx = -1;  // CPU context
+
+// Create and allocate tensor
+Tensor tensor;
+tci::allocate(ctx, {100, 100}, tensor);
+
+// Direct element access
+auto elem = tci::get_elem(ctx, tensor, {0, 0});
+// elem is std::complex<double>, can use directly!
+elem = elem * 2.0 + std::complex<double>(1.0, 0.0);
+```
+
+#### Element-wise Operations with for_each
+
+```cpp
+// Apply mathematical functions to all elements
+tci::for_each(ctx, tensor, [](Elem& elem) {
+    elem = std::sqrt(elem) * 2.0;
+    elem = elem + Elem{1.0, 0.5};
+    elem = elem / std::abs(elem);  // Normalize
+});
+
+// Conditional operations
+tci::for_each(ctx, tensor, [](Elem& elem) {
+    double magnitude = std::abs(elem);
+    if (magnitude > 1e-10) {
+        elem = elem / magnitude;  // Normalize non-zero elements
+    } else {
+        elem = Elem{0.0, 0.0};
+    }
+});
+```
+
+#### Available Element Types
+
+```cpp
+// Double precision complex (recommended)
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;  // std::complex<double>
+
+// Single precision complex
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex64>;   // std::complex<float>
+
+// Double precision real
+using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;      // double
+
+// Single precision real
+using Tensor = tci::CytnxTensor<cytnx::cytnx_float>;       // float
+```
+
 ### Memory Management
 
 TCI provides both in-place and out-of-place versions of most operations:
@@ -99,30 +165,40 @@ normalize(ctx, tensor); // Modifies tensor in-place
 ### Tensor Creation
 
 ```cpp
-// Basic constructors
-Ten zeros_tensor = zeros<Ten>(ctx, {3, 4, 5});
-Ten ones_tensor = ones<Ten>(ctx, {2, 3});
-Ten eye_tensor = eye<Ten>(ctx, 4);  // 4x4 identity matrix
-Ten random_tensor = random<Ten>(ctx, {2, 2}, random_generator);
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+int ctx = -1;  // CPU
 
-// From containers
-std::vector<double> data = {1, 2, 3, 4, 5, 6};
-auto coors2idx = [](const auto& coors) { return coors[0] * 3 + coors[1]; };
-Ten from_container = assign_from_container<Ten>(ctx, {2, 3}, data.begin(), coors2idx);
+// Allocate tensor with shape
+Tensor tensor;
+tci::allocate(ctx, {3, 4, 5}, tensor);
+
+// Or use the return-value version
+auto tensor2 = tci::allocate<Tensor>(ctx, {2, 3});
+```
+
+**Note**: For `cytnx::Tensor` (advanced users), use the template-based creation:
+```cpp
+using Ten = cytnx::Tensor;
+auto ctx = tci::create_context<tci::context_handle_t<Ten>>();
+Ten zeros_tensor = tci::zeros<Ten>(ctx, {3, 4, 5});
 ```
 
 ### Information and Access
 
 ```cpp
-// Tensor properties
-auto r = rank(ctx, tensor);           // Number of dimensions
-auto s = shape(ctx, tensor);          // Shape vector
-auto total_size = size(ctx, tensor);  // Total number of elements
-auto memory = size_bytes(ctx, tensor); // Memory usage in bytes
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tci::elem_t<Tensor>;
 
-// Element access
-auto element = get_elem(ctx, tensor, {1, 2, 0});  // Read element
-set_elem(ctx, tensor, {1, 2, 0}, std::complex<double>(3.14, 0));  // Write element
+// Tensor properties (via backend)
+auto shape = tensor.backend.shape();  // Get shape
+auto rank = shape.size();             // Number of dimensions
+
+// Element access through TCI
+auto element = tci::get_elem(ctx, tensor, {1, 2, 0});  // Read element
+// element is Elem (std::complex<double>), can use directly!
+
+// Direct backend access for setting
+tensor.backend.at<Elem>({1, 2, 0}) = Elem{3.14, 0.0};
 ```
 
 ### Linear Algebra
@@ -185,6 +261,39 @@ convert(ctx_cpu, cpu_tensor, ctx_gpu, gpu_tensor);
 ```
 
 ## Advanced Usage
+
+### Using cytnx::Tensor (Dynamic Typing)
+
+For advanced users who need runtime type flexibility or full Cytnx API compatibility, `cytnx::Tensor` is available:
+
+```cpp
+#include <tci/tci.h>
+
+using Ten = cytnx::Tensor;
+auto ctx = tci::create_context<tci::context_handle_t<Ten>>();
+
+// Create tensors with template-based API
+Ten zeros_tensor = tci::zeros<Ten>(ctx, {3, 4});
+Ten eye_tensor = tci::eye<Ten>(ctx, 3);
+
+// Element access returns std::variant
+auto elem = tci::get_elem(ctx, zeros_tensor, {0, 0});
+// elem is std::variant<double, float, complex<double>, complex<float>>
+
+// Must use std::visit for access
+std::visit([](auto&& val) {
+    std::cout << "Element: " << val << std::endl;
+}, elem);
+
+tci::destroy_context(ctx);
+```
+
+**When to use cytnx::Tensor:**
+- You need runtime type flexibility
+- You're integrating with existing Cytnx code
+- You need advanced Cytnx features not yet supported by CytnxTensor
+
+**Limitation:** Cannot use arithmetic operators directly on `elem_t` (it's a variant).
 
 ### Custom Coordinate Mappings
 
@@ -338,126 +447,114 @@ std::cout << "Peak memory usage: " << max_memory / 1024 / 1024 << " MB" << std::
 
 ## Examples
 
-### Complete Example: Matrix Multiplication Chain
+### Complete Example: Element-wise Operations
 
 ```cpp
 #include <tci/tci.h>
+#include <tci/cytnx_typed_tensor.h>
+#include <tci/cytnx_typed_tensor_impl.h>
 #include <iostream>
-#include <vector>
+#include <cmath>
 
-using Ten = cytnx::Tensor;
-using namespace tci;
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tci::elem_t<Tensor>;
 
 int main() {
-    // Setup
-    auto ctx = create_context<context_handle_t<Ten>>();
+    int ctx = -1;  // CPU
 
-    // Create random matrices
-    auto rand_gen = []() { return std::complex<double>(std::rand() / double(RAND_MAX), 0); };
+    // Create tensor
+    Tensor tensor;
+    tci::allocate(ctx, {100, 100}, tensor);
 
-    Ten A = random<Ten>(ctx, {100, 50}, rand_gen);
-    Ten B = random<Ten>(ctx, {50, 30}, rand_gen);
-    Ten C = random<Ten>(ctx, {30, 20}, rand_gen);
+    // Initialize with random-like values
+    for (size_t i = 0; i < 100; ++i) {
+        for (size_t j = 0; j < 100; ++j) {
+            double val = (i * 100 + j) * 0.01;
+            tensor.backend.at<Elem>({i, j}) = Elem{val, val * 0.5};
+        }
+    }
 
-    std::cout << "Computing A(100×50) × B(50×30) × C(30×20)" << std::endl;
+    std::cout << "Applying element-wise operations..." << std::endl;
 
-    // Method 1: Step by step
-    Ten AB, ABC;
-    contract(ctx, A, {1}, B, {0}, AB, {0, 1});    // A × B
-    contract(ctx, AB, {1}, C, {0}, ABC, {0, 1});  // (A × B) × C
+    // Apply mathematical transformations
+    tci::for_each(ctx, tensor, [](Elem& elem) {
+        // Square root
+        elem = std::sqrt(elem);
+        // Scale
+        elem = elem * 2.0;
+        // Add constant
+        elem = elem + Elem{1.0, 0.5};
+    });
 
-    std::cout << "Result shape: " << shape(ctx, ABC)[0] << "×" << shape(ctx, ABC)[1] << std::endl;
-    std::cout << "Result norm: " << norm(ctx, ABC) << std::endl;
+    // Normalize all elements
+    tci::for_each(ctx, tensor, [](Elem& elem) {
+        double mag = std::abs(elem);
+        if (mag > 1e-10) {
+            elem = elem / mag;
+        }
+    });
 
-    // Method 2: Einstein notation
-    Ten ABC_einstein;
-    // This would require a 3-tensor contraction - use step-by-step for now
-
-    // Cleanup
-    destroy_context(ctx);
+    std::cout << "Operations completed!" << std::endl;
 
     return 0;
 }
 ```
 
-### Complete Example: SVD Analysis
+### Complete Example: Conditional Processing
 
 ```cpp
 #include <tci/tci.h>
+#include <tci/cytnx_typed_tensor.h>
+#include <tci/cytnx_typed_tensor_impl.h>
 #include <iostream>
-#include <vector>
-#include <iomanip>
 
-using Ten = cytnx::Tensor;
-using namespace tci;
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tci::elem_t<Tensor>;
 
 int main() {
-    auto ctx = create_context<context_handle_t<Ten>>();
+    int ctx = -1;
 
-    // Create a low-rank matrix (rank 3 in 10×8 matrix)
-    Ten A = zeros<Ten>(ctx, {10, 8});
+    // Create and initialize tensor
+    Tensor data;
+    tci::allocate(ctx, {1000}, data);
 
-    // Fill with rank-3 structure: A = U * S * V^T
-    // where U is 10×3, S is 3×3 diagonal, V^T is 3×8
-
-    auto rand_gen = []() { return std::complex<double>(std::rand() / double(RAND_MAX) - 0.5, 0); };
-    Ten U_small = random<Ten>(ctx, {10, 3}, rand_gen);
-    Ten V_small = random<Ten>(ctx, {3, 8}, rand_gen);
-
-    // Create diagonal matrix with specific singular values
-    Ten S_small = zeros<Ten>(ctx, {3, 3});
-    set_elem(ctx, S_small, {0, 0}, std::complex<double>(10.0, 0));
-    set_elem(ctx, S_small, {1, 1}, std::complex<double>(5.0, 0));
-    set_elem(ctx, S_small, {2, 2}, std::complex<double>(1.0, 0));
-
-    // Construct A = U * S * V
-    Ten US, A_constructed;
-    contract(ctx, U_small, {1}, S_small, {0}, US, {0, 1});
-    contract(ctx, US, {1}, V_small, {0}, A_constructed, {0, 1});
-
-    std::cout << "Constructed 10×8 matrix with known rank-3 structure" << std::endl;
-    std::cout << "Expected singular values: 10.0, 5.0, 1.0, 0.0, ..." << std::endl;
-
-    // Perform SVD
-    Ten U, S, V_dag;
-    svd(ctx, A_constructed, 1, U, S, V_dag);
-
-    std::cout << "SVD Results:" << std::endl;
-    std::cout << "Singular values: ";
-
-    auto s_shape = shape(ctx, S);
-    for (size_t i = 0; i < s_shape[0]; ++i) {
-        auto sv = get_elem(ctx, S, {static_cast<elem_coor_t<Ten>>(i)});
-        std::cout << std::setprecision(3) << sv.real() << " ";
+    // Fill with varying values
+    for (size_t i = 0; i < 1000; ++i) {
+        double x = (i - 500) * 0.01;
+        data.backend.at<Elem>({i}) = Elem{x, x * x};
     }
-    std::cout << std::endl;
 
-    // Test truncated SVD
-    Ten U_trunc, S_trunc, V_dag_trunc;
-    real_t<Ten> trunc_error = 0.0;
+    std::cout << "Processing data with conditional logic..." << std::endl;
 
-    trunc_svd(ctx, A_constructed, 1, U_trunc, S_trunc, V_dag_trunc, trunc_error,
-              1, 3, 1e-10, 1e-14); // Keep only top 3 singular values
+    // Count elements by category
+    size_t small_count = 0, medium_count = 0, large_count = 0;
 
-    std::cout << "Truncated SVD (keeping 3 singular values):" << std::endl;
-    std::cout << "Truncation error: " << trunc_error << std::endl;
+    tci::for_each(ctx, static_cast<const Tensor&>(data),
+                  [&](const Elem& elem) {
+        double magnitude = std::abs(elem);
+        if (magnitude < 1.0) {
+            small_count++;
+        } else if (magnitude < 5.0) {
+            medium_count++;
+        } else {
+            large_count++;
+        }
+    });
 
-    // Verify reconstruction
-    Ten USV_trunc;
-    Ten US_trunc;
-    Ten S_trunc_diag = diag(ctx, S_trunc);
+    std::cout << "Small magnitude: " << small_count << std::endl;
+    std::cout << "Medium magnitude: " << medium_count << std::endl;
+    std::cout << "Large magnitude: " << large_count << std::endl;
 
-    contract(ctx, U_trunc, {1}, S_trunc_diag, {0}, US_trunc, {0, 1});
-    contract(ctx, US_trunc, {1}, V_dag_trunc, {0}, USV_trunc, {0, 1});
+    // Clip extreme values
+    tci::for_each(ctx, data, [](Elem& elem) {
+        double magnitude = std::abs(elem);
+        if (magnitude > 10.0) {
+            elem = elem / magnitude * 10.0;  // Clip to magnitude 10
+        }
+    });
 
-    // Check reconstruction error
-    Ten diff = USV_trunc - A_constructed;  // Should be very small
-    auto reconstruction_error = norm(ctx, diff);
+    std::cout << "Clipped extreme values" << std::endl;
 
-    std::cout << "Reconstruction error: " << reconstruction_error << std::endl;
-    std::cout << "(Should be approximately equal to truncation error)" << std::endl;
-
-    destroy_context(ctx);
     return 0;
 }
 ```

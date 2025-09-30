@@ -7,9 +7,8 @@ int main() {
   std::cout << "TCI Basic Tensor Example\n";
   std::cout << "========================\n\n";
 
-  // Create context
-  cytnx::Device ctx;
-  tci::create_context(ctx);
+  // Create context (CPU = -1)
+  auto ctx = tci::create_context<tci::context_handle_t<cytnx::Tensor>>();
 
   try {
     // Create a 3x4 tensor filled with zeros
@@ -33,7 +32,10 @@ int main() {
 
     // Get element back
     auto elem = tci::get_elem(ctx, a, {1, 2});
-    std::cout << "Element at (1,2): " << elem << "\n";
+    // Note: elem_t for cytnx::Tensor is std::variant, so we use std::visit to print it
+    std::visit([](auto&& val) {
+      std::cout << "Element at (1,2): " << val << "\n";
+    }, elem);
 
     // Create identity matrix
     std::cout << "\nCreating 3x3 identity matrix...\n";

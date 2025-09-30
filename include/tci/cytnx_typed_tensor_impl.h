@@ -51,6 +51,17 @@ namespace tci {
                                        const CytnxTensor<ElemT>& a,
                                        const elem_coors_t<CytnxTensor<ElemT>>& coors);
 
+  // Tensor manipulation functions for CytnxTensor<ElemT>
+  template <typename ElemT, typename Func>
+  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                CytnxTensor<ElemT>& inout,
+                Func&& f);
+
+  template <typename ElemT, typename Func>
+  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                const CytnxTensor<ElemT>& in,
+                Func&& f);
+
   // Template implementations
 
   template <typename ElemT>
@@ -93,6 +104,36 @@ namespace tci {
     elem_t<CytnxTensor<ElemT>> elem;
     get_elem(ctx, a, coors, elem);
     return elem;
+  }
+
+  // for_each implementation for CytnxTensor<ElemT> (mutable version)
+  template <typename ElemT, typename Func>
+  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                CytnxTensor<ElemT>& inout,
+                Func&& f) {
+    auto total_size = static_cast<cytnx::cytnx_uint64>(inout.backend.storage().size());
+
+    // Direct access to underlying storage for performance
+    auto* data = inout.backend.storage().template data<ElemT>();
+
+    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
+      f(data[i]);
+    }
+  }
+
+  // for_each implementation for CytnxTensor<ElemT> (const version)
+  template <typename ElemT, typename Func>
+  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                const CytnxTensor<ElemT>& in,
+                Func&& f) {
+    auto total_size = static_cast<cytnx::cytnx_uint64>(in.backend.storage().size());
+
+    // Direct access to underlying storage for performance
+    const auto* data = in.backend.storage().template data<ElemT>();
+
+    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
+      f(data[i]);
+    }
   }
 
 }  // namespace tci

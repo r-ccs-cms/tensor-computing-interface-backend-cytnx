@@ -50,12 +50,17 @@ void basic_tensor_operations() {
     // Demonstrate element access
     std::cout << "\nElement access:" << std::endl;
     auto eye_elem = get_elem(ctx, eye_tensor, {1, 1});
-    std::cout << "  eye[1,1] = " << eye_elem.real() << " + " << eye_elem.imag() << "i" << std::endl;
+    // Note: elem_t for cytnx::Tensor is std::variant
+    std::visit([](auto&& val) {
+      std::cout << "  eye[1,1] = " << std::real(val) << " + " << std::imag(val) << "i" << std::endl;
+    }, eye_elem);
 
     // Set an element
     set_elem(ctx, zeros_tensor, {1, 2}, std::complex<double>(3.14, 0));
     auto set_elem_val = get_elem(ctx, zeros_tensor, {1, 2});
-    std::cout << "  After setting zeros[1,2] = π: " << set_elem_val.real() << std::endl;
+    std::visit([](auto&& val) {
+      std::cout << "  After setting zeros[1,2] = π: " << std::real(val) << std::endl;
+    }, set_elem_val);
 
     // Cleanup
     destroy_context(ctx);
@@ -100,7 +105,9 @@ void linear_algebra_operations() {
     std::cout << "  Singular values: ";
     for (size_t i = 0; i < shape(ctx, S)[0]; ++i) {
         auto sv = get_elem(ctx, S, {static_cast<elem_coor_t<Ten>>(i)});
-        std::cout << std::setprecision(3) << sv.real() << " ";
+        std::visit([](auto&& val) {
+            std::cout << std::setprecision(3) << std::real(val) << " ";
+        }, sv);
     }
     std::cout << std::endl;
 
@@ -111,7 +118,9 @@ void linear_algebra_operations() {
     std::cout << "  Eigenvalues: ";
     for (size_t i = 0; i < shape(ctx, eigenvals)[0]; ++i) {
         auto ev = get_elem(ctx, eigenvals, {static_cast<elem_coor_t<Ten>>(i)});
-        std::cout << std::setprecision(3) << ev.real() << " ";
+        std::visit([](auto&& val) {
+            std::cout << std::setprecision(3) << std::real(val) << " ";
+        }, ev);
     }
     std::cout << std::endl;
 
