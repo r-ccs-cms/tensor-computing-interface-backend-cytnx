@@ -32,12 +32,11 @@ namespace tci {
   }
 
   namespace {
-    // Abnormal NCON analysis: detect and handle mixed positive/negative output labels
+    // NCON analysis: determine contraction and permutation from labels
     struct NCONAnalysis {
       std::vector<cytnx::cytnx_uint64> contract_axes_a, contract_axes_b;
       std::vector<cytnx::cytnx_uint64> free_axes_a, free_axes_b;
       std::vector<cytnx::cytnx_uint64> output_permutation;
-      bool is_abnormal_ncon = false;
 
       NCONAnalysis(const List<bond_label_t<cytnx::Tensor>>& bd_labs_a,
                    const List<bond_label_t<cytnx::Tensor>>& bd_labs_b,
@@ -53,14 +52,6 @@ namespace tci {
         std::set<cytnx::cytnx_int64> labels_a(bd_labs_a.begin(), bd_labs_a.end());
         std::set<cytnx::cytnx_int64> labels_b(bd_labs_b.begin(), bd_labs_b.end());
         std::set<cytnx::cytnx_int64> labels_c(bd_labs_c.begin(), bd_labs_c.end());
-
-        // Check for abnormal NCON: output labels mixing positive and negative
-        bool has_positive = false, has_negative = false;
-        for (const auto& label : bd_labs_c) {
-          if (label > 0) has_positive = true;
-          if (label < 0) has_negative = true;
-        }
-        is_abnormal_ncon = has_positive && has_negative;
 
         // Find contract axes
         for (size_t i = 0; i < bd_labs_a.size(); ++i) {
