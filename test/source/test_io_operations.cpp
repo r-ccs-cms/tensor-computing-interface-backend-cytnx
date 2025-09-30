@@ -80,10 +80,11 @@ TEST_CASE("tci::save API compliance test") {
 
     std::string filepath = "/tmp/claude/test_tensor.cytnx";
 
-    // This test will fail until save is properly implemented
-    // Currently save function uses storage_adapter which static_asserts for unsupported types
-    CHECK_THROWS_WITH(tci::save(ctx, tensor, filepath),
-                      doctest::Contains("Unsupported storage type"));
+    // Save should succeed for path storage (std::string, std::filesystem::path)
+    CHECK_NOTHROW(tci::save(ctx, tensor, filepath));
+
+    // Verify the file was created
+    CHECK(std::filesystem::exists(filepath));
   }
 
   SUBCASE("Save and verify tensor data integrity") {
@@ -102,9 +103,31 @@ TEST_CASE("tci::save API compliance test") {
 
     std::string filepath = "/tmp/claude/test_identity.cytnx";
 
-    // This will fail until save is implemented
-    CHECK_THROWS_WITH(tci::save(ctx, tensor, filepath),
-                      doctest::Contains("Unsupported storage type"));
+    // Save should succeed
+    CHECK_NOTHROW(tci::save(ctx, tensor, filepath));
+
+    // Verify the file was created
+    CHECK(std::filesystem::exists(filepath));
+
+    // Load back and verify data integrity
+    cytnx::Tensor loaded_tensor;
+    CHECK_NOTHROW(tci::load(ctx, filepath, loaded_tensor));
+
+    // Verify shape
+    auto loaded_shape = tci::shape(ctx, loaded_tensor);
+    CHECK(loaded_shape == shape);
+
+    // Verify values (using the variant-returning version of get_elem)
+    auto val00_variant = tci::get_elem(ctx, loaded_tensor, coord00);
+    auto val11_variant = tci::get_elem(ctx, loaded_tensor, coord11);
+
+    auto val00 = std::get<cytnx::cytnx_complex128>(val00_variant);
+    auto val11 = std::get<cytnx::cytnx_complex128>(val11_variant);
+
+    CHECK(val00.real() == doctest::Approx(1.0));
+    CHECK(val00.imag() == doctest::Approx(0.0));
+    CHECK(val11.real() == doctest::Approx(1.0));
+    CHECK(val11.imag() == doctest::Approx(0.0));
   }
 
   tci::destroy_context(ctx);
@@ -118,28 +141,37 @@ TEST_CASE("tci::load API compliance test") {
     std::string filepath = "/tmp/claude/nonexistent_tensor.cytnx";
     cytnx::Tensor tensor;
 
-    // This test will fail until load is properly implemented
-    // Currently load function uses storage_adapter which static_asserts for unsupported types
+    // Load should throw when file doesn't exist
     CHECK_THROWS_WITH(tci::load(ctx, filepath, tensor),
-                      doctest::Contains("Unsupported storage type"));
+                      doctest::Contains("could not find file"));
   }
 
   SUBCASE("Out-of-place load from file path") {
     std::string filepath = "/tmp/claude/nonexistent_tensor.cytnx";
 
-    // This will fail until load is implemented
+    // Load should throw when file doesn't exist
     CHECK_THROWS_WITH(tci::load<cytnx::Tensor>(ctx, filepath),
-                      doctest::Contains("Unsupported storage type"));
+                      doctest::Contains("could not find file"));
   }
 
   SUBCASE("Load tensor and verify data integrity") {
-    // This test assumes a tensor was previously saved
-    std::string filepath = "/tmp/claude/test_tensor.cytnx";
-    cytnx::Tensor loaded_tensor;
+    // First save a tensor to ensure file exists
+    cytnx::Tensor original_tensor;
+    tci::eye(ctx, 2, original_tensor);
+    std::string filepath = "/tmp/claude/test_tensor_load.cytnx";
+    tci::save(ctx, original_tensor, filepath);
 
-    // This will fail until load is implemented
-    CHECK_THROWS_WITH(tci::load(ctx, filepath, loaded_tensor),
-                      doctest::Contains("Unsupported storage type"));
+    // Now load and verify
+    cytnx::Tensor loaded_tensor;
+    CHECK_NOTHROW(tci::load(ctx, filepath, loaded_tensor));
+
+    // Verify shape matches
+    auto original_shape = tci::shape(ctx, original_tensor);
+    auto loaded_shape = tci::shape(ctx, loaded_tensor);
+    CHECK(original_shape == loaded_shape);
+
+    // Verify the tensors are equal (with small epsilon for floating point comparison)
+    CHECK(tci::eq(ctx, original_tensor, loaded_tensor, cytnx::cytnx_complex128(1e-10, 0.0)));
   }
 
   tci::destroy_context(ctx);
