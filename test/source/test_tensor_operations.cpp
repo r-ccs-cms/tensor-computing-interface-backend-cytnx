@@ -123,6 +123,236 @@ TEST_CASE("TCI Expand Operations") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("TCI Extract Sub Operations") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("Extract sub-tensor - out-of-place version (documentation example)") {
+    // Test based on documentation example: {3, 4, 2} with {{1, 3}, {0, 2}, {0, 2}}
+    cytnx::Tensor a, sub;
+    tci::zeros(ctx, {3, 4, 2}, a);  // create test tensor
+
+    // Set known values for verification
+    tci::set_elem(ctx, a, {1, 0, 0}, cytnx::cytnx_complex128(42.0, 0.0));
+    tci::set_elem(ctx, a, {2, 1, 1}, cytnx::cytnx_complex128(13.0, 0.0));
+
+    // Extract subtensor as per documentation: {{1, 3}, {0, 2}, {0, 2}}
+    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> coor_pairs
+        = {{1, 3}, {0, 2}, {0, 2}};
+    CHECK_NOTHROW(tci::extract_sub(ctx, a, coor_pairs, sub));
+
+    // Verify shape: {3,4,2} -> {2,2,2} (ranges: [1,3), [0,2), [0,2))
+    auto sub_shape = tci::shape(ctx, sub);
+    tci::shape_t<cytnx::Tensor> expected_shape = {2, 2, 2};
+    CHECK(sub_shape == expected_shape);
+
+    // Verify element mapping as in documentation: el1 == el2
+    auto el1 = tci::get_elem(ctx, a, {1, 0, 0});
+    auto el2 = tci::get_elem(ctx, sub, {0, 0, 0});  // (1,0,0) maps to (0,0,0)
+    CHECK(std::abs(tci::real(el1) - tci::real(el2)) < 1e-10);
+    CHECK(std::abs(tci::imag(el1) - tci::imag(el2)) < 1e-10);
+
+    // Verify another element mapping
+    auto el3 = tci::get_elem(ctx, a, {2, 1, 1});
+    auto el4 = tci::get_elem(ctx, sub, {1, 1, 1});  // (2,1,1) maps to (1,1,1)
+    CHECK(std::abs(tci::real(el3) - tci::real(el4)) < 1e-10);
+  }
+
+  SUBCASE("Extract sub-tensor - in-place version") {
+    cytnx::Tensor a;
+    tci::zeros(ctx, {4, 3, 2}, a);
+
+    // Set known values
+    tci::set_elem(ctx, a, {0, 0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, a, {1, 1, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, a, {2, 2, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+
+    // Extract middle portion: {{1, 3}, {1, 3}, {0, 2}}
+    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> coor_pairs
+        = {{1, 3}, {1, 3}, {0, 2}};
+    CHECK_NOTHROW(tci::extract_sub(ctx, a, coor_pairs));
+
+    // Verify new shape: {4,3,2} -> {2,2,2}
+    auto new_shape = tci::shape(ctx, a);
+    tci::shape_t<cytnx::Tensor> expected_shape = {2, 2, 2};
+    CHECK(new_shape == expected_shape);
+
+    // Verify element at (1,1,1) in original is now at (0,0,1)
+    auto extracted_elem = tci::get_elem(ctx, a, {0, 0, 1});
+    CHECK(std::abs(tci::real(extracted_elem) - 2.0) < 1e-10);
+  }
+
+  SUBCASE("Extract single element") {
+    cytnx::Tensor a, sub;
+    tci::zeros(ctx, {3, 3}, a);
+    tci::set_elem(ctx, a, {1, 2}, cytnx::cytnx_complex128(99.0, 0.0));
+
+    // Extract single element at position (1,2)
+    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> coor_pairs
+        = {{1, 2}, {2, 3}};
+    tci::extract_sub(ctx, a, coor_pairs, sub);
+
+    // Should result in 1x1 tensor
+    auto sub_shape = tci::shape(ctx, sub);
+    tci::shape_t<cytnx::Tensor> expected_shape = {1, 1};
+    CHECK(sub_shape == expected_shape);
+
+    auto extracted_val = tci::get_elem(ctx, sub, {0, 0});
+    CHECK(std::abs(tci::real(extracted_val) - 99.0) < 1e-10);
+  }
+
+  SUBCASE("Error handling - invalid coordinate pairs") {
+    cytnx::Tensor a;
+    tci::zeros(ctx, {3, 3}, a);
+
+    // Wrong number of coordinate pairs (tensor is 2D, but 3 pairs provided)
+    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> wrong_count
+        = {{0, 2}, {0, 2}, {0, 1}};
+    CHECK_THROWS(tci::extract_sub(ctx, a, wrong_count));
+
+    // Invalid range (start >= end)
+    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> invalid_range
+        = {{2, 1}, {0, 2}};
+    CHECK_THROWS(tci::extract_sub(ctx, a, invalid_range));
+
+    // Out of bounds range
+    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> out_of_bounds
+        = {{0, 2}, {0, 5}};  // 5 > tensor dimension 3
+    CHECK_THROWS(tci::extract_sub(ctx, a, out_of_bounds));
+  }
+
+  tci::destroy_context(ctx);
+}
+
+TEST_CASE("TCI Replace Sub Operations") {
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("Replace sub-tensor - in-place version (documentation example)") {
+    // Test based on documentation example: {3, 4, 2} with {2, 2, 2} sub at {1, 2, 0}
+    cytnx::Tensor a, sub;
+    tci::zeros(ctx, {3, 4, 2}, a);
+    tci::zeros(ctx, {2, 2, 2}, sub);
+
+    // Set known values in sub-tensor
+    tci::set_elem(ctx, sub, {0, 0, 0}, cytnx::cytnx_complex128(42.0, 0.0));
+    tci::set_elem(ctx, sub, {1, 1, 1}, cytnx::cytnx_complex128(13.0, 0.0));
+
+    // Replace subtensor as per documentation: sub at {1, 2, 0}
+    tci::elem_coors_t<cytnx::Tensor> begin_pt = {1, 2, 0};
+    CHECK_NOTHROW(tci::replace_sub(ctx, a, sub, begin_pt));
+
+    // Verify element mapping as in documentation: el1 == el2
+    auto el1 = tci::get_elem(ctx, a, {1, 2, 0});  // begin_pt position
+    auto el2 = tci::get_elem(ctx, sub, {0, 0, 0}); // sub origin
+    CHECK(std::abs(tci::real(el1) - tci::real(el2)) < 1e-10);
+    CHECK(std::abs(tci::real(el1) - 42.0) < 1e-10);
+
+    // Verify another element mapping
+    auto el3 = tci::get_elem(ctx, a, {2, 3, 1});   // begin_pt + {1,1,1}
+    auto el4 = tci::get_elem(ctx, sub, {1, 1, 1}); // sub position
+    CHECK(std::abs(tci::real(el3) - tci::real(el4)) < 1e-10);
+    CHECK(std::abs(tci::real(el3) - 13.0) < 1e-10);
+
+    // Verify area outside replacement is unchanged (should remain 0)
+    auto unchanged_elem = tci::get_elem(ctx, a, {0, 0, 0});
+    CHECK(std::abs(tci::real(unchanged_elem) - 0.0) < 1e-10);
+  }
+
+  SUBCASE("Replace sub-tensor - out-of-place version") {
+    cytnx::Tensor a, sub, result;
+    tci::zeros(ctx, {4, 4}, a);
+    tci::zeros(ctx, {2, 2}, sub);
+    tci::fill(ctx, {2, 2}, cytnx::cytnx_complex128(1.0, 0.0), sub);  // sub-tensor filled with 1.0
+
+    // Set initial value in main tensor
+    tci::set_elem(ctx, a, {0, 0}, cytnx::cytnx_complex128(99.0, 0.0));
+
+    // Replace 2x2 sub at position (1,1)
+    tci::elem_coors_t<cytnx::Tensor> begin_pt = {1, 1};
+    CHECK_NOTHROW(tci::replace_sub(ctx, a, sub, begin_pt, result));
+
+    // Verify replacement
+    auto replaced_elem1 = tci::get_elem(ctx, result, {1, 1});
+    CHECK(std::abs(tci::real(replaced_elem1) - 1.0) < 1e-10);
+    auto replaced_elem2 = tci::get_elem(ctx, result, {2, 2});
+    CHECK(std::abs(tci::real(replaced_elem2) - 1.0) < 1e-10);
+
+    // Verify original area unchanged
+    auto unchanged_elem = tci::get_elem(ctx, result, {0, 0});
+    CHECK(std::abs(tci::real(unchanged_elem) - 99.0) < 1e-10);
+
+    // Verify original tensor is unmodified
+    auto orig_elem = tci::get_elem(ctx, a, {1, 1});
+    CHECK(std::abs(tci::real(orig_elem) - 0.0) < 1e-10);
+  }
+
+  SUBCASE("Replace single element") {
+    cytnx::Tensor a, sub;
+    tci::zeros(ctx, {3, 3}, a);
+    tci::zeros(ctx, {1, 1}, sub);
+    tci::set_elem(ctx, sub, {0, 0}, cytnx::cytnx_complex128(777.0, 0.0));
+
+    // Replace single element at position (1,2)
+    tci::elem_coors_t<cytnx::Tensor> begin_pt = {1, 2};
+    tci::replace_sub(ctx, a, sub, begin_pt);
+
+    // Verify replacement
+    auto replaced_val = tci::get_elem(ctx, a, {1, 2});
+    CHECK(std::abs(tci::real(replaced_val) - 777.0) < 1e-10);
+
+    // Verify other elements unchanged
+    auto other_elem = tci::get_elem(ctx, a, {0, 0});
+    CHECK(std::abs(tci::real(other_elem) - 0.0) < 1e-10);
+  }
+
+  SUBCASE("Replace with boundary conditions") {
+    cytnx::Tensor a, sub;
+    tci::zeros(ctx, {3, 3}, a);
+    tci::zeros(ctx, {2, 2}, sub);
+    tci::fill(ctx, {2, 2}, cytnx::cytnx_complex128(1.0, 0.0), sub);
+
+    // Replace at boundary (should fit exactly)
+    tci::elem_coors_t<cytnx::Tensor> begin_pt = {1, 1};
+    tci::replace_sub(ctx, a, sub, begin_pt);
+
+    // Verify corner replacement
+    auto corner_elem = tci::get_elem(ctx, a, {2, 2});
+    CHECK(std::abs(tci::real(corner_elem) - 1.0) < 1e-10);
+  }
+
+  SUBCASE("Error handling - dimension mismatch") {
+    cytnx::Tensor a, sub;
+    tci::zeros(ctx, {3, 3}, a);    // 2D tensor
+    tci::zeros(ctx, {2, 2, 2}, sub); // 3D tensor
+
+    tci::elem_coors_t<cytnx::Tensor> begin_pt = {0, 0};
+    CHECK_THROWS(tci::replace_sub(ctx, a, sub, begin_pt));
+  }
+
+  SUBCASE("Error handling - begin_pt dimension mismatch") {
+    cytnx::Tensor a, sub;
+    tci::zeros(ctx, {3, 3}, a);
+    tci::zeros(ctx, {2, 2}, sub);
+
+    // Wrong number of coordinates in begin_pt
+    tci::elem_coors_t<cytnx::Tensor> wrong_begin_pt = {0}; // only 1 coordinate for 2D tensor
+    CHECK_THROWS(tci::replace_sub(ctx, a, sub, wrong_begin_pt));
+  }
+
+  SUBCASE("Error handling - sub-tensor exceeds bounds") {
+    cytnx::Tensor a, sub;
+    tci::zeros(ctx, {3, 3}, a);
+    tci::zeros(ctx, {2, 2}, sub);
+
+    // begin_pt + sub_shape would exceed tensor bounds
+    tci::elem_coors_t<cytnx::Tensor> out_of_bounds_pt = {2, 2}; // 2+2 > 3
+    CHECK_THROWS(tci::replace_sub(ctx, a, sub, out_of_bounds_pt));
+  }
+
+  tci::destroy_context(ctx);
+}
+
 TEST_CASE("TCI Diagonal Operations") {
   tci::context_handle_t<cytnx::Tensor> ctx;
   tci::create_context(ctx);
