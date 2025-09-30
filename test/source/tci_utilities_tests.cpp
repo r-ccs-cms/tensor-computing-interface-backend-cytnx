@@ -62,17 +62,106 @@ TEST_CASE("Miscellaneous Functions") {
     CHECK(eq(ctx, c, zeros<Ten>(ctx, {2, 2}), std::complex<double>(1e-6, 0)));
   }
 
-  SUBCASE("tci::convert") {
+  SUBCASE("tci::convert - same context (copy behavior)") {
+    Ten a = eye<Ten>(ctx, 3);
+    Ten b;
+
+    // Test conversion with same context (should behave like copy)
+    CHECK_NOTHROW(convert(ctx, a, ctx, b));
+
+    // Verify the conversion worked - data should be identical
+    CHECK(eq(ctx, a, b, std::complex<double>(1e-15, 0)));
+
+    // Verify shapes match
+    CHECK(shape(ctx, a) == shape(ctx, b));
+    CHECK(rank(ctx, a) == rank(ctx, b));
+
+    // Verify independence (modify original, copy should be unaffected)
+    Ten original_b = copy(ctx, b);
+    set_elem(ctx, a, {0, 0}, std::complex<double>(999.0, 0.0));
+    CHECK(eq(ctx, b, original_b, std::complex<double>(1e-15, 0)));
+  }
+
+  SUBCASE("tci::convert - different contexts") {
     Ten a = eye<Ten>(ctx, 3);
     Ten b;
 
     auto ctx2 = create_context<context_handle_t<Ten>>();
 
-    // Test conversion (same type, possibly different context)
+    // Test conversion between different contexts
     CHECK_NOTHROW(convert(ctx, a, ctx2, b));
 
     // Verify the conversion worked
     CHECK(eq(ctx, a, b, std::complex<double>(1e-10, 0)));
+
+    // Verify shapes match
+    CHECK(shape(ctx, a) == shape(ctx, b));
+    CHECK(rank(ctx, a) == rank(ctx, b));
+
+    destroy_context(ctx2);
+  }
+
+  SUBCASE("tci::convert - preserve data integrity") {
+    Ten a;
+    zeros(ctx, {2, 3}, a);
+
+    // Set known values
+    set_elem(ctx, a, {0, 0}, std::complex<double>(1.23, 4.56));
+    set_elem(ctx, a, {1, 2}, std::complex<double>(-7.89, 0.12));
+
+    Ten b;
+    auto ctx2 = create_context<context_handle_t<Ten>>();
+
+    // Convert
+    convert(ctx, a, ctx2, b);
+
+    // Verify specific elements preserved
+    auto val1 = get_elem(ctx, b, {0, 0});
+    CHECK(std::abs(tci::real(val1) - 1.23) < 1e-14);
+    CHECK(std::abs(tci::imag(val1) - 4.56) < 1e-14);
+
+    auto val2 = get_elem(ctx, b, {1, 2});
+    CHECK(std::abs(tci::real(val2) - (-7.89)) < 1e-14);
+    CHECK(std::abs(tci::imag(val2) - 0.12) < 1e-14);
+
+    destroy_context(ctx2);
+  }
+
+  SUBCASE("tci::convert - empty tensor") {
+    Ten a, b;
+    auto ctx2 = create_context<context_handle_t<Ten>>();
+
+    // Convert empty tensor
+    CHECK_NOTHROW(convert(ctx, a, ctx2, b));
+
+    // Both should have same characteristics
+    CHECK(shape(ctx, a) == shape(ctx, b));
+    CHECK(rank(ctx, a) == rank(ctx, b));
+
+    destroy_context(ctx2);
+  }
+
+  SUBCASE("tci::convert - large tensor") {
+    Ten a, b;
+    zeros(ctx, {10, 10, 5}, a);
+
+    // Set corner elements
+    set_elem(ctx, a, {0, 0, 0}, std::complex<double>(1.0, 0.0));
+    set_elem(ctx, a, {9, 9, 4}, std::complex<double>(0.0, 1.0));
+
+    auto ctx2 = create_context<context_handle_t<Ten>>();
+    convert(ctx, a, ctx2, b);
+
+    // Verify corner elements preserved
+    auto corner1 = get_elem(ctx, b, {0, 0, 0});
+    CHECK(std::abs(tci::real(corner1) - 1.0) < 1e-14);
+    CHECK(std::abs(tci::imag(corner1) - 0.0) < 1e-14);
+
+    auto corner2 = get_elem(ctx, b, {9, 9, 4});
+    CHECK(std::abs(tci::real(corner2) - 0.0) < 1e-14);
+    CHECK(std::abs(tci::imag(corner2) - 1.0) < 1e-14);
+
+    destroy_context(ctx2);
   }
 
   // Cleanup
