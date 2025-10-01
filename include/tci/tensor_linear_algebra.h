@@ -323,26 +323,36 @@ namespace tci {
                    const List<bond_label_t<cytnx::Tensor>>& bd_labs_b,
                    const List<bond_label_t<cytnx::Tensor>>& bd_labs_c) {
         // Find contracted indices (appear in both a and b, not in c)
-        std::set<cytnx::cytnx_int64> labels_a(bd_labs_a.begin(), bd_labs_a.end());
         std::set<cytnx::cytnx_int64> labels_b(bd_labs_b.begin(), bd_labs_b.end());
         std::set<cytnx::cytnx_int64> labels_c(bd_labs_c.begin(), bd_labs_c.end());
 
-        // Find contract axes
+        // Process tensor a: for each contracted axis, find corresponding axis in b
+        // This ensures contract_axes_a[i] and contract_axes_b[i] have the same label
         for (size_t i = 0; i < bd_labs_a.size(); ++i) {
           auto label = bd_labs_a[i];
           if (labels_b.count(label) && !labels_c.count(label)) {
+            // This axis will be contracted
             contract_axes_a.push_back(static_cast<cytnx::cytnx_uint64>(i));
+            // Find corresponding axis in b with same label
+            for (size_t j = 0; j < bd_labs_b.size(); ++j) {
+              if (bd_labs_b[j] == label) {
+                contract_axes_b.push_back(static_cast<cytnx::cytnx_uint64>(j));
+                break;
+              }
+            }
           } else if (labels_c.count(label)) {
             free_axes_a.push_back(static_cast<cytnx::cytnx_uint64>(i));
           }
         }
 
+        // Process tensor b: find free axes (not contracted)
+        std::set<cytnx::cytnx_uint64> contracted_b_set(contract_axes_b.begin(), contract_axes_b.end());
         for (size_t i = 0; i < bd_labs_b.size(); ++i) {
-          auto label = bd_labs_b[i];
-          if (labels_a.count(label) && !labels_c.count(label)) {
-            contract_axes_b.push_back(static_cast<cytnx::cytnx_uint64>(i));
-          } else if (labels_c.count(label)) {
-            free_axes_b.push_back(static_cast<cytnx::cytnx_uint64>(i));
+          if (contracted_b_set.count(i) == 0) {
+            auto label = bd_labs_b[i];
+            if (labels_c.count(label)) {
+              free_axes_b.push_back(static_cast<cytnx::cytnx_uint64>(i));
+            }
           }
         }
 
