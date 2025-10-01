@@ -9,7 +9,8 @@ TEST_CASE("Template Function const Type Issues") {
   using namespace tci;
 
   // Setup context
-  auto ctx = create_context<context_handle_t<Ten>>();
+  context_handle_t<Ten> ctx;
+  create_context(ctx);
 
   SUBCASE("to_container with const tensor") {
     // Create a 2x2 tensor
@@ -72,7 +73,8 @@ TEST_CASE("CytnxTensor Element Type Conversion") {
   using namespace tci;
 
   // Setup context
-  auto ctx = create_context<context_handle_t<CytnxTensor<cytnx::cytnx_double>>>();
+  context_handle_t<CytnxTensor<cytnx::cytnx_double>> ctx;
+  create_context(ctx);
 
   SUBCASE("double to complex<double> conversion") {
     // Create a double tensor
@@ -85,7 +87,8 @@ TEST_CASE("CytnxTensor Element Type Conversion") {
     set_elem(ctx, real_tensor, {1, 1}, 2.5);
 
     // Convert to complex tensor
-    auto ctx_cplx = create_context<context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>>();
+    context_handle_t<CytnxTensor<cytnx::cytnx_complex128>> ctx_cplx;
+    create_context(ctx_cplx);
     CytnxTensor<cytnx::cytnx_complex128> cplx_tensor;
 
     CHECK_NOTHROW(convert(ctx, real_tensor, ctx_cplx, cplx_tensor));
@@ -113,7 +116,8 @@ TEST_CASE("CytnxTensor Element Type Conversion") {
     eye(ctx, 3, float_tensor);
 
     // Convert to double tensor
-    auto ctx_double = create_context<context_handle_t<CytnxTensor<cytnx::cytnx_double>>>();
+    context_handle_t<CytnxTensor<cytnx::cytnx_double>> ctx_double;
+    create_context(ctx_double);
     CytnxTensor<cytnx::cytnx_double> double_tensor;
 
     CHECK_NOTHROW(convert(ctx, float_tensor, ctx_double, double_tensor));
@@ -141,7 +145,8 @@ TEST_CASE("CytnxTensor Element Type Conversion") {
     set_elem(ctx, cplx_float_tensor, {1, 2}, cytnx::cytnx_complex64(3.0f, 4.0f));
 
     // Convert to complex double tensor
-    auto ctx_cplx_double = create_context<context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>>();
+    context_handle_t<CytnxTensor<cytnx::cytnx_complex128>> ctx_cplx_double;
+    create_context(ctx_cplx_double);
     CytnxTensor<cytnx::cytnx_complex128> cplx_double_tensor;
 
     CHECK_NOTHROW(convert(ctx, cplx_float_tensor, ctx_cplx_double, cplx_double_tensor));
@@ -164,7 +169,8 @@ TEST_CASE("CytnxTensor Element Type Conversion") {
     fill(ctx, shape, 3.14, tensor1);
 
     // Convert to same type
-    auto ctx2 = create_context<context_handle_t<CytnxTensor<cytnx::cytnx_double>>>();
+    context_handle_t<CytnxTensor<cytnx::cytnx_double>> ctx2;
+    create_context(ctx2);
     CytnxTensor<cytnx::cytnx_double> tensor2;
 
     CHECK_NOTHROW(convert(ctx, tensor1, ctx2, tensor2));

@@ -10,7 +10,8 @@ TEST_CASE("Miscellaneous Functions") {
   using namespace tci;
 
   // Setup context
-  auto ctx = create_context<context_handle_t<Ten>>();
+  context_handle_t<Ten> ctx;
+  create_context(ctx);
 
   SUBCASE("tci::to_container") {
     // Create a 2x3 tensor with known values
@@ -86,7 +87,8 @@ TEST_CASE("Miscellaneous Functions") {
     Ten a = eye<Ten>(ctx, 3);
     Ten b;
 
-    auto ctx2 = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx2;
+    create_context(ctx2);
 
     // Test conversion between different contexts
     CHECK_NOTHROW(convert(ctx, a, ctx2, b));
@@ -110,7 +112,8 @@ TEST_CASE("Miscellaneous Functions") {
     set_elem(ctx, a, {1, 2}, std::complex<double>(-7.89, 0.12));
 
     Ten b;
-    auto ctx2 = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx2;
+    create_context(ctx2);
 
     // Convert
     convert(ctx, a, ctx2, b);
@@ -129,7 +132,8 @@ TEST_CASE("Miscellaneous Functions") {
 
   SUBCASE("tci::convert - empty tensor") {
     Ten a, b;
-    auto ctx2 = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx2;
+    create_context(ctx2);
 
     // Convert empty tensor
     CHECK_NOTHROW(convert(ctx, a, ctx2, b));
@@ -149,7 +153,8 @@ TEST_CASE("Miscellaneous Functions") {
     set_elem(ctx, a, {0, 0, 0}, std::complex<double>(1.0, 0.0));
     set_elem(ctx, a, {9, 9, 4}, std::complex<double>(0.0, 1.0));
 
-    auto ctx2 = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx2;
+    create_context(ctx2);
     convert(ctx, a, ctx2, b);
 
     // Verify corner elements preserved
@@ -208,7 +213,8 @@ TEST_CASE("Integration with TCI_VERBOSE") {
   using namespace tci;
 
   // Setup context
-  auto ctx = create_context<context_handle_t<Ten>>();
+  context_handle_t<Ten> ctx;
+  create_context(ctx);
 
   SUBCASE("Verbose instrumentation in miscellaneous functions") {
     // These tests verify that functions with TCI_VERBOSE instrumentation
@@ -225,7 +231,8 @@ TEST_CASE("Integration with TCI_VERBOSE") {
 
     // Test convert with instrumentation
     Ten c;
-    auto ctx2 = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx2;
+    create_context(ctx2);
     CHECK_NOTHROW(convert(ctx, a, ctx2, c));
 
     // Test to_container with instrumentation

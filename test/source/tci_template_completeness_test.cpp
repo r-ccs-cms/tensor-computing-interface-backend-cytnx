@@ -9,7 +9,8 @@ TEST_CASE("Template Function Completeness Test") {
   using namespace tci;
 
   // Setup context
-  auto ctx = create_context<context_handle_t<Ten>>();
+  context_handle_t<Ten> ctx;
+  create_context(ctx);
 
   SUBCASE("for_each_with_coors with lambda function") {
     // Create a 2x2 tensor

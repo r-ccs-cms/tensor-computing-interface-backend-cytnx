@@ -11,7 +11,8 @@ TEST_CASE("CytnxTensor - Basic manipulation functions") {
   using Elem = cytnx::cytnx_complex128;
   using Real = double;
 
-  auto ctx = -1;
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
 
   SUBCASE("copy function") {
     Tensor a, b;
@@ -91,7 +92,8 @@ TEST_CASE("CytnxTensor - Linear algebra functions") {
   using Elem = cytnx::cytnx_complex128;
   using Real = double;
 
-  auto ctx = -1;
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
 
   SUBCASE("norm and normalize") {
     Tensor a;
@@ -202,7 +204,8 @@ TEST_CASE("CytnxTensor - Contract and trace") {
   using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
   using Elem = cytnx::cytnx_complex128;
 
-  auto ctx = -1;
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
 
   SUBCASE("contract simple") {
     Tensor a, b, c;
@@ -230,5 +233,85 @@ TEST_CASE("CytnxTensor - Contract and trace") {
     auto s = tci::shape(ctx, b);
     CHECK(s.size() == 1);
     CHECK(s[0] == 4);
+  }
+}
+
+TEST_CASE("CytnxTensor - Utility functions") {
+  using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+  using RealTensor = tci::CytnxTensor<cytnx::cytnx_double>;
+  using Elem = cytnx::cytnx_complex128;
+  using Real = double;
+
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("size_bytes function") {
+    Tensor a;
+    tci::zeros(ctx, {2, 3, 4}, a);
+
+    auto bytes = tci::size_bytes(ctx, a);
+    auto expected = 2 * 3 * 4 * sizeof(Elem);
+    CHECK(bytes == expected);
+  }
+
+  SUBCASE("eq function - equal tensors") {
+    Tensor a, b;
+    tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), a);
+    tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), b);
+
+    CHECK(tci::eq(ctx, a, b, Elem(1e-10, 0)));
+  }
+
+  SUBCASE("eq function - different values") {
+    Tensor a, b;
+    tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), a);
+    tci::fill(ctx, {2, 3}, Elem(1.6, 2.5), b);
+
+    CHECK_FALSE(tci::eq(ctx, a, b, Elem(1e-10, 0)));
+  }
+
+  SUBCASE("eq function - different shapes") {
+    Tensor a, b;
+    tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), a);
+    tci::fill(ctx, {3, 2}, Elem(1.5, 2.5), b);
+
+    CHECK_FALSE(tci::eq(ctx, a, b, Elem(1e-10, 0)));
+  }
+
+  SUBCASE("eq function - within epsilon") {
+    Tensor a, b;
+    tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), a);
+    tci::fill(ctx, {2, 3}, Elem(1.5 + 1e-8, 2.5), b);
+
+    CHECK(tci::eq(ctx, a, b, Elem(1e-7, 0)));
+    CHECK_FALSE(tci::eq(ctx, a, b, Elem(1e-9, 0)));
+  }
+
+  SUBCASE("to_cplx function - real to complex") {
+    RealTensor real_in;
+    Tensor complex_out;
+    tci::fill(ctx, {2, 3}, Real(3.5), real_in);
+
+    tci::to_cplx(ctx, real_in, complex_out);
+
+    auto s = tci::shape(ctx, complex_out);
+    CHECK(s.size() == 2);
+    CHECK(s[0] == 2);
+    CHECK(s[1] == 3);
+
+    auto elem = tci::get_elem(ctx, complex_out, {1, 1});
+    CHECK(std::real(elem) == doctest::Approx(3.5));
+    CHECK(std::imag(elem) == doctest::Approx(0.0));
+  }
+
+  SUBCASE("to_cplx function - complex to complex") {
+    Tensor complex_in, complex_out;
+    tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), complex_in);
+
+    tci::to_cplx(ctx, complex_in, complex_out);
+
+    auto elem = tci::get_elem(ctx, complex_out, {0, 0});
+    CHECK(std::real(elem) == doctest::Approx(1.5));
+    CHECK(std::imag(elem) == doctest::Approx(2.5));
   }
 }
