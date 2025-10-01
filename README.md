@@ -72,7 +72,7 @@ cd tensor-computing-interface-backend-cytnx
 ### 2. Install Dependencies (macOS with Homebrew)
 
 ```bash
-brew install openblas llvm libomp cmake boost arpack
+brew install openblas llvm libomp cmake boost arpack ninja
 ```
 
 llvm (LLVM Clang) is optional; Apple Clang may work.
@@ -172,6 +172,7 @@ int main() {
 ```
 
 **Key Difference:**
+
 - `cytnx::Tensor`: Runtime-typed, `elem_t` is `std::variant` (requires `std::visit`)
 - `CytnxTensor<ElemT>`: Compile-time typed, `elem_t` is `ElemT` (direct arithmetic)
 
