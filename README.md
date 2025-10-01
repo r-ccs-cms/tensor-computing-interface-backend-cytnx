@@ -148,14 +148,12 @@ For element-wise arithmetic operations, use `CytnxTensor<ElemT>`:
 
 ```cpp
 #include "tci/tci.h"
-#include "tci/cytnx_typed_tensor.h"
-#include "tci/cytnx_typed_tensor_impl.h"
 
 int main() {
     using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
     using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
-
-    auto ctx = -1;  // CPU context
+    tco::context_handle_t<Tensor> ctx;
+    create_context(ctx)
 
     // Create and initialize tensor
     Tensor tensor;

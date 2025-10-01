@@ -2,7 +2,6 @@
 
 #include "tci/construction_destruction.h"
 #include "tci/cytnx_tensor_traits.h"
-#include "tci/cytnx_typed_tensor_impl.h"
 #include "tci/debugging.h"
 #include "tci/io_operations.h"
 #include "tci/miscellaneous.h"
@@ -11,6 +10,7 @@
 #include "tci/tensor_manipulation.h"
 #include "tci/tensor_traits.h"
 #include "tci/variant_helpers.h"
+#include "tci/cytnx_typed_tensor_impl.h"
 
 /**
  * @file tci.h

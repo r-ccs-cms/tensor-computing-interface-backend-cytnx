@@ -192,9 +192,22 @@ namespace tci {
   }
 
   template <typename ElemT>
+  rank_t<CytnxTensor<ElemT>> rank(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                   const CytnxTensor<ElemT>& a) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    return tci::rank(backend_ctx, a.backend);
+  }
+
+  template <typename ElemT>
   ten_size_t<CytnxTensor<ElemT>> size(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                        const CytnxTensor<ElemT>& a) {
     return static_cast<ten_size_t<CytnxTensor<ElemT>>>(a.backend.storage().size());
+  }
+
+  template <typename ElemT>
+  ten_size_t<CytnxTensor<ElemT>> size_bytes(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                             const CytnxTensor<ElemT>& a) {
+    return tci::size_bytes(ctx, a.backend);
   }
 
   template <typename ElemT, typename RandNumGen>
@@ -322,7 +335,9 @@ namespace tci {
             real_ten_t<CytnxTensor<ElemT>>& out) {
     if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
                   std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
-      out.backend = in.backend.real();
+      // Clone first since real() is not const
+      auto temp = in.backend.clone();
+      out.backend = temp.real();
     } else {
       // For real tensors, just copy
       out.backend = in.backend.clone();
@@ -344,7 +359,9 @@ namespace tci {
             real_ten_t<CytnxTensor<ElemT>>& out) {
     if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
                   std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
-      out.backend = in.backend.imag();
+      // Clone first since imag() is not const
+      auto temp = in.backend.clone();
+      out.backend = temp.imag();
     } else {
       // For real tensors, return zeros
       allocate(ctx, shape(ctx, in), out);
@@ -358,6 +375,16 @@ namespace tci {
     real_ten_t<CytnxTensor<ElemT>> result;
     imag(ctx, in, result);
     return result;
+  }
+
+  // Convert real tensor to complex tensor
+  template <typename ElemT>
+  void to_cplx(context_handle_t<CytnxTensor<ElemT>>& ctx,
+               const CytnxTensor<ElemT>& in,
+               cplx_ten_t<CytnxTensor<ElemT>>& out) {
+    cytnx::Tensor out_backend;
+    tci::to_cplx(ctx, in.backend, out_backend);
+    out.backend = out_backend;
   }
 
   // Norm calculation
@@ -414,9 +441,8 @@ namespace tci {
     auto r = inout.backend.shape().size();
     if (r == 1) {
       // Create diagonal matrix from vector
-      auto dim = inout.backend.shape()[0];
-      auto result = cytnx::zeros({static_cast<cytnx::cytnx_int64>(dim),
-                                   static_cast<cytnx::cytnx_int64>(dim)},
+      auto dim = static_cast<cytnx::cytnx_uint64>(inout.backend.shape()[0]);
+      auto result = cytnx::zeros({dim, dim},
                                   detail::elem_to_cytnx_type<ElemT>(),
                                   ctx);
 
@@ -430,8 +456,9 @@ namespace tci {
       inout.backend = result;
     } else if (r == 2) {
       // Extract diagonal from matrix
-      auto dim = std::min(inout.backend.shape()[0], inout.backend.shape()[1]);
-      auto result = cytnx::zeros({static_cast<cytnx::cytnx_int64>(dim)},
+      auto dim = static_cast<cytnx::cytnx_uint64>(
+          std::min(inout.backend.shape()[0], inout.backend.shape()[1]));
+      auto result = cytnx::zeros({dim},
                                   detail::elem_to_cytnx_type<ElemT>(),
                                   ctx);
 
@@ -494,35 +521,8 @@ namespace tci {
                 const std::vector<bond_label_t<CytnxTensor<ElemT>>>& bd_labs_b,
                 CytnxTensor<ElemT>& c,
                 const std::vector<bond_label_t<CytnxTensor<ElemT>>>& bd_labs_c) {
-    // Convert to string labels for Cytnx Contract
-    std::string str_a, str_b, str_c;
-
-    // Map integer labels to characters
-    std::map<bond_label_t<CytnxTensor<ElemT>>, char> label_map;
-    char current_char = 'a';
-
-    for (auto label : bd_labs_a) {
-      if (label_map.find(label) == label_map.end()) {
-        label_map[label] = current_char++;
-      }
-      str_a += label_map[label];
-    }
-
-    for (auto label : bd_labs_b) {
-      if (label_map.find(label) == label_map.end()) {
-        label_map[label] = current_char++;
-      }
-      str_b += label_map[label];
-    }
-
-    for (auto label : bd_labs_c) {
-      if (label_map.find(label) == label_map.end()) {
-        label_map[label] = current_char++;
-      }
-      str_c += label_map[label];
-    }
-
-    c.backend = cytnx::Contract(a.backend, b.backend, str_a, str_b, str_c);
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::contract(backend_ctx, a.backend, bd_labs_a, b.backend, bd_labs_b, c.backend, bd_labs_c);
   }
 
   // Linear combination
@@ -828,6 +828,17 @@ namespace tci {
       v_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
     }
     v_dag.backend = vt_backend.reshape(v_cytnx_shape);
+  }
+
+  // Tensor equality check with epsilon tolerance
+  template <typename ElemT>
+  bool eq(context_handle_t<CytnxTensor<ElemT>>& ctx,
+          const CytnxTensor<ElemT>& a,
+          const CytnxTensor<ElemT>& b,
+          const elem_t<CytnxTensor<ElemT>> epsilon) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    elem_t<cytnx::Tensor> epsilon_variant = epsilon;
+    return tci::eq(backend_ctx, a.backend, b.backend, epsilon_variant);
   }
 
 }  // namespace tci

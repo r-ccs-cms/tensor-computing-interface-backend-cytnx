@@ -120,24 +120,6 @@ namespace tci {
     out = cytnx::linalg::Conj(in);
   }
 
-  template <> void to_cplx(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
-                           cplx_ten_t<cytnx::Tensor>& out) {
-    if (in.dtype() == cytnx::Type.ComplexDouble || in.dtype() == cytnx::Type.ComplexFloat) {
-      // Already complex, just copy
-      out = in.clone();
-    } else {
-      // Convert real to complex
-      out = in.astype(cytnx::Type.ComplexDouble);
-    }
-  }
-
-  template <>
-  cplx_ten_t<cytnx::Tensor> to_cplx(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in) {
-    cplx_ten_t<cytnx::Tensor> result;
-    to_cplx(ctx, in, result);
-    return result;
-  }
-
   template <> void real(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
                         real_ten_t<cytnx::Tensor>& out) {
     if (in.dtype() == cytnx::Type.ComplexDouble || in.dtype() == cytnx::Type.ComplexFloat) {

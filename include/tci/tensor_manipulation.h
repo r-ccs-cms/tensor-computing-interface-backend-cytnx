@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tci/tensor_traits.h"
+#include <cytnx.hpp>
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/read_only_getters.h"
 
@@ -442,6 +443,25 @@ namespace tci {
     coords.reserve(shape.size());
 
     detail::for_each_recursive_const(ctx, in, std::forward<Func>(f), 0, coords, shape);
+  }
+
+  // Implementation for to_cplx (moved from .cpp for template visibility)
+  template <> inline void to_cplx(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
+                           cplx_ten_t<cytnx::Tensor>& out) {
+    if (in.dtype() == cytnx::Type.ComplexDouble || in.dtype() == cytnx::Type.ComplexFloat) {
+      // Already complex, just copy
+      out = in.clone();
+    } else {
+      // Convert real to complex
+      out = in.astype(cytnx::Type.ComplexDouble);
+    }
+  }
+
+  template <>
+  inline cplx_ten_t<cytnx::Tensor> to_cplx(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in) {
+    cplx_ten_t<cytnx::Tensor> result;
+    to_cplx(ctx, in, result);
+    return result;
   }
 
 }  // namespace tci
