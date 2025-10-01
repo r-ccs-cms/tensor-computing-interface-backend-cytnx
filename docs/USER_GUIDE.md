@@ -29,19 +29,19 @@ The Tensor Computing Interface (TCI) provides a unified, high-level API for tens
 
 ```cpp
 #include <tci/tci.h>
-#include <tci/cytnx_typed_tensor.h>
-#include <tci/cytnx_typed_tensor_impl.h>
 
 // Use CytnxTensor for type-safe operations
 using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
 
 int main() {
-    // Create context (CPU)
-    int ctx = -1;
+    // Create context (CPU only in current implementation)
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
 
     // Your tensor operations here
 
+    tci::destroy_context(ctx);
     return 0;
 }
 ```
@@ -54,21 +54,25 @@ Set these before running your program:
 # Enable debug output
 export TCI_VERBOSE=1  # Function calls only
 export TCI_VERBOSE=2  # Function calls + timing
-
-# macOS: Required for proper library linking
-source setup_env.sh   # Sets up OpenBLAS, LLVM, libomp paths
 ```
 
 ## Core Concepts
 
 ### Contexts
 
-All TCI operations require a context handle that manages the underlying tensor library state:
+TCI operations require a context handle. In the Cytnx backend implementation, the context is simply an integer representing the device ID (CPU=-1, GPU=0,1,2...).
+
+**Note:** The current implementation only supports CPU context. GPU context creation is not yet implemented.
 
 ```cpp
-auto ctx = create_context<context_handle_t<Ten>>();
+// Create CPU context (specify backend tensor type)
+tci::context_handle_t<cytnx::Tensor> ctx;
+tci::create_context(ctx);
+
 // Use ctx for all operations
-destroy_context(ctx);
+// (In current implementation, ctx is rarely used by functions)
+
+tci::destroy_context(ctx);
 ```
 
 ### Type System
@@ -98,7 +102,8 @@ TCI provides `CytnxTensor<ElemT>`, a type-safe wrapper around Cytnx tensors that
 using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
 
-int ctx = -1;  // CPU context
+tci::context_handle_t<cytnx::Tensor> ctx;
+tci::create_context(ctx);
 
 // Create and allocate tensor
 Tensor tensor;
@@ -107,7 +112,7 @@ tci::allocate(ctx, {100, 100}, tensor);
 // Direct element access
 auto elem = tci::get_elem(ctx, tensor, {0, 0});
 // elem is std::complex<double>, can use directly!
-elem = elem * 2.0 + std::complex<double>(1.0, 0.0);
+elem = elem * 2.0 + Elem{1.0, 0.0};
 ```
 
 #### Element-wise Operations with for_each
@@ -166,7 +171,8 @@ normalize(ctx, tensor); // Modifies tensor in-place
 
 ```cpp
 using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-int ctx = -1;  // CPU
+tci::context_handle_t<cytnx::Tensor> ctx;
+tci::create_context(ctx);
 
 // Allocate tensor with shape
 Tensor tensor;
@@ -179,7 +185,8 @@ auto tensor2 = tci::allocate<Tensor>(ctx, {2, 3});
 **Note**: For `cytnx::Tensor` (advanced users), use the template-based creation:
 ```cpp
 using Ten = cytnx::Tensor;
-auto ctx = tci::create_context<tci::context_handle_t<Ten>>();
+tci::context_handle_t<Ten> ctx;
+tci::create_context(ctx);
 Ten zeros_tensor = tci::zeros<Ten>(ctx, {3, 4, 5});
 ```
 
@@ -270,7 +277,8 @@ For advanced users who need runtime type flexibility or full Cytnx API compatibi
 #include <tci/tci.h>
 
 using Ten = cytnx::Tensor;
-auto ctx = tci::create_context<tci::context_handle_t<Ten>>();
+tci::context_handle_t<Ten> ctx;
+tci::create_context(ctx);
 
 // Create tensors with template-based API
 Ten zeros_tensor = tci::zeros<Ten>(ctx, {3, 4});
@@ -280,7 +288,7 @@ Ten eye_tensor = tci::eye<Ten>(ctx, 3);
 auto elem = tci::get_elem(ctx, zeros_tensor, {0, 0});
 // elem is std::variant<double, float, complex<double>, complex<float>>
 
-// Must use std::visit for access
+// Must use std::visit for arithmetic operations
 std::visit([](auto&& val) {
     std::cout << "Element: " << val << std::endl;
 }, elem);
@@ -293,7 +301,7 @@ tci::destroy_context(ctx);
 - You're integrating with existing Cytnx code
 - You need advanced Cytnx features not yet supported by CytnxTensor
 
-**Limitation:** Cannot use arithmetic operators directly on `elem_t` (it's a variant).
+**Limitation:** When using `cytnx::Tensor`, `elem_t` is `std::variant`. You cannot use arithmetic operators directly on the variant - you must use `std::visit` to access the underlying value.
 
 ### Custom Coordinate Mappings
 
@@ -314,17 +322,30 @@ auto col_major = [A, B](const elem_coors_t<Ten>& coors) -> std::ptrdiff_t {
 ### Working with Complex Numbers
 
 ```cpp
-// TCI uses std::complex<double> for all elements
-Ten complex_tensor = zeros<Ten>(ctx, {2, 2});
-set_elem(ctx, complex_tensor, {0, 0}, std::complex<double>(1.0, 2.0));
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tci::elem_t<Tensor>;
+tci::context_handle_t<cytnx::Tensor> ctx;
+tci::create_context(ctx);
+
+// Create complex tensor
+Tensor complex_tensor;
+tci::allocate(ctx, {2, 2}, complex_tensor);
+
+// Set complex values using Elem type alias (recommended)
+complex_tensor.backend.at<Elem>({0, 0}) = Elem{1.0, 2.0};
+
+// For cytnx::Tensor (dynamic typing):
+using Ten = cytnx::Tensor;
+Ten ten_complex = tci::zeros<Ten>(ctx, {2, 2});
+tci::set_elem(ctx, ten_complex, {0, 0}, std::complex<double>(1.0, 2.0));
 
 // Extract real/imaginary parts
-Ten real_part = real(ctx, complex_tensor);
-Ten imag_part = imag(ctx, complex_tensor);
+Ten real_part = tci::real(ctx, ten_complex);
+Ten imag_part = tci::imag(ctx, ten_complex);
 
 // Convert real to complex
-Ten real_tensor = ones<Ten>(ctx, {2, 2});
-Ten as_complex = to_cplx(ctx, real_tensor);
+Ten real_tensor = tci::ones<Ten>(ctx, {2, 2});
+Ten as_complex = tci::to_cplx(ctx, real_tensor);
 ```
 
 ### Error Handling
@@ -375,18 +396,11 @@ std::cout << "Memory usage: " << memory_usage / 1024 / 1024 << " MB" << std::end
 
 ### GPU Acceleration
 
-```cpp
-// Create GPU context (device ID >= 0)
-auto gpu_ctx = create_context<context_handle_t<Ten>>();
-// Note: GPU context creation depends on Cytnx configuration
+**Note:** GPU support is not yet implemented in the current version of TCI with Cytnx backend.
 
-// Transfer tensors between CPU and GPU
-Ten gpu_tensor;
-convert(cpu_ctx, cpu_tensor, gpu_ctx, gpu_tensor);
-
-// Operations on GPU tensors automatically use GPU acceleration
-auto result = contract(gpu_ctx, gpu_A, {1}, gpu_B, {0}, gpu_result, {0, 1});
-```
+- `create_context()` always returns CPU context (-1)
+- GPU context creation is planned for future releases
+- The `convert()` function has device transfer capability, but GPU contexts are not available yet
 
 ## Debugging and Profiling
 
@@ -451,8 +465,6 @@ std::cout << "Peak memory usage: " << max_memory / 1024 / 1024 << " MB" << std::
 
 ```cpp
 #include <tci/tci.h>
-#include <tci/cytnx_typed_tensor.h>
-#include <tci/cytnx_typed_tensor_impl.h>
 #include <iostream>
 #include <cmath>
 
@@ -460,7 +472,8 @@ using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using Elem = tci::elem_t<Tensor>;
 
 int main() {
-    int ctx = -1;  // CPU
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
 
     // Create tensor
     Tensor tensor;
@@ -496,6 +509,7 @@ int main() {
 
     std::cout << "Operations completed!" << std::endl;
 
+    tci::destroy_context(ctx);
     return 0;
 }
 ```
@@ -504,15 +518,14 @@ int main() {
 
 ```cpp
 #include <tci/tci.h>
-#include <tci/cytnx_typed_tensor.h>
-#include <tci/cytnx_typed_tensor_impl.h>
 #include <iostream>
 
 using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using Elem = tci::elem_t<Tensor>;
 
 int main() {
-    int ctx = -1;
+    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::create_context(ctx);
 
     // Create and initialize tensor
     Tensor data;
@@ -555,6 +568,7 @@ int main() {
 
     std::cout << "Clipped extreme values" << std::endl;
 
+    tci::destroy_context(ctx);
     return 0;
 }
 ```

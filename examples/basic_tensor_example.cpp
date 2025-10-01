@@ -7,8 +7,9 @@ int main() {
   std::cout << "TCI Basic Tensor Example\n";
   std::cout << "========================\n\n";
 
-  // Create context (CPU = -1)
-  auto ctx = tci::create_context<tci::context_handle_t<cytnx::Tensor>>();
+  // Create context
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
 
   try {
     // Create a 3x4 tensor filled with zeros

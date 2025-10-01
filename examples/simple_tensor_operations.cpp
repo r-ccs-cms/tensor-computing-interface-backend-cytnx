@@ -24,7 +24,8 @@ void basic_tensor_operations() {
     std::cout << "\n=== Basic Tensor Operations ===" << std::endl;
 
     // Create context
-    auto ctx = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx;
+    create_context(ctx);
 
     // Create tensors of different types
     Ten zeros_tensor = zeros<Ten>(ctx, {3, 4});
@@ -72,7 +73,8 @@ void basic_tensor_operations() {
 void linear_algebra_operations() {
     std::cout << "\n=== Linear Algebra Operations ===" << std::endl;
 
-    auto ctx = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx;
+    create_context(ctx);
 
     // Create a test matrix
     Ten A = zeros<Ten>(ctx, {3, 3});
@@ -133,7 +135,8 @@ void linear_algebra_operations() {
 void tensor_contraction_example() {
     std::cout << "\n=== Tensor Contractions ===" << std::endl;
 
-    auto ctx = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx;
+    create_context(ctx);
 
     // Create tensors for contraction
     std::mt19937 rng2(std::random_device{}());
@@ -178,7 +181,8 @@ void tensor_contraction_example() {
 void io_and_utilities() {
     std::cout << "\n=== I/O and Utility Functions ===" << std::endl;
 
-    auto ctx = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx;
+    create_context(ctx);
 
     // Create a test tensor
     Ten test_tensor = eye<Ten>(ctx, 3);
@@ -226,7 +230,8 @@ void demonstrate_verbose_output() {
     std::cout << "  TCI_VERBOSE=1  - Function calls" << std::endl;
     std::cout << "  TCI_VERBOSE=2  - Function calls + timing" << std::endl;
 
-    auto ctx = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx;
+    create_context(ctx);
 
     // These operations will show debug output if TCI_VERBOSE is set
     Ten A = eye<Ten>(ctx, 2);
@@ -237,7 +242,8 @@ void demonstrate_verbose_output() {
     bool equal = eq(ctx, A, B, std::complex<double>(1e-6, 0));
 
     Ten C;
-    auto ctx2 = create_context<context_handle_t<Ten>>();
+    context_handle_t<Ten> ctx2;
+    create_context(ctx2);
     convert(ctx, A, ctx2, C);
 
     destroy_context(ctx2);
