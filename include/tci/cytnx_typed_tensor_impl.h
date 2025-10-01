@@ -191,4 +191,119 @@ namespace tci {
     return result;
   }
 
+  template <typename ElemT>
+  ten_size_t<CytnxTensor<ElemT>> size(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                       const CytnxTensor<ElemT>& a) {
+    return static_cast<ten_size_t<CytnxTensor<ElemT>>>(a.backend.storage().size());
+  }
+
+  template <typename ElemT, typename RandNumGen>
+  void random(context_handle_t<CytnxTensor<ElemT>>& ctx,
+              const shape_t<CytnxTensor<ElemT>>& shape,
+              RandNumGen&& gen,
+              CytnxTensor<ElemT>& a) {
+    allocate(ctx, shape, a);
+    auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
+    auto* data = a.backend.storage().template data<ElemT>();
+
+    std::uniform_real_distribution<real_t<CytnxTensor<ElemT>>> dist(0.0, 1.0);
+    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
+      if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
+                    std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
+        using RealType = typename ElemT::value_type;
+        data[i] = ElemT(dist(gen), dist(gen));
+      } else {
+        data[i] = dist(gen);
+      }
+    }
+  }
+
+  template <typename ElemT>
+  void show(context_handle_t<CytnxTensor<ElemT>>& ctx,
+            const CytnxTensor<ElemT>& a) {
+    std::cout << a.backend << std::endl;
+  }
+
+  template <typename ElemT>
+  void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                 const CytnxTensor<ElemT>& a,
+                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                 CytnxTensor<ElemT>& u,
+                 real_ten_t<CytnxTensor<ElemT>>& s_diag,
+                 CytnxTensor<ElemT>& v_dag,
+                 real_t<CytnxTensor<ElemT>>& trunc_err,
+                 const bond_dim_t<CytnxTensor<ElemT>> chi_max,
+                 const real_t<CytnxTensor<ElemT>> s_min) {
+    // Get shape and compute matrix dimensions
+    auto a_shape = shape(ctx, a);
+    cytnx::cytnx_uint64 left_dim = 1;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      left_dim *= a_shape[i];
+    }
+    cytnx::cytnx_uint64 right_dim = 1;
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      right_dim *= a_shape[i];
+    }
+
+    // Reshape to matrix
+    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
+                                          static_cast<cytnx::cytnx_int64>(right_dim)});
+
+    // Perform SVD
+    // Parameters: tensor, chi_max, s_min, is_UvT, mindim, return_err
+    auto svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 1, 1);
+
+    if (svd_result.size() < 4) {
+      throw std::runtime_error("trunc_svd: unexpected result size from Svd_truncate");
+    }
+
+    // Extract S, U, Vt, error (order: S, U, V†, err)
+    auto& s_backend = svd_result[0];
+    auto& u_backend = svd_result[1];
+    auto& vt_backend = svd_result[2];
+    auto& err_tensor = svd_result[3];
+
+    // Extract truncation error from result
+    bond_dim_t<CytnxTensor<ElemT>> bond_dim = s_backend.shape()[0];
+    if (err_tensor.dtype() == cytnx::Type.Double) {
+      trunc_err = err_tensor.template item<double>();
+    } else if (err_tensor.dtype() == cytnx::Type.Float) {
+      trunc_err = static_cast<double>(err_tensor.template item<float>());
+    } else if (err_tensor.dtype() == cytnx::Type.ComplexDouble) {
+      trunc_err = std::real(err_tensor.template item<cytnx::cytnx_complex128>());
+    } else {
+      trunc_err = 0.0;
+    }
+
+    // Extract real singular values (SVD of complex tensors may return complex-typed tensor)
+    cytnx::Tensor s_real = s_backend.dtype() == cytnx::Type.Double ? s_backend : s_backend.real();
+
+    // Reshape U
+    shape_t<CytnxTensor<ElemT>> u_shape;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      u_shape.push_back(a_shape[i]);
+    }
+    u_shape.push_back(bond_dim);
+    std::vector<cytnx::cytnx_int64> u_cytnx_shape;
+    for (auto dim : u_shape) {
+      u_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    u.backend = u_backend.reshape(u_cytnx_shape);
+
+    // Set S (as real tensor)
+    s_diag.backend = s_real;
+
+    // Reshape V†
+    shape_t<CytnxTensor<ElemT>> v_shape;
+    v_shape.push_back(bond_dim);
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      v_shape.push_back(a_shape[i]);
+    }
+    std::vector<cytnx::cytnx_int64> v_cytnx_shape;
+    for (auto dim : v_shape) {
+      v_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    v_dag.backend = vt_backend.reshape(v_cytnx_shape);
+  }
+
 }  // namespace tci

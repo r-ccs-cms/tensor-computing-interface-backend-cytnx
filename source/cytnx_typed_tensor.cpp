@@ -1,0 +1,59 @@
+// Explicit specializations for CytnxTensor functions
+// These allow user code to use CytnxTensor without including cytnx_typed_tensor_impl.h
+
+#include "tci/cytnx_typed_tensor.h"
+#include "tci/cytnx_typed_tensor_impl.h"
+#include "tci/tensor_traits.h"
+#include <cytnx.hpp>
+#include <random>
+
+namespace tci {
+
+  // Explicit template instantiations for commonly used types
+  using ComplexElem = cytnx::cytnx_complex128;
+  using RealElem = cytnx::cytnx_double;
+
+  // Instantiate size
+  template ten_size_t<CytnxTensor<ComplexElem>> size<ComplexElem>(
+      context_handle_t<CytnxTensor<ComplexElem>>& ctx,
+      const CytnxTensor<ComplexElem>& a);
+
+  template ten_size_t<CytnxTensor<RealElem>> size<RealElem>(
+      context_handle_t<CytnxTensor<RealElem>>& ctx,
+      const CytnxTensor<RealElem>& a);
+
+  // Instantiate random
+  template void random<ComplexElem, std::mt19937&>(
+      context_handle_t<CytnxTensor<ComplexElem>>& ctx,
+      const shape_t<CytnxTensor<ComplexElem>>& shape,
+      std::mt19937& gen,
+      CytnxTensor<ComplexElem>& a);
+
+  template void random<RealElem, std::mt19937&>(
+      context_handle_t<CytnxTensor<RealElem>>& ctx,
+      const shape_t<CytnxTensor<RealElem>>& shape,
+      std::mt19937& gen,
+      CytnxTensor<RealElem>& a);
+
+  // Instantiate show
+  template void show<ComplexElem>(
+      context_handle_t<CytnxTensor<ComplexElem>>& ctx,
+      const CytnxTensor<ComplexElem>& a);
+
+  template void show<RealElem>(
+      context_handle_t<CytnxTensor<RealElem>>& ctx,
+      const CytnxTensor<RealElem>& a);
+
+  // Instantiate trunc_svd
+  template void trunc_svd<ComplexElem>(
+      context_handle_t<CytnxTensor<ComplexElem>>& ctx,
+      const CytnxTensor<ComplexElem>& a,
+      const rank_t<CytnxTensor<ComplexElem>> num_of_bds_as_row,
+      CytnxTensor<ComplexElem>& u,
+      real_ten_t<CytnxTensor<ComplexElem>>& s_diag,
+      CytnxTensor<ComplexElem>& v_dag,
+      real_t<CytnxTensor<ComplexElem>>& trunc_err,
+      const bond_dim_t<CytnxTensor<ComplexElem>> chi_max,
+      const real_t<CytnxTensor<ComplexElem>> s_min);
+
+}  // namespace tci
