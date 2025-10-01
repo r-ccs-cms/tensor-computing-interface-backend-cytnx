@@ -136,4 +136,59 @@ namespace tci {
     }
   }
 
+  // Additional functions for CytnxTensor<ElemT>
+
+  template <typename ElemT>
+  void zeros(context_handle_t<CytnxTensor<ElemT>>& ctx,
+             const shape_t<CytnxTensor<ElemT>>& shape,
+             CytnxTensor<ElemT>& a) {
+    allocate(ctx, shape, a);
+    a.backend.storage().set_zeros();
+  }
+
+  template <typename ElemT>
+  void eye(context_handle_t<CytnxTensor<ElemT>>& ctx,
+           bond_dim_t<CytnxTensor<ElemT>> dim,
+           CytnxTensor<ElemT>& a) {
+    a.backend = cytnx::eye(dim, detail::elem_to_cytnx_type<ElemT>(), ctx);
+  }
+
+  template <typename ElemT>
+  void fill(context_handle_t<CytnxTensor<ElemT>>& ctx,
+            const shape_t<CytnxTensor<ElemT>>& shape,
+            elem_t<CytnxTensor<ElemT>> value,
+            CytnxTensor<ElemT>& a) {
+    allocate(ctx, shape, a);
+    auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
+    auto* data = a.backend.storage().template data<ElemT>();
+    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
+      data[i] = value;
+    }
+  }
+
+  template <typename ElemT>
+  void set_elem(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                CytnxTensor<ElemT>& a,
+                const elem_coors_t<CytnxTensor<ElemT>>& coors,
+                elem_t<CytnxTensor<ElemT>> elem) {
+    std::vector<cytnx::cytnx_uint64> cytnx_coors;
+    cytnx_coors.reserve(coors.size());
+    for (const auto& coord : coors) {
+      cytnx_coors.push_back(static_cast<cytnx::cytnx_uint64>(coord));
+    }
+    a.backend.template at<ElemT>(cytnx_coors) = elem;
+  }
+
+  template <typename ElemT>
+  shape_t<CytnxTensor<ElemT>> shape(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                     const CytnxTensor<ElemT>& a) {
+    auto cytnx_shape = a.backend.shape();
+    shape_t<CytnxTensor<ElemT>> result;
+    result.reserve(cytnx_shape.size());
+    for (const auto& dim : cytnx_shape) {
+      result.push_back(static_cast<bond_dim_t<CytnxTensor<ElemT>>>(dim));
+    }
+    return result;
+  }
+
 }  // namespace tci

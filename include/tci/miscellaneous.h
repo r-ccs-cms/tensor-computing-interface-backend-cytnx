@@ -108,3 +108,6 @@ namespace tci {
                                                          context_handle_t<Ten2T>& ctx2, Ten2T& t2);
 
 }  // namespace tci
+
+// Include implementation for CytnxTensor type conversions
+#include "tci/detail/convert_impl.h"

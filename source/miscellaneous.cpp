@@ -84,6 +84,7 @@ namespace tci {
     return diff_norm <= eps_magnitude;
   }
 
+  // Convert between same tensor types (device transfer for cytnx::Tensor)
   template <> void convert(context_handle_t<cytnx::Tensor>& ctx1, const cytnx::Tensor& t1,
                            context_handle_t<cytnx::Tensor>& ctx2, cytnx::Tensor& t2) {
     // Create tensor info string
