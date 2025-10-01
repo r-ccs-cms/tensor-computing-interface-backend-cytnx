@@ -422,3 +422,71 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     }
   }
 }
+
+TEST_CASE("CytnxTensor - trunc_svd operation") {
+  using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+  using RealTensor = tci::CytnxTensor<cytnx::cytnx_double>;
+  using Elem = tci::elem_t<Tensor>;
+  using Real = tci::real_t<Tensor>;
+
+  auto ctx = -1;  // CPU context
+
+  SUBCASE("Basic trunc_svd functionality") {
+    // Create a 4x6 random matrix
+    Tensor a;
+    tci::allocate(ctx, {4, 6}, a);
+
+    // Fill with simple values for reproducible test
+    std::mt19937 rng(42);
+    tci::random(ctx, {4, 6}, rng, a);
+
+    // Perform truncated SVD
+    Tensor u, v_dag;
+    RealTensor s_diag;
+    Real trunc_err;
+
+    tci::rank_t<Tensor> num_rows = 1;
+    tci::bond_dim_t<Tensor> chi_max = 4;
+    Real s_min = 1e-10;
+
+    CHECK_NOTHROW(tci::trunc_svd(ctx, a, num_rows, u, s_diag, v_dag, trunc_err, chi_max, s_min));
+
+    // Verify dimensions
+    auto u_shape = tci::shape(ctx, u);
+    auto s_shape = tci::shape(ctx, s_diag);
+    auto v_shape = tci::shape(ctx, v_dag);
+
+    CHECK(u_shape[0] == 4);
+    CHECK(v_shape[1] == 6);
+    CHECK(s_shape[0] == u_shape[1]);
+    CHECK(s_shape[0] == v_shape[0]);
+  }
+
+  SUBCASE("for_each on singular values with sqrt") {
+    // Create a simple matrix for SVD
+    Tensor a;
+    tci::allocate(ctx, {3, 3}, a);
+
+    std::mt19937 rng(123);
+    tci::random(ctx, {3, 3}, rng, a);
+
+    // Perform SVD
+    Tensor u, v_dag;
+    RealTensor s_diag;
+    Real trunc_err;
+
+    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, 3, 1e-10);
+
+    // Apply sqrt to singular values
+    CHECK_NOTHROW(tci::for_each(ctx, s_diag, [](Real& elem) {
+      elem = std::sqrt(elem);
+    }));
+
+    // Verify all elements are non-negative after sqrt
+    auto size = tci::size(ctx, s_diag);
+    for (size_t i = 0; i < size; ++i) {
+      auto val = tci::get_elem(ctx, s_diag, {static_cast<cytnx::cytnx_uint64>(i)});
+      CHECK(val >= 0.0);
+    }
+  }
+}
