@@ -27,7 +27,8 @@ TEST_CASE("tci::allocate API compliance test") {
   SUBCASE("Out-of-place allocate returns tensor with correct shape") {
     tci::shape_t<cytnx::Tensor> shape = {2, 3};
 
-    auto tensor = tci::allocate<cytnx::Tensor>(ctx, shape);
+    cytnx::Tensor tensor;
+    tci::allocate(ctx, shape, tensor);
 
     auto tensor_shape = tci::shape(ctx, tensor);
     CHECK(tensor_shape.size() == 2);
