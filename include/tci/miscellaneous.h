@@ -7,15 +7,6 @@
 namespace tci {
 
   /**
-   * @brief Create context handle (PDF spec compatible)
-   *
-   * @tparam ContextHandleT Context handle type
-   * @param implementation_defined_params Implementation-specific parameters
-   * @return ContextHandleT Created context handle
-   */
-  template <typename ContextHandleT> ContextHandleT create_context(/* implementation-defined */);
-
-  /**
    * @brief Create context handle (in-place version)
    *
    * @tparam ContextHandleT Context handle type

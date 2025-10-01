@@ -9,7 +9,8 @@ int main() {
   std::cout << "===============================\n\n";
 
   // Create context
-  auto ctx = tci::create_context<tci::context_handle_t<cytnx::Tensor>>();
+  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::create_context(ctx);
 
   try {
     // Create random number generator

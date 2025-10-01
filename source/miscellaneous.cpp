@@ -14,12 +14,6 @@ namespace tci {
 
   // Template specializations for miscellaneous functions using Cytnx
 
-  // Out-of-place context creation
-  template <> int create_context() {
-    // Return default CPU device context for Cytnx
-    return cytnx::Device.cpu;  // Default to CPU (-1)
-  }
-
   // In-place context creation
   template <> void create_context(int& ctx) {
     // Initialize Cytnx device context (device ID)
