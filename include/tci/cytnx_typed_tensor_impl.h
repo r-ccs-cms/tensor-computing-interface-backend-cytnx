@@ -867,4 +867,52 @@ namespace tci {
     return tci::eq(backend_ctx, a.backend, b.backend, epsilon_variant);
   }
 
+  // assign_from_container - create tensor from container
+  template <typename ElemT, typename RandomIt, typename Func>
+  void assign_from_container(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                             const shape_t<CytnxTensor<ElemT>>& shape,
+                             RandomIt init_elems_begin,
+                             Func&& coors2idx,
+                             CytnxTensor<ElemT>& a) {
+    // Allocate tensor with the specified shape
+    allocate(ctx, shape, a);
+
+    // Generate all coordinate combinations and assign values
+    std::function<void(elem_coors_t<CytnxTensor<ElemT>>, std::size_t)> assign_recursive;
+    assign_recursive = [&](elem_coors_t<CytnxTensor<ElemT>> current_coords, std::size_t dim) {
+      if (dim == shape.size()) {
+        // Base case: all dimensions set, assign the element
+        auto index = std::invoke(coors2idx, current_coords);
+        auto value = *(init_elems_begin + index);
+
+        // Convert value to ElemT
+        ElemT elem_val;
+        if constexpr (std::is_same_v<ElemT, decltype(value)>) {
+          elem_val = value;
+        } else if constexpr (std::is_arithmetic_v<decltype(value)>) {
+          elem_val = static_cast<ElemT>(value);
+        } else if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> &&
+                             std::is_same_v<decltype(value), std::complex<double>>) {
+          elem_val = cytnx::cytnx_complex128(value.real(), value.imag());
+        } else if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex64> &&
+                             std::is_same_v<decltype(value), std::complex<float>>) {
+          elem_val = cytnx::cytnx_complex64(value.real(), value.imag());
+        } else {
+          elem_val = static_cast<ElemT>(value);
+        }
+
+        set_elem(ctx, a, current_coords, elem_val);
+      } else {
+        // Recursive case: iterate through current dimension
+        for (bond_dim_t<CytnxTensor<ElemT>> i = 0; i < shape[dim]; ++i) {
+          current_coords.push_back(i);
+          assign_recursive(current_coords, dim + 1);
+          current_coords.pop_back();
+        }
+      }
+    };
+
+    assign_recursive({}, 0);
+  }
+
 }  // namespace tci

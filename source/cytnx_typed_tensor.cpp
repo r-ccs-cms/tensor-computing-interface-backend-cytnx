@@ -56,4 +56,21 @@ namespace tci {
       const bond_dim_t<CytnxTensor<ComplexElem>> chi_max,
       const real_t<CytnxTensor<ComplexElem>> s_min);
 
+  // Instantiate assign_from_container
+  // Note: Cannot explicitly instantiate template with template template parameters,
+  // so we instantiate specific combinations used in tests
+  template void assign_from_container<ComplexElem, std::vector<std::complex<double>>::iterator, std::function<std::size_t(const elem_coors_t<CytnxTensor<ComplexElem>>&)>>(
+      context_handle_t<CytnxTensor<ComplexElem>>& ctx,
+      const shape_t<CytnxTensor<ComplexElem>>& shape,
+      std::vector<std::complex<double>>::iterator init_elems_begin,
+      std::function<std::size_t(const elem_coors_t<CytnxTensor<ComplexElem>>&)>&& coors2idx,
+      CytnxTensor<ComplexElem>& a);
+
+  template void assign_from_container<RealElem, std::vector<double>::iterator, std::function<std::size_t(const elem_coors_t<CytnxTensor<RealElem>>&)>>(
+      context_handle_t<CytnxTensor<RealElem>>& ctx,
+      const shape_t<CytnxTensor<RealElem>>& shape,
+      std::vector<double>::iterator init_elems_begin,
+      std::function<std::size_t(const elem_coors_t<CytnxTensor<RealElem>>&)>&& coors2idx,
+      CytnxTensor<RealElem>& a);
+
 }  // namespace tci
