@@ -211,56 +211,8 @@ namespace tci {
   // qr implementation moved to include/tci/tensor_linear_algebra_impl.h
   // (Backend Unification Pattern)
 
-  template <> void lq(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
-                      const rank_t<cytnx::Tensor> num_of_bds_as_row, cytnx::Tensor& l,
-                      cytnx::Tensor& q) {
-    auto shape = a.shape();
-
-    // Calculate row and column dimensions based on num_of_bds_as_row
-    cytnx::cytnx_uint64 row_dim = 1;
-    cytnx::cytnx_uint64 col_dim = 1;
-
-    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
-      row_dim *= shape[i];
-    }
-    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
-      col_dim *= shape[i];
-    }
-
-    // Reshape tensor to matrix form
-    cytnx::Tensor matrix = a.clone();
-    matrix.reshape_(
-        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
-
-    // Transpose for QR decomposition (A = LQ ⇔ A^T = Q^TR^T)
-    auto matrix_t = matrix.permute({1, 0});  // swap dimensions for 2D transpose
-
-    // Perform QR decomposition on transpose
-    auto qr_result = cytnx::linalg::Qr(matrix_t);
-    auto q_temp = qr_result[0];  // Q from QR of A^T
-    auto r_temp = qr_result[1];  // R from QR of A^T
-
-    // For LQ: A = LQ, so A^T = Q^TR^T
-    // Therefore: Q = (Q_temp)^T, L = (R_temp)^T
-    q = q_temp.permute({1, 0});
-    l = r_temp.permute({1, 0});
-
-    // Reshape L to match original bond structure
-    std::vector<cytnx::cytnx_uint64> l_shape;
-    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
-      l_shape.push_back(shape[i]);
-    }
-    l_shape.push_back(std::min(row_dim, col_dim));  // Add bond dimension
-    l.reshape_(l_shape);
-
-    // Reshape Q to match bond structure
-    std::vector<cytnx::cytnx_uint64> q_shape;
-    q_shape.push_back(std::min(row_dim, col_dim));  // Bond dimension first
-    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
-      q_shape.push_back(shape[i]);
-    }
-    q.reshape_(q_shape);
-  }
+  // lq implementation moved to include/tci/tensor_linear_algebra_impl.h
+  // (Backend Unification Pattern)
 
   template <> void eigvals(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
                            const rank_t<cytnx::Tensor> num_of_bds_as_row,

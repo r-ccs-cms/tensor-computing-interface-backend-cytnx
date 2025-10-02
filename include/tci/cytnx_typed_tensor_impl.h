@@ -616,70 +616,17 @@ namespace tci {
             q.backend, r.backend);
   }
 
-  // LQ decomposition
+  // LQ decomposition - Frontend (CytnxTensor) thin adapter delegating to backend
   template <typename ElemT>
   void lq(context_handle_t<CytnxTensor<ElemT>>& ctx,
           const CytnxTensor<ElemT>& a,
           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
           CytnxTensor<ElemT>& l,
           CytnxTensor<ElemT>& q) {
-    // LQ = (Q†L†)† where Q†L† is QR of A†
-    // Transpose and do QR, then transpose results back
-
-    auto a_shape = shape(ctx, a);
-    cytnx::cytnx_uint64 left_dim = 1;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
-      left_dim *= a_shape[i];
-    }
-    cytnx::cytnx_uint64 right_dim = 1;
-    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
-      right_dim *= a_shape[i];
-    }
-
-    // Reshape and transpose
-    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
-                                          static_cast<cytnx::cytnx_int64>(right_dim)});
-    auto a_t = a_reshaped.permute({1, 0});
-
-    // Perform QR on transposed
-    auto qr_result = cytnx::linalg::Qr(a_t);
-
-    if (qr_result.size() < 2) {
-      throw std::runtime_error("lq: unexpected result size from Qr");
-    }
-
-    auto& q_backend = qr_result[0];
-    auto& r_backend = qr_result[1];
-
-    // L = R†, Q = Q†
-    auto l_backend = r_backend.permute({1, 0});
-    auto q_backend_final = q_backend.permute({1, 0});
-
-    auto bond_dim = l_backend.shape()[1];
-
-    // Reshape L
-    shape_t<CytnxTensor<ElemT>> l_shape;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
-      l_shape.push_back(a_shape[i]);
-    }
-    l_shape.push_back(bond_dim);
-    std::vector<cytnx::cytnx_int64> l_cytnx_shape;
-    for (auto dim : l_shape) {
-      l_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
-    }
-    l.backend = l_backend.reshape(l_cytnx_shape);
-
-    // Reshape Q
-    shape_t<CytnxTensor<ElemT>> q_shape;
-    q_shape.push_back(bond_dim);
-    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
-      q_shape.push_back(a_shape[i]);
-    }
-    std::vector<cytnx::cytnx_int64> q_cytnx_shape;
-    for (auto dim : q_shape) {
-      q_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
-    }
-    q.backend = q_backend_final.reshape(q_cytnx_shape);
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::lq(backend_ctx, a.backend, num_of_bds_as_row,
+            l.backend, q.backend);
   }
 
   // Frontend (CytnxTensor) - thin adapter delegating to backend (Backend Unification Pattern)
