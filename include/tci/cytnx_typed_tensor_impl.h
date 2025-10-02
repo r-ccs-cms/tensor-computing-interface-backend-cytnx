@@ -664,32 +664,9 @@ namespace tci {
                 const CytnxTensor<ElemT>& a,
                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
                 real_ten_t<CytnxTensor<ElemT>>& w_diag) {
-    auto a_shape = shape(ctx, a);
-
-    cytnx::cytnx_uint64 row_dim = 1;
-    cytnx::cytnx_uint64 col_dim = 1;
-
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
-      row_dim *= a_shape[i];
-    }
-    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
-      col_dim *= a_shape[i];
-    }
-
-    if (row_dim != col_dim) {
-      throw std::invalid_argument("eigvalsh: matrix must be square");
-    }
-
-    cytnx::Tensor matrix = a.backend.clone();
-    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
-                     static_cast<cytnx::cytnx_int64>(col_dim)});
-
-    auto eigh_result = cytnx::linalg::Eigh(matrix);
-    w_diag.backend = eigh_result[0];
-
-    if (w_diag.backend.shape().size() != 1) {
-      w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
-    }
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::eigvalsh(backend_ctx, a.backend, num_of_bds_as_row, w_diag.backend);
   }
 
   // Eigenvalue decomposition - eig (general matrix eigenvalues and eigenvectors)
