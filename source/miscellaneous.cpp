@@ -15,12 +15,12 @@ namespace tci {
   // Template specializations for miscellaneous functions using Cytnx
 
   // In-place context creation
-  template <> void create_context(int& ctx) {
+  template <> void create_context(CytnxContextHandle& ctx) {
     // Initialize Cytnx device context (device ID)
-    ctx = cytnx::Device.cpu;  // Default to CPU (-1)
+    ctx.set_value(cytnx::Device.cpu);  // Default to CPU (-1)
   }
 
-  template <> void destroy_context(int& ctx) {
+  template <> void destroy_context(CytnxContextHandle& ctx) {
     // No specific cleanup needed for Cytnx device context
     // Cytnx handles this automatically
   }

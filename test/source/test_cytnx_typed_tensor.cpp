@@ -164,7 +164,8 @@ TEST_CASE("CytnxTensor - Construction") {
 
   SUBCASE("clear function") {
     using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
-    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+    tci::context_handle_t<Tensor> ctx;
+    tci::create_context(ctx);
 
     // Create and fill a tensor
     Tensor tensor;
@@ -185,7 +186,8 @@ TEST_CASE("CytnxTensor - Construction") {
   SUBCASE("assign_from_container with row-major indexing") {
     using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
     using Elem = tci::tensor_traits<Tensor>::elem_t;
-    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+    tci::context_handle_t<Tensor> ctx;
+    tci::create_context(ctx);
 
     // Create a 2x3 tensor from std::vector
     std::vector<std::complex<double>> container = {
@@ -224,7 +226,8 @@ TEST_CASE("CytnxTensor - Construction") {
   SUBCASE("assign_from_container with column-major indexing") {
     using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
     using Elem = tci::tensor_traits<Tensor>::elem_t;
-    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+    tci::context_handle_t<Tensor> ctx;
+    tci::create_context(ctx);
 
     // Create a 2x2 tensor with column-major layout
     std::vector<double> container = {1.0, 3.0, 2.0, 4.0};
@@ -258,7 +261,8 @@ TEST_CASE("CytnxTensor - TCI API Integration") {
   using Elem = tci::tensor_traits<Tensor>::elem_t;
   using ContextHandle = tci::tensor_traits<Tensor>::context_handle_t;
 
-  ContextHandle ctx = -1;  // CPU
+  ContextHandle ctx;
+  tci::create_context(ctx);
 
   SUBCASE("allocate and get_elem") {
     Tensor tensor;
@@ -313,7 +317,8 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
   using Elem = tci::tensor_traits<Tensor>::elem_t;
   using ContextHandle = tci::tensor_traits<Tensor>::context_handle_t;
 
-  ContextHandle ctx = -1;  // CPU
+  ContextHandle ctx;
+  tci::create_context(ctx);
 
   SUBCASE("for_each with std::sqrt") {
     Tensor tensor;
@@ -523,7 +528,8 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
   using Elem = tci::elem_t<Tensor>;
   using Real = tci::real_t<Tensor>;
 
-  auto ctx = -1;  // CPU context
+  tci::context_handle_t<Tensor> ctx;
+  tci::create_context(ctx);
 
   SUBCASE("Basic trunc_svd functionality") {
     // Create a 4x6 random matrix
@@ -603,7 +609,8 @@ TEST_CASE("CytnxTensor - Miscellaneous functions") {
   SUBCASE("to_container with row-major indexing") {
     using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
     using Elem = tci::tensor_traits<Tensor>::elem_t;
-    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+    tci::context_handle_t<Tensor> ctx;
+    tci::create_context(ctx);
 
     // Create a 2x3 tensor with known values
     Tensor tensor;
@@ -637,7 +644,8 @@ TEST_CASE("CytnxTensor - Miscellaneous functions") {
   SUBCASE("to_container with column-major indexing") {
     using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
     using Elem = tci::tensor_traits<Tensor>::elem_t;
-    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+    tci::context_handle_t<Tensor> ctx;
+    tci::create_context(ctx);
 
     // Create a 2x2 tensor
     Tensor tensor;

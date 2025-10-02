@@ -331,7 +331,8 @@ TEST_CASE("CytnxTensor - Utility functions") {
 TEST_CASE("CytnxTensor - Tensor Manipulation (expand/shrink/extract/replace)") {
   using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
   using Elem = double;
-  tci::context_handle_t<Tensor> ctx = -1;  // CPU
+  tci::context_handle_t<Tensor> ctx;
+  tci::create_context(ctx);
 
   SUBCASE("expand function - in-place") {
     Tensor tensor;

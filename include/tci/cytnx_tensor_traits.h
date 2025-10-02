@@ -6,6 +6,7 @@
 
 #include "tci/tensor_traits.h"
 #include "tci/cytnx_typed_tensor.h"
+#include "tci/context_handle.h"
 
 namespace tci {
 
@@ -35,8 +36,7 @@ namespace tci {
     using real_ten_t = cytnx::Tensor;  // Cytnx tensors can hold different types
     using cplx_t = cytnx::cytnx_complex128;
     using cplx_ten_t = cytnx::Tensor;  // Cytnx tensors can hold different types
-    using context_handle_t
-        = int;  // Cytnx uses device ID for context (Device.cpu=-1, Device.cuda=0+gpu_id)
+    using context_handle_t = CytnxContextHandle;
   };
 
   /**
@@ -65,7 +65,7 @@ namespace tci {
     using real_ten_t = const cytnx::Tensor;
     using cplx_t = cytnx::cytnx_complex128;
     using cplx_ten_t = const cytnx::Tensor;
-    using context_handle_t = int;
+    using context_handle_t = CytnxContextHandle;
   };
 
   // Note: Cytnx::Tensor is a dynamically typed tensor that can hold different
@@ -113,7 +113,7 @@ namespace tci {
 
     using cplx_ten_t = CytnxTensor<cplx_t>;
 
-    using context_handle_t = int;
+    using context_handle_t = CytnxContextHandle;
   };
 
 }  // namespace tci
