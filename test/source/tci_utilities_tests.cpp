@@ -118,14 +118,28 @@ TEST_CASE("Miscellaneous Functions") {
     // Convert
     convert(ctx, a, ctx2, b);
 
-    // Verify specific elements preserved
+    // Verify specific elements preserved (using std::visit for variant)
     auto val1 = get_elem(ctx, b, {0, 0});
-    CHECK(std::abs(tci::real(val1) - 1.23) < 1e-14);
-    CHECK(std::abs(tci::imag(val1) - 4.56) < 1e-14);
+    std::visit([](auto&& v) {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_arithmetic_v<T>) {
+        CHECK(std::abs(v - 1.23) < 1e-14);
+      } else {
+        CHECK(std::abs(v.real() - 1.23) < 1e-14);
+        CHECK(std::abs(v.imag() - 4.56) < 1e-14);
+      }
+    }, val1);
 
     auto val2 = get_elem(ctx, b, {1, 2});
-    CHECK(std::abs(tci::real(val2) - (-7.89)) < 1e-14);
-    CHECK(std::abs(tci::imag(val2) - 0.12) < 1e-14);
+    std::visit([](auto&& v) {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_arithmetic_v<T>) {
+        CHECK(std::abs(v - (-7.89)) < 1e-14);
+      } else {
+        CHECK(std::abs(v.real() - (-7.89)) < 1e-14);
+        CHECK(std::abs(v.imag() - 0.12) < 1e-14);
+      }
+    }, val2);
 
     destroy_context(ctx2);
   }
@@ -157,14 +171,28 @@ TEST_CASE("Miscellaneous Functions") {
     create_context(ctx2);
     convert(ctx, a, ctx2, b);
 
-    // Verify corner elements preserved
+    // Verify corner elements preserved (using std::visit for variant)
     auto corner1 = get_elem(ctx, b, {0, 0, 0});
-    CHECK(std::abs(tci::real(corner1) - 1.0) < 1e-14);
-    CHECK(std::abs(tci::imag(corner1) - 0.0) < 1e-14);
+    std::visit([](auto&& v) {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_arithmetic_v<T>) {
+        CHECK(std::abs(v - 1.0) < 1e-14);
+      } else {
+        CHECK(std::abs(v.real() - 1.0) < 1e-14);
+        CHECK(std::abs(v.imag() - 0.0) < 1e-14);
+      }
+    }, corner1);
 
     auto corner2 = get_elem(ctx, b, {9, 9, 4});
-    CHECK(std::abs(tci::real(corner2) - 0.0) < 1e-14);
-    CHECK(std::abs(tci::imag(corner2) - 1.0) < 1e-14);
+    std::visit([](auto&& v) {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_arithmetic_v<T>) {
+        CHECK(std::abs(v) < 1e-14);
+      } else {
+        CHECK(std::abs(v.real() - 0.0) < 1e-14);
+        CHECK(std::abs(v.imag() - 1.0) < 1e-14);
+      }
+    }, corner2);
 
     destroy_context(ctx2);
   }

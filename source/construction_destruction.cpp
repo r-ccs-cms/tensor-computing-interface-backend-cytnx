@@ -3,10 +3,10 @@
 #include <cytnx.hpp>
 #include <functional>
 #include <complex>
+#include <variant>
 
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/cytnx_typed_tensor.h"
-#include "tci/variant_helpers.h"
 
 namespace tci {
 
@@ -90,9 +90,10 @@ namespace tci {
 
     // Create tensor filled with value v
     a = cytnx::Tensor(cytnx_shape, cytnx::Type.ComplexDouble, ctx);
-    // Fill with the specified value (convert variant to compatible type)
-    auto complex_val = tci::to_complex128(v);
-    a.fill(complex_val);
+    // Fill with the specified value using std::visit
+    std::visit([&a](auto&& val) {
+      a.fill(val);
+    }, v);
   }
 
   template <> cytnx::Tensor fill(context_handle_t<cytnx::Tensor>& ctx,

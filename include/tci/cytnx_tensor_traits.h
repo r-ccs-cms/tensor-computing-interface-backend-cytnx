@@ -116,4 +116,46 @@ namespace tci {
     using context_handle_t = CytnxContextHandle;
   };
 
+  /**
+   * @brief Specialization of tensor_traits for const CytnxTensor<ElemT>
+   *
+   * This specialization provides compile-time type information for const typed Cytnx tensors,
+   * which is needed for read-only operations like const for_each.
+   *
+   * @tparam ElemT Element type (cytnx::cytnx_double, cytnx::cytnx_complex128, etc.)
+   */
+  template <typename ElemT>
+  struct tensor_traits<const CytnxTensor<ElemT>> {
+    using ten_t = const CytnxTensor<ElemT>;
+    using rank_t = cytnx::cytnx_uint64;
+    using shape_t = List<cytnx::cytnx_uint64>;
+    using bond_dim_t = cytnx::cytnx_uint64;
+    using bond_idx_t = cytnx::cytnx_uint64;
+    using bond_label_t = cytnx::cytnx_int64;
+    using ten_size_t = cytnx::cytnx_uint64;
+
+    // Element type is fixed at compile time (TCI spec compliant)
+    using elem_t = ElemT;
+
+    using elem_coor_t = cytnx::cytnx_uint64;
+    using elem_coors_t = List<cytnx::cytnx_uint64>;
+
+    // Derive real_t from elem_t
+    using real_t = std::conditional_t<
+        std::is_same_v<ElemT, cytnx::cytnx_complex128>, cytnx::cytnx_double,
+        std::conditional_t<std::is_same_v<ElemT, cytnx::cytnx_complex64>, cytnx::cytnx_float,
+        ElemT>>;
+
+    using real_ten_t = const CytnxTensor<real_t>;
+
+    // Derive cplx_t from real_t
+    using cplx_t = std::conditional_t<
+        std::is_same_v<real_t, cytnx::cytnx_double>, cytnx::cytnx_complex128,
+        cytnx::cytnx_complex64>;
+
+    using cplx_ten_t = const CytnxTensor<cplx_t>;
+
+    using context_handle_t = CytnxContextHandle;
+  };
+
 }  // namespace tci

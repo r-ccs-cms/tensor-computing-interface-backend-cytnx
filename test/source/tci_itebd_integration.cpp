@@ -35,11 +35,16 @@ TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {
   Tensor v, w;
   tci::eigh(context, h, 1, w, v);
 
-  // Apply exponential to eigenvalues using for_each (from reference_original line 26)
+  // Apply exponential to eigenvalues
   tci::for_each(context, w, [dt](Elem& elem) {
-    auto elem_real = tci::real(elem);
-    auto elem_imag = tci::imag(elem);
-    elem = cytnx::cytnx_complex128(std::exp(-dt * elem_real), std::exp(-dt * elem_imag));
+    std::visit([dt, &elem](auto&& v) {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_arithmetic_v<T>) {
+        elem = cytnx::cytnx_complex128(std::exp(-dt * v), 0.0);
+      } else {
+        elem = cytnx::cytnx_complex128(std::exp(-dt * v.real()), std::exp(-dt * v.imag()));
+      }
+    }, elem);
   });
 
   tci::diag(context, w);
@@ -95,14 +100,19 @@ TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {
     // Normalize singular values
     tci::normalize(context, Lambda[A]);
 
-    // Inverse lambda for canonicalization using for_each (from reference_original line 58)
+    // Inverse lambda for canonicalization
     auto LambdaB_inv = tci::copy(context, Lambda[B]);
     tci::for_each(context, LambdaB_inv, [](Elem& elem) {
-      auto real_part = tci::real(elem);
-      auto imag_part = tci::imag(elem);
-      // Calculate 1/elem for complex number: 1/(a+bi) = (a-bi)/(a²+b²)
-      auto denom = real_part * real_part + imag_part * imag_part;
-      elem = cytnx::cytnx_complex128(real_part / denom, -imag_part / denom);
+      std::visit([&elem](auto&& v) {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_arithmetic_v<T>) {
+          elem = cytnx::cytnx_complex128(1.0 / v, 0.0);
+        } else {
+          // Calculate 1/elem for complex: 1/(a+bi) = (a-bi)/(a²+b²)
+          auto denom = v.real() * v.real() + v.imag() * v.imag();
+          elem = cytnx::cytnx_complex128(v.real() / denom, -v.imag() / denom);
+        }
+      }, elem);
     });
     tci::diag(context, LambdaB_inv);
 
@@ -115,25 +125,48 @@ TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {
     CHECK(std::isfinite(trunc_err));
   }
 
-  // Calculate energy using for_each (from reference_original line 63)
+  // Calculate energy
   double E_iTEBD_real = 0.0;
   double E_iTEBD_imag = 0.0;
   tci::for_each(context, Theta, [&E_iTEBD_real, &E_iTEBD_imag](const Elem& elem) {
-    auto elem_real = tci::real(elem);
-    auto elem_imag = tci::imag(elem);
-    // elem * elem = (a + bi) * (a + bi) = a² - b² + 2abi
-    auto square_real = elem_real * elem_real - elem_imag * elem_imag;
-    auto square_imag = 2.0 * elem_real * elem_imag;
-    E_iTEBD_real += square_real;
-    E_iTEBD_imag += square_imag;
+    std::visit([&E_iTEBD_real, &E_iTEBD_imag](auto&& v) {
+      using T = std::decay_t<decltype(v)>;
+      if constexpr (std::is_arithmetic_v<T>) {
+        // Real type: elem * elem = v²
+        E_iTEBD_real += v * v;
+      } else {
+        // Complex: elem * elem = (a + bi) * (a + bi) = a² - b² + 2abi
+        auto square_real = v.real() * v.real() - v.imag() * v.imag();
+        auto square_imag = 2.0 * v.real() * v.imag();
+        E_iTEBD_real += square_real;
+        E_iTEBD_imag += square_imag;
+      }
+    }, elem);
   });
-  // Convert back to complex for log calculation
+
+  // Convert to energy value
   auto E_complex = cytnx::cytnx_complex128(E_iTEBD_real, E_iTEBD_imag);
   Elem E_iTEBD = cytnx::cytnx_complex128(-std::log(std::abs(E_complex)) / dt / 2.0, 0.0);
-  std::printf("E_iTEBD = %.15f\n", tci::real(E_iTEBD));
+
+  std::visit([](auto&& v) {
+    using T = std::decay_t<decltype(v)>;
+    if constexpr (std::is_arithmetic_v<T>) {
+      std::printf("E_iTEBD = %.15f\n", v);
+    } else {
+      std::printf("E_iTEBD = %.15f\n", v.real());
+    }
+  }, E_iTEBD);
+
   // Integration test checks
-  CHECK(std::isfinite(tci::real(E_iTEBD)));
-  CHECK(std::isfinite(tci::imag(E_iTEBD)));
+  std::visit([](auto&& v) {
+    using T = std::decay_t<decltype(v)>;
+    if constexpr (std::is_arithmetic_v<T>) {
+      CHECK(std::isfinite(v));
+    } else {
+      CHECK(std::isfinite(v.real()));
+      CHECK(std::isfinite(v.imag()));
+    }
+  }, E_iTEBD);
 
   // Verify tensor shapes and properties
   auto gamma_shape = tci::shape(context, Gamma[0]);

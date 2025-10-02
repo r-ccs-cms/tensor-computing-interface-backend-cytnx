@@ -3,70 +3,64 @@
 #include <cmath>
 #include <cytnx.hpp>
 
-TEST_CASE("tci::for_each API compliance test") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tci::elem_t<Tensor>;
+
+TEST_CASE("tci::for_each API compliance test - CytnxTensor") {
+  tci::context_handle_t<Tensor> ctx;
   tci::create_context(ctx);
 
-  SUBCASE("for_each modifying version - basic element modification") {
+  SUBCASE("for_each modifying version - element doubling") {
     // Create a test tensor with known values
-    tci::shape_t<cytnx::Tensor> shape = {2, 3};
-    cytnx::Tensor tensor;
+    tci::shape_t<Tensor> shape = {2, 3};
+    Tensor tensor;
     tci::zeros(ctx, shape, tensor);
 
     // Set initial values: [1, 2, 3, 4, 5, 6]
-    tci::set_elem(ctx, tensor, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
-    tci::set_elem(ctx, tensor, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
-    tci::set_elem(ctx, tensor, {0, 2}, cytnx::cytnx_complex128(3.0, 0.0));
-    tci::set_elem(ctx, tensor, {1, 0}, cytnx::cytnx_complex128(4.0, 0.0));
-    tci::set_elem(ctx, tensor, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
-    tci::set_elem(ctx, tensor, {1, 2}, cytnx::cytnx_complex128(6.0, 0.0));
+    tci::set_elem(ctx, tensor, {0, 0}, Elem(1.0, 0.0));
+    tci::set_elem(ctx, tensor, {0, 1}, Elem(2.0, 0.0));
+    tci::set_elem(ctx, tensor, {0, 2}, Elem(3.0, 0.0));
+    tci::set_elem(ctx, tensor, {1, 0}, Elem(4.0, 0.0));
+    tci::set_elem(ctx, tensor, {1, 1}, Elem(5.0, 0.0));
+    tci::set_elem(ctx, tensor, {1, 2}, Elem(6.0, 0.0));
 
-    // Define function to double each element
-    std::function<void(tci::elem_t<cytnx::Tensor>&)> double_func =
-        [](tci::elem_t<cytnx::Tensor>& elem) {
-            auto real_part = tci::real(elem) * 2.0;
-            auto imag_part = tci::imag(elem) * 2.0;
-            elem = cytnx::cytnx_complex128(real_part, imag_part);
-        };
-
-    // Apply for_each to modify all elements
-    CHECK_NOTHROW(tci::for_each(ctx, tensor, std::move(double_func)));
+    // Double each element
+    tci::for_each(ctx, tensor, [](Elem& elem) {
+        elem = elem * 2.0;
+    });
 
     // Verify all elements were doubled: [2, 4, 6, 8, 10, 12]
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0, 0})) - 2.0) < 1e-10);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0, 1})) - 4.0) < 1e-10);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {0, 2})) - 6.0) < 1e-10);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {1, 0})) - 8.0) < 1e-10);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {1, 1})) - 10.0) < 1e-10);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, tensor, {1, 2})) - 12.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 0}) - Elem(2.0, 0.0)) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 1}) - Elem(4.0, 0.0)) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 2}) - Elem(6.0, 0.0)) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 0}) - Elem(8.0, 0.0)) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 1}) - Elem(10.0, 0.0)) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, tensor, {1, 2}) - Elem(12.0, 0.0)) < 1e-10);
   }
 
-  SUBCASE("for_each basic functionality verification") {
-    // Test that for_each properly iterates through all elements in storage order
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor tensor;
+  SUBCASE("for_each iteration and summation") {
+    // Test that for_each properly iterates through all elements
+    tci::shape_t<Tensor> shape = {2, 2};
+    Tensor tensor;
     tci::zeros(ctx, shape, tensor);
 
-    // Set unique values to verify order
-    tci::set_elem(ctx, tensor, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
-    tci::set_elem(ctx, tensor, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
-    tci::set_elem(ctx, tensor, {1, 0}, cytnx::cytnx_complex128(3.0, 0.0));
-    tci::set_elem(ctx, tensor, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
+    // Set unique values
+    tci::set_elem(ctx, tensor, {0, 0}, Elem(1.0, 0.0));
+    tci::set_elem(ctx, tensor, {0, 1}, Elem(2.0, 0.0));
+    tci::set_elem(ctx, tensor, {1, 0}, Elem(3.0, 0.0));
+    tci::set_elem(ctx, tensor, {1, 1}, Elem(4.0, 0.0));
 
-    // Count elements and verify access
+    // Count and sum elements
     int count = 0;
-    double sum = 0.0;
-    std::function<void(tci::elem_t<cytnx::Tensor>&)> count_and_sum =
-        [&count, &sum](tci::elem_t<cytnx::Tensor>& elem) {
-          count++;
-          sum += tci::real(elem);
-        };
-
-    CHECK_NOTHROW(tci::for_each(ctx, tensor, std::move(count_and_sum)));
+    Elem sum(0.0, 0.0);
+    tci::for_each(ctx, tensor, [&count, &sum](Elem& elem) {
+      count++;
+      sum = sum + elem;
+    });
 
     // Verify all elements were processed
     CHECK(count == 4);
-    CHECK(std::abs(sum - 10.0) < 1e-10);  // 1 + 2 + 3 + 4 = 10
+    CHECK(std::abs(sum - Elem(10.0, 0.0)) < 1e-10);  // 1 + 2 + 3 + 4 = 10
   }
 
   tci::destroy_context(ctx);

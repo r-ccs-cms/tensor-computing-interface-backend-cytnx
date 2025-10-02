@@ -7,9 +7,9 @@
 #include <numeric>
 #include <set>
 #include <sstream>
+#include <variant>
 
 #include "tci/cytnx_tensor_traits.h"
-#include "tci/variant_helpers.h"
 
 namespace tci {
 
@@ -44,12 +44,15 @@ namespace tci {
                                   const List<elem_t<cytnx::Tensor>>& coefs, cytnx::Tensor& out) {
     if (ins.empty() || coefs.empty()) return;
 
-    // Convert variant to Cytnx-compatible type
-    auto coef0 = tci::to_complex128(coefs[0]);
-    out = ins[0] * coef0;
+    // Use std::visit to handle variant elem_t
+    std::visit([&](auto&& coef0) {
+      out = ins[0] * coef0;
+    }, coefs[0]);
+
     for (size_t i = 1; i < std::min(ins.size(), coefs.size()); ++i) {
-      auto coefi = tci::to_complex128(coefs[i]);
-      out = out + (ins[i] * coefi);
+      std::visit([&](auto&& coefi) {
+        out = out + (ins[i] * coefi);
+      }, coefs[i]);
     }
   }
 

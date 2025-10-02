@@ -8,7 +8,6 @@
 
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/debugging.h"
-#include "tci/variant_helpers.h"
 
 namespace tci {
 
