@@ -633,4 +633,30 @@ namespace tci {
     trace(ctx, out, bdidx_pairs);
   }
 
+  /**
+   * @brief Scale implementation for cytnx::Tensor (Backend)
+   *
+   * This is the single source of truth for scale logic.
+   * Frontend (CytnxTensor) should delegate to this implementation.
+   */
+  template <>
+  inline void scale(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout,
+                    const elem_t<cytnx::Tensor> s) {
+    (void)ctx;
+    // Use std::visit to handle variant types properly
+    std::visit([&inout](auto&& scalar) {
+      inout = inout * scalar;
+    }, s);
+  }
+
+  template <>
+  inline void scale(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
+                    const elem_t<cytnx::Tensor> s, cytnx::Tensor& out) {
+    (void)ctx;
+    // Use std::visit to handle variant types properly
+    std::visit([&in, &out](auto&& scalar) {
+      out = in * scalar;
+    }, s);
+  }
+
 }  // namespace tci

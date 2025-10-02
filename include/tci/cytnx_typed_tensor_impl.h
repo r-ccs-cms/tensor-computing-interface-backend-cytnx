@@ -427,7 +427,9 @@ namespace tci {
   void scale(context_handle_t<CytnxTensor<ElemT>>& ctx,
              CytnxTensor<ElemT>& inout,
              const elem_t<CytnxTensor<ElemT>> s) {
-    inout.backend = inout.backend * s;
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::scale(backend_ctx, inout.backend, s);
   }
 
   template <typename ElemT>
@@ -435,7 +437,9 @@ namespace tci {
              const CytnxTensor<ElemT>& in,
              const elem_t<CytnxTensor<ElemT>> s,
              CytnxTensor<ElemT>& out) {
-    out.backend = in.backend * s;
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::scale(backend_ctx, in.backend, s, out.backend);
   }
 
   // Diag - extract diagonal or create diagonal matrix

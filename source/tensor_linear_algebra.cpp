@@ -26,19 +26,8 @@ namespace tci {
   // normalize implementation moved to include/tci/tensor_linear_algebra_impl.h
   // (Backend Unification Pattern)
 
-  template <> void scale(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout,
-                         const elem_t<cytnx::Tensor> s) {
-    // Convert variant to Cytnx-compatible type
-    auto complex_val = tci::to_complex128(s);
-    inout = inout * complex_val;
-  }
-
-  template <> void scale(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
-                         const elem_t<cytnx::Tensor> s, cytnx::Tensor& out) {
-    // Convert variant to Cytnx-compatible type
-    auto complex_val = tci::to_complex128(s);
-    out = in * complex_val;
-  }
+  // scale implementation moved to include/tci/tensor_linear_algebra_impl.h
+  // (Backend Unification Pattern)
 
   template <> void linear_combine(context_handle_t<cytnx::Tensor>& ctx,
                                   const List<cytnx::Tensor>& ins, cytnx::Tensor& out) {
