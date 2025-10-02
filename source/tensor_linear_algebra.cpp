@@ -223,42 +223,8 @@ namespace tci {
   // eig implementation moved to include/tci/tensor_linear_algebra_impl.h
   // (Backend Unification Pattern)
 
-  template <> void eigh(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
-                        const rank_t<cytnx::Tensor> num_of_bds_as_row,
-                        real_ten_t<cytnx::Tensor>& w_diag, cytnx::Tensor& v) {
-    auto shape = a.shape();
-
-    cytnx::cytnx_uint64 row_dim = 1;
-    cytnx::cytnx_uint64 col_dim = 1;
-
-    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
-      row_dim *= shape[i];
-    }
-    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
-      col_dim *= shape[i];
-    }
-
-    if (row_dim != col_dim) {
-      throw std::invalid_argument("eigh: matrix must be square");
-    }
-
-    cytnx::Tensor matrix = a.clone();
-    matrix.reshape_(
-        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
-
-    auto eigh_result = cytnx::linalg::Eigh(matrix);  // [eigenvalues, eigenvectors]
-    w_diag = eigh_result[0];
-    v = eigh_result[1];
-
-    if (w_diag.shape().size() != 1) {
-      w_diag.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
-    }
-
-    if (v.shape().size() != 2) {
-      v.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
-                  static_cast<cytnx::cytnx_int64>(row_dim)});
-    }
-  }
+  // eigh implementation moved to include/tci/tensor_linear_algebra_impl.h
+  // (Backend Unification Pattern)
 
   // ===== Matrix Exponential =====
 
