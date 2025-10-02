@@ -44,20 +44,8 @@ namespace tci {
       context_handle_t<CytnxTensor<RealElem>>& ctx,
       const CytnxTensor<RealElem>& a);
 
-  // Instantiate trunc_svd
-  template void trunc_svd<ComplexElem>(
-      context_handle_t<CytnxTensor<ComplexElem>>& ctx,
-      const CytnxTensor<ComplexElem>& a,
-      const rank_t<CytnxTensor<ComplexElem>> num_of_bds_as_row,
-      CytnxTensor<ComplexElem>& u,
-      real_ten_t<CytnxTensor<ComplexElem>>& s_diag,
-      CytnxTensor<ComplexElem>& v_dag,
-      real_t<CytnxTensor<ComplexElem>>& trunc_err,
-      const bond_dim_t<CytnxTensor<ComplexElem>> chi_max,
-      const real_t<CytnxTensor<ComplexElem>> s_min);
-  // TODO: This explicit instantiation is redundant since trunc_svd is fully
-  // defined in cytnx_typed_tensor_impl.h (Consider removing this
-  // to be consistent with svd/qr/lq which only use header-complete implementation.
+  // trunc_svd explicit instantiation removed (Backend Unification Pattern)
+  // Now fully defined in headers, no need for explicit instantiation
 
   // Instantiate assign_from_container
   // Note: Cannot explicitly instantiate template with template template parameters,

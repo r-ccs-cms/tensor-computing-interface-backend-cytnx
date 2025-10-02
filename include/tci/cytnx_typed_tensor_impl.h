@@ -3,6 +3,7 @@
 #include "tci/cytnx_typed_tensor.h"
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/tensor_traits.h"
+#include "tci/tensor_linear_algebra_impl.h"
 #include <cytnx.hpp>
 #include <vector>
 
@@ -781,6 +782,7 @@ namespace tci {
     q.backend = q_backend_final.reshape(q_cytnx_shape);
   }
 
+  // Frontend (CytnxTensor) - thin adapter delegating to backend (Backend Unification Pattern)
   template <typename ElemT>
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx,
                  const CytnxTensor<ElemT>& a,
@@ -791,80 +793,11 @@ namespace tci {
                  real_t<CytnxTensor<ElemT>>& trunc_err,
                  const bond_dim_t<CytnxTensor<ElemT>> chi_max,
                  const real_t<CytnxTensor<ElemT>> s_min) {
-    // Get shape and compute matrix dimensions
-    auto a_shape = shape(ctx, a);
-    cytnx::cytnx_uint64 left_dim = 1;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
-      left_dim *= a_shape[i];
-    }
-    cytnx::cytnx_uint64 right_dim = 1;
-    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
-      right_dim *= a_shape[i];
-    }
-
-    // Reshape to matrix
-    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
-                                          static_cast<cytnx::cytnx_int64>(right_dim)});
-
-    // Perform SVD
-    // Parameters: tensor, chi_max, s_min, is_UvT, return_err, mindim
-    // Note: return_err=0 to avoid ASAN container-overflow in Cytnx's Svd_truncate
-    auto svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
-
-    if (svd_result.size() < 3) {
-      throw std::runtime_error("trunc_svd: unexpected result size from Svd_truncate");
-    }
-
-    // Extract S, U, Vt (order: S, U, V†)
-    auto& s_backend = svd_result[0];
-    auto& u_backend = svd_result[1];
-    auto& vt_backend = svd_result[2];
-
-    // Calculate truncation error manually from minimum singular value
-    bond_dim_t<CytnxTensor<ElemT>> bond_dim = s_backend.shape()[0];
-    if (bond_dim > 0) {
-      if (s_backend.dtype() == cytnx::Type.Double) {
-        auto* s_data = s_backend.template ptr_as<double>();
-        trunc_err = s_data[bond_dim - 1];
-      } else if (s_backend.dtype() == cytnx::Type.Float) {
-        auto* s_data = s_backend.template ptr_as<float>();
-        trunc_err = static_cast<double>(s_data[bond_dim - 1]);
-      } else {
-        trunc_err = 0.0;
-      }
-    } else {
-      trunc_err = 0.0;
-    }
-
-    // Extract real singular values (SVD of complex tensors may return complex-typed tensor)
-    cytnx::Tensor s_real = s_backend.dtype() == cytnx::Type.Double ? s_backend : s_backend.real();
-
-    // Reshape U
-    shape_t<CytnxTensor<ElemT>> u_shape;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
-      u_shape.push_back(a_shape[i]);
-    }
-    u_shape.push_back(bond_dim);
-    std::vector<cytnx::cytnx_int64> u_cytnx_shape;
-    for (auto dim : u_shape) {
-      u_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
-    }
-    u.backend = u_backend.reshape(u_cytnx_shape);
-
-    // Set S (as real tensor)
-    s_diag.backend = s_real;
-
-    // Reshape V†
-    shape_t<CytnxTensor<ElemT>> v_shape;
-    v_shape.push_back(bond_dim);
-    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
-      v_shape.push_back(a_shape[i]);
-    }
-    std::vector<cytnx::cytnx_int64> v_cytnx_shape;
-    for (auto dim : v_shape) {
-      v_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
-    }
-    v_dag.backend = vt_backend.reshape(v_cytnx_shape);
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::trunc_svd(backend_ctx, a.backend, num_of_bds_as_row,
+                   u.backend, s_diag.backend, v_dag.backend,
+                   trunc_err, chi_max, s_min);
   }
 
   // Eigenvalue decomposition - eigvals (general matrix eigenvalues)
