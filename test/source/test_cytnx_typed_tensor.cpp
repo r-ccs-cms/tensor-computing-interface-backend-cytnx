@@ -6,6 +6,7 @@
 #include "tci/cytnx_typed_tensor.h"
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/cytnx_typed_tensor_impl.h"
+#include "tci/miscellaneous.h"
 
 TEST_CASE("CytnxTensor - Type Traits") {
   SUBCASE("Double precision real tensor") {
@@ -558,5 +559,85 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
       auto val = tci::get_elem(ctx, s_diag, {static_cast<cytnx::cytnx_uint64>(i)});
       CHECK(val >= 0.0);
     }
+  }
+}
+
+TEST_CASE("CytnxTensor - Miscellaneous functions") {
+  SUBCASE("create_context and destroy_context") {
+    using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+    tci::context_handle_t<Tensor> ctx;
+
+    // Create context
+    CHECK_NOTHROW(tci::create_context(ctx));
+
+    // Context should be initialized to CPU device
+    CHECK(ctx == cytnx::Device.cpu);
+
+    // Destroy context (should not throw)
+    CHECK_NOTHROW(tci::destroy_context(ctx));
+  }
+
+  SUBCASE("to_container with row-major indexing") {
+    using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+    using Elem = tci::tensor_traits<Tensor>::elem_t;
+    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+
+    // Create a 2x3 tensor with known values
+    Tensor tensor;
+    tci::allocate(ctx, {2, 3}, tensor);
+
+    // Fill with values 1-6
+    for (cytnx::cytnx_uint64 i = 0; i < 2; ++i) {
+      for (cytnx::cytnx_uint64 j = 0; j < 3; ++j) {
+        Elem value{static_cast<double>(i * 3 + j + 1), 0.0};
+        tci::set_elem(ctx, tensor, {i, j}, value);
+      }
+    }
+
+    // Extract to container with row-major indexing
+    std::vector<std::complex<double>> container(6);
+    auto coors2idx = [](const tci::elem_coors_t<Tensor>& coors) -> std::size_t {
+      return coors[0] * 3 + coors[1];  // row-major for 2x3 matrix
+    };
+
+    CHECK_NOTHROW(tci::to_container(ctx, tensor, container.begin(), coors2idx));
+
+    // Verify container contents
+    CHECK(std::abs(container[0].real() - 1.0) < 1e-10);
+    CHECK(std::abs(container[1].real() - 2.0) < 1e-10);
+    CHECK(std::abs(container[2].real() - 3.0) < 1e-10);
+    CHECK(std::abs(container[3].real() - 4.0) < 1e-10);
+    CHECK(std::abs(container[4].real() - 5.0) < 1e-10);
+    CHECK(std::abs(container[5].real() - 6.0) < 1e-10);
+  }
+
+  SUBCASE("to_container with column-major indexing") {
+    using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
+    using Elem = tci::tensor_traits<Tensor>::elem_t;
+    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+
+    // Create a 2x2 tensor
+    Tensor tensor;
+    tci::allocate(ctx, {2, 2}, tensor);
+
+    // Fill: [[1, 2], [3, 4]]
+    tci::set_elem(ctx, tensor, {0, 0}, 1.0);
+    tci::set_elem(ctx, tensor, {0, 1}, 2.0);
+    tci::set_elem(ctx, tensor, {1, 0}, 3.0);
+    tci::set_elem(ctx, tensor, {1, 1}, 4.0);
+
+    // Extract to container with column-major indexing
+    std::vector<double> container(4);
+    auto coors2idx = [](const tci::elem_coors_t<Tensor>& coors) -> std::size_t {
+      return coors[1] * 2 + coors[0];  // column-major for 2x2 matrix
+    };
+
+    CHECK_NOTHROW(tci::to_container(ctx, tensor, container.begin(), coors2idx));
+
+    // Verify: column-major layout should be [1, 3, 2, 4]
+    CHECK(std::abs(container[0] - 1.0) < 1e-10);
+    CHECK(std::abs(container[1] - 3.0) < 1e-10);
+    CHECK(std::abs(container[2] - 2.0) < 1e-10);
+    CHECK(std::abs(container[3] - 4.0) < 1e-10);
   }
 }

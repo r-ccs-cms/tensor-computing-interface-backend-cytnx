@@ -915,4 +915,65 @@ namespace tci {
     assign_recursive({}, 0);
   }
 
+  // to_container - copy tensor elements to container
+  template <typename ElemT, typename RandomIt, typename Func>
+  void to_container(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                    const CytnxTensor<ElemT>& a,
+                    RandomIt first,
+                    Func&& coors2idx) {
+    const auto ten_shape = shape(ctx, a);
+    const auto total_size = size(ctx, a);
+
+    // Create coordinate vector for iteration
+    elem_coors_t<CytnxTensor<ElemT>> coors(ten_shape.size(), 0);
+
+    for (size_t flat_idx = 0; flat_idx < total_size; ++flat_idx) {
+      // Get element at current coordinates
+      auto elem = get_elem(ctx, a, coors);
+
+      // Use lambda to convert coordinates to container index
+      auto container_idx = std::invoke(coors2idx, coors);
+
+      // Store element in container with type conversion
+      using ContainerValueType = typename std::iterator_traits<RandomIt>::value_type;
+
+      // Convert ElemT to container value type
+      if constexpr (std::is_same_v<ElemT, ContainerValueType>) {
+        // Direct assignment
+        *(first + container_idx) = elem;
+      } else if constexpr (std::is_arithmetic_v<ContainerValueType>) {
+        // Convert complex to real by taking real part
+        if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
+                      std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
+          *(first + container_idx) = static_cast<ContainerValueType>(elem.real());
+        } else {
+          *(first + container_idx) = static_cast<ContainerValueType>(elem);
+        }
+      } else if constexpr (std::is_same_v<ContainerValueType, std::complex<double>> &&
+                           (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
+                            std::is_same_v<ElemT, cytnx::cytnx_complex64>)) {
+        // Convert cytnx complex to std::complex
+        *(first + container_idx) = std::complex<double>(elem.real(), elem.imag());
+      } else if constexpr (std::is_same_v<ContainerValueType, std::complex<float>> &&
+                           (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
+                            std::is_same_v<ElemT, cytnx::cytnx_complex64>)) {
+        // Convert cytnx complex to std::complex<float>
+        *(first + container_idx) = std::complex<float>(
+            static_cast<float>(elem.real()),
+            static_cast<float>(elem.imag()));
+      } else {
+        // Fallback: static_cast
+        *(first + container_idx) = static_cast<ContainerValueType>(elem);
+      }
+
+      // Advance to next coordinate (row-major order)
+      for (int dim = static_cast<int>(coors.size()) - 1; dim >= 0; --dim) {
+        if (++coors[dim] < ten_shape[dim]) {
+          break;
+        }
+        coors[dim] = 0;
+      }
+    }
+  }
+
 }  // namespace tci
