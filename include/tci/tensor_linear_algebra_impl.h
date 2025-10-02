@@ -525,4 +525,31 @@ namespace tci {
     }
   }
 
+  /**
+   * @brief Normalize implementation for cytnx::Tensor (Backend)
+   *
+   * This is the single source of truth for normalize logic.
+   * Frontend (CytnxTensor) should delegate to this implementation.
+   */
+  template <>
+  inline real_t<cytnx::Tensor> normalize(context_handle_t<cytnx::Tensor>& ctx,
+                                         cytnx::Tensor& inout) {
+    // Calculate norm
+    auto original_norm = norm(ctx, inout);
+
+    // Normalize by dividing by norm
+    if (original_norm > 0.0) {
+      inout = inout / original_norm;
+    }
+
+    return original_norm;
+  }
+
+  template <>
+  inline real_t<cytnx::Tensor> normalize(context_handle_t<cytnx::Tensor>& ctx,
+                                         const cytnx::Tensor& in, cytnx::Tensor& out) {
+    out = in.clone();
+    return normalize(ctx, out);
+  }
+
 }  // namespace tci

@@ -29,9 +29,9 @@ namespace tci {
    * @tparam TenT Tensor type
    * @param ctx Context handle for the tensor library
    * @param inout Tensor to normalize
-   * @return elem_t<TenT> Original norm before normalization
+   * @return real_t<TenT> Original norm before normalization
    */
-  template <typename TenT> elem_t<TenT> normalize(context_handle_t<TenT>& ctx, TenT& inout);
+  template <typename TenT> real_t<TenT> normalize(context_handle_t<TenT>& ctx, TenT& inout);
 
   /**
    * @brief Normalize tensor by its Frobenius norm (out-of-place version)
@@ -40,10 +40,10 @@ namespace tci {
    * @param ctx Context handle for the tensor library
    * @param in Input tensor
    * @param out Normalized tensor
-   * @return elem_t<TenT> Original norm before normalization
+   * @return real_t<TenT> Original norm before normalization
    */
   template <typename TenT>
-  elem_t<TenT> normalize(context_handle_t<TenT>& ctx, const TenT& in, TenT& out);
+  real_t<TenT> normalize(context_handle_t<TenT>& ctx, const TenT& in, TenT& out);
 
   /**
    * @brief Scale tensor by a factor (in-place version)

@@ -408,24 +408,18 @@ namespace tci {
   template <typename ElemT>
   real_t<CytnxTensor<ElemT>> normalize(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                        CytnxTensor<ElemT>& inout) {
-    auto n = norm(ctx, inout);
-    if (n > 0) {
-      inout.backend = inout.backend / n;
-    }
-    return n;
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    return tci::normalize(backend_ctx, inout.backend);
   }
 
   template <typename ElemT>
   real_t<CytnxTensor<ElemT>> normalize(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                        const CytnxTensor<ElemT>& in,
                                        CytnxTensor<ElemT>& out) {
-    auto n = norm(ctx, in);
-    if (n > 0) {
-      out.backend = in.backend / n;
-    } else {
-      out.backend = in.backend.clone();
-    }
-    return n;
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    return tci::normalize(backend_ctx, in.backend, out.backend);
   }
 
   // Scale

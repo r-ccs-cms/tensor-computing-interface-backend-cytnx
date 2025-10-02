@@ -23,24 +23,8 @@ namespace tci {
   // svd implementation moved to include/tci/tensor_linear_algebra_impl.h
   // (Backend Unification Pattern)
 
-  template <>
-  elem_t<cytnx::Tensor> normalize(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout) {
-    // Calculate norm
-    auto original_norm = norm(ctx, inout);
-
-    // Normalize by dividing by norm
-    if (original_norm > 0.0) {
-      inout = inout / cytnx::cytnx_complex128(original_norm, 0.0);
-    }
-
-    return cytnx::cytnx_complex128(original_norm, 0.0);
-  }
-
-  template <> elem_t<cytnx::Tensor> normalize(context_handle_t<cytnx::Tensor>& ctx,
-                                              const cytnx::Tensor& in, cytnx::Tensor& out) {
-    out = in.clone();
-    return normalize(ctx, out);
-  }
+  // normalize implementation moved to include/tci/tensor_linear_algebra_impl.h
+  // (Backend Unification Pattern)
 
   template <> void scale(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout,
                          const elem_t<cytnx::Tensor> s) {
