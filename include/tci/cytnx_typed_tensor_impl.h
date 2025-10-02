@@ -399,7 +399,9 @@ namespace tci {
   template <typename ElemT>
   real_t<CytnxTensor<ElemT>> norm(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                   const CytnxTensor<ElemT>& a) {
-    return a.backend.Norm().template item<real_t<CytnxTensor<ElemT>>>();
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    return tci::norm(backend_ctx, a.backend);
   }
 
   // Normalize

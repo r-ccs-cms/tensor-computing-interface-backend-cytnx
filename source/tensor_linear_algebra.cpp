@@ -15,22 +15,8 @@ namespace tci {
 
   // Template specializations for linear algebra functions using Cytnx
 
-  template <>
-  real_t<cytnx::Tensor> norm(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a) {
-    // Use Cytnx's built-in Norm function for Frobenius norm
-    auto norm_result = cytnx::linalg::Norm(a);
-
-    // Extract the scalar value with explicit cast
-    if (norm_result.dtype() == cytnx::Type.Double) {
-      return static_cast<double>(norm_result.at({0}).real());
-    } else if (norm_result.dtype() == cytnx::Type.ComplexDouble) {
-      return static_cast<double>(norm_result.at({0}).real());  // Norm should always be real
-    } else {
-      // Convert to double first
-      auto converted = norm_result.astype(cytnx::Type.Double);
-      return static_cast<double>(converted.at({0}).real());
-    }
-  }
+  // norm implementation moved to include/tci/tensor_linear_algebra_impl.h
+  // (Backend Unification Pattern)
 
   // contract implementations moved to header for template visibility
 
