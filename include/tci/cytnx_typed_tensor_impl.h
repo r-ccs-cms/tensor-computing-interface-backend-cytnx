@@ -603,63 +603,17 @@ namespace tci {
              u.backend, s_diag.backend, v_dag.backend);
   }
 
-  // QR decomposition
+  // QR decomposition - Frontend (CytnxTensor) thin adapter delegating to backend
   template <typename ElemT>
   void qr(context_handle_t<CytnxTensor<ElemT>>& ctx,
           const CytnxTensor<ElemT>& a,
           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
           CytnxTensor<ElemT>& q,
           CytnxTensor<ElemT>& r) {
-    // Get shape and compute matrix dimensions
-    auto a_shape = shape(ctx, a);
-    cytnx::cytnx_uint64 left_dim = 1;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
-      left_dim *= a_shape[i];
-    }
-    cytnx::cytnx_uint64 right_dim = 1;
-    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
-      right_dim *= a_shape[i];
-    }
-
-    // Reshape to matrix
-    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
-                                          static_cast<cytnx::cytnx_int64>(right_dim)});
-
-    // Perform QR
-    auto qr_result = cytnx::linalg::Qr(a_reshaped);
-
-    if (qr_result.size() < 2) {
-      throw std::runtime_error("qr: unexpected result size from Qr");
-    }
-
-    auto& q_backend = qr_result[0];
-    auto& r_backend = qr_result[1];
-
-    auto bond_dim = q_backend.shape()[1];
-
-    // Reshape Q
-    shape_t<CytnxTensor<ElemT>> q_shape;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
-      q_shape.push_back(a_shape[i]);
-    }
-    q_shape.push_back(bond_dim);
-    std::vector<cytnx::cytnx_int64> q_cytnx_shape;
-    for (auto dim : q_shape) {
-      q_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
-    }
-    q.backend = q_backend.reshape(q_cytnx_shape);
-
-    // Reshape R
-    shape_t<CytnxTensor<ElemT>> r_shape;
-    r_shape.push_back(bond_dim);
-    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
-      r_shape.push_back(a_shape[i]);
-    }
-    std::vector<cytnx::cytnx_int64> r_cytnx_shape;
-    for (auto dim : r_shape) {
-      r_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
-    }
-    r.backend = r_backend.reshape(r_cytnx_shape);
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::qr(backend_ctx, a.backend, num_of_bds_as_row,
+            q.backend, r.backend);
   }
 
   // LQ decomposition

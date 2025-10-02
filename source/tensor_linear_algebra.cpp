@@ -208,50 +208,8 @@ namespace tci {
   // trunc_svd implementation moved to include/tci/tensor_linear_algebra_impl.h
   // (Backend Unification Pattern)
 
-  template <> void qr(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
-                      const rank_t<cytnx::Tensor> num_of_bds_as_row, cytnx::Tensor& q,
-                      cytnx::Tensor& r) {
-    auto shape = a.shape();
-
-    // Calculate row and column dimensions based on num_of_bds_as_row
-    cytnx::cytnx_uint64 row_dim = 1;
-    cytnx::cytnx_uint64 col_dim = 1;
-
-    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
-      row_dim *= shape[i];
-    }
-    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
-      col_dim *= shape[i];
-    }
-
-    // Reshape tensor to matrix form for QR
-    cytnx::Tensor matrix = a.clone();
-    matrix.reshape_(
-        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
-
-    // Perform QR decomposition using Cytnx
-    auto qr_result = cytnx::linalg::Qr(matrix);
-
-    // Extract results
-    q = qr_result[0];  // Q matrix (orthogonal)
-    r = qr_result[1];  // R matrix (upper triangular)
-
-    // Reshape Q to match original bond structure
-    std::vector<cytnx::cytnx_uint64> q_shape;
-    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
-      q_shape.push_back(shape[i]);
-    }
-    q_shape.push_back(std::min(row_dim, col_dim));  // Add bond dimension
-    q.reshape_(q_shape);
-
-    // Reshape R to match bond structure
-    std::vector<cytnx::cytnx_uint64> r_shape;
-    r_shape.push_back(std::min(row_dim, col_dim));  // Bond dimension first
-    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
-      r_shape.push_back(shape[i]);
-    }
-    r.reshape_(r_shape);
-  }
+  // qr implementation moved to include/tci/tensor_linear_algebra_impl.h
+  // (Backend Unification Pattern)
 
   template <> void lq(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
                       const rank_t<cytnx::Tensor> num_of_bds_as_row, cytnx::Tensor& l,
