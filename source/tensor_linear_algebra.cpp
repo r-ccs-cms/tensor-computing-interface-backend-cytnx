@@ -99,16 +99,16 @@ namespace tci {
 
   template <> void scale(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout,
                          const elem_t<cytnx::Tensor> s) {
-    // Convert variant to Cytnx-compatible type
-    auto complex_val = tci::to_complex128(s);
-    inout = inout * complex_val;
+    std::visit([&](auto&& val) {
+      inout = inout * val;
+    }, s);
   }
 
   template <> void scale(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
                          const elem_t<cytnx::Tensor> s, cytnx::Tensor& out) {
-    // Convert variant to Cytnx-compatible type
-    auto complex_val = tci::to_complex128(s);
-    out = in * complex_val;
+    std::visit([&](auto&& val) {
+      out = in * val;
+    }, s);
   }
 
   template <> void linear_combine(context_handle_t<cytnx::Tensor>& ctx,
