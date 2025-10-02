@@ -1,6 +1,7 @@
 #include <doctest/doctest.h>
 
 #include <complex>
+#include <filesystem>
 #include <cytnx.hpp>
 
 #include "tci/cytnx_typed_tensor.h"
@@ -8,6 +9,7 @@
 #include "tci/cytnx_typed_tensor_impl.h"
 #include "tci/miscellaneous.h"
 #include "tci/tensor_linear_algebra.h"
+#include "tci/io_operations.h"
 
 TEST_CASE("CytnxTensor - Type Traits") {
   SUBCASE("Double precision real tensor") {
@@ -761,5 +763,97 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     CHECK(tci::rank(ctx, eigenvecs) == 2);
     CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
     CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
+  }
+}
+
+TEST_CASE("CytnxTensor - I/O Operations") {
+  using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
+  using Elem = tci::tensor_traits<Tensor>::elem_t;
+  tci::context_handle_t<Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("save and load - double precision") {
+    // Create a tensor with known values
+    Tensor original;
+    tci::allocate(ctx, {2, 3}, original);
+    tci::set_elem(ctx, original, {0, 0}, 1.0);
+    tci::set_elem(ctx, original, {0, 1}, 2.0);
+    tci::set_elem(ctx, original, {0, 2}, 3.0);
+    tci::set_elem(ctx, original, {1, 0}, 4.0);
+    tci::set_elem(ctx, original, {1, 1}, 5.0);
+    tci::set_elem(ctx, original, {1, 2}, 6.0);
+
+    // Save to file
+    std::string test_file = "test_cytnx_tensor_save_load.cytn";
+    tci::save(ctx, original, test_file);
+
+    // Load from file
+    Tensor loaded;
+    tci::load(ctx, test_file, loaded);
+
+    // Verify shape
+    CHECK(tci::rank(ctx, loaded) == 2);
+    auto loaded_shape = tci::shape(ctx, loaded);
+    CHECK(loaded_shape[0] == 2);
+    CHECK(loaded_shape[1] == 3);
+
+    // Verify values
+    CHECK(tci::get_elem(ctx, loaded, {0, 0}) == doctest::Approx(1.0));
+    CHECK(tci::get_elem(ctx, loaded, {0, 1}) == doctest::Approx(2.0));
+    CHECK(tci::get_elem(ctx, loaded, {0, 2}) == doctest::Approx(3.0));
+    CHECK(tci::get_elem(ctx, loaded, {1, 0}) == doctest::Approx(4.0));
+    CHECK(tci::get_elem(ctx, loaded, {1, 1}) == doctest::Approx(5.0));
+    CHECK(tci::get_elem(ctx, loaded, {1, 2}) == doctest::Approx(6.0));
+
+    // Clean up
+    std::filesystem::remove(test_file);
+  }
+
+  SUBCASE("save and load - complex tensor") {
+    using CTensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+    tci::context_handle_t<CTensor> cctx;
+    tci::create_context(cctx);
+
+    // Create a complex tensor
+    CTensor original;
+    tci::allocate(cctx, {2, 2}, original);
+    tci::set_elem(cctx, original, {0, 0}, cytnx::cytnx_complex128(1.0, 2.0));
+    tci::set_elem(cctx, original, {0, 1}, cytnx::cytnx_complex128(3.0, 4.0));
+    tci::set_elem(cctx, original, {1, 0}, cytnx::cytnx_complex128(5.0, 6.0));
+    tci::set_elem(cctx, original, {1, 1}, cytnx::cytnx_complex128(7.0, 8.0));
+
+    // Save to file
+    std::string test_file = "test_cytnx_tensor_save_load_complex.cytn";
+    tci::save(cctx, original, test_file);
+
+    // Load from file
+    CTensor loaded;
+    tci::load(cctx, test_file, loaded);
+
+    // Verify shape
+    CHECK(tci::rank(cctx, loaded) == 2);
+    auto loaded_shape = tci::shape(cctx, loaded);
+    CHECK(loaded_shape[0] == 2);
+    CHECK(loaded_shape[1] == 2);
+
+    // Verify values
+    auto val00 = tci::get_elem(cctx, loaded, {0, 0});
+    CHECK(val00.real() == doctest::Approx(1.0));
+    CHECK(val00.imag() == doctest::Approx(2.0));
+
+    auto val01 = tci::get_elem(cctx, loaded, {0, 1});
+    CHECK(val01.real() == doctest::Approx(3.0));
+    CHECK(val01.imag() == doctest::Approx(4.0));
+
+    auto val10 = tci::get_elem(cctx, loaded, {1, 0});
+    CHECK(val10.real() == doctest::Approx(5.0));
+    CHECK(val10.imag() == doctest::Approx(6.0));
+
+    auto val11 = tci::get_elem(cctx, loaded, {1, 1});
+    CHECK(val11.real() == doctest::Approx(7.0));
+    CHECK(val11.imag() == doctest::Approx(8.0));
+
+    // Clean up
+    std::filesystem::remove(test_file);
   }
 }

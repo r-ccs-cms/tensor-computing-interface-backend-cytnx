@@ -15,6 +15,10 @@
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/tensor_traits.h"
 
+namespace tci {
+  template <typename ElemT> class CytnxTensor;
+}
+
 namespace tci::detail {
 
   namespace {
@@ -227,6 +231,93 @@ namespace tci::detail {
         throw;
       }
       remove_file_silent(tmp_path);
+    }
+  };
+
+  // CytnxTensor storage adapters - thin adapters delegating to cytnx::Tensor backend
+  // (Backend Unification Pattern)
+
+  // Path-like storage for CytnxTensor
+  template <typename ElemT, typename Storage>
+  struct storage_adapter<CytnxTensor<ElemT>, Storage,
+                         std::enable_if_t<is_path_storage_v<Storage>>> {
+    template <typename StorageLike>
+    static void load(context_handle_t<CytnxTensor<ElemT>>& ctx, StorageLike&& strg,
+                     CytnxTensor<ElemT>& a) {
+      // Delegate to backend (cytnx::Tensor) implementation
+      context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+      storage_adapter<cytnx::Tensor, Storage>::load(backend_ctx, std::forward<StorageLike>(strg),
+                                                     a.backend);
+    }
+
+    template <typename StorageLike>
+    static CytnxTensor<ElemT> load_out(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                        StorageLike&& strg) {
+      CytnxTensor<ElemT> result;
+      load(ctx, std::forward<StorageLike>(strg), result);
+      return result;
+    }
+
+    template <typename StorageLike>
+    static void save(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                     StorageLike& strg) {
+      // Delegate to backend (cytnx::Tensor) implementation
+      context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+      storage_adapter<cytnx::Tensor, Storage>::save(backend_ctx, a.backend, strg);
+    }
+  };
+
+  // Input stream storage for CytnxTensor
+  template <typename ElemT, typename Storage>
+  struct storage_adapter<CytnxTensor<ElemT>, Storage,
+                         std::enable_if_t<is_input_stream_v<Storage>>> {
+    template <typename StorageLike>
+    static void load(context_handle_t<CytnxTensor<ElemT>>& ctx, StorageLike&& strg,
+                     CytnxTensor<ElemT>& a) {
+      // Delegate to backend (cytnx::Tensor) implementation
+      context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+      storage_adapter<cytnx::Tensor, Storage>::load(backend_ctx, std::forward<StorageLike>(strg),
+                                                     a.backend);
+    }
+
+    template <typename StorageLike>
+    static CytnxTensor<ElemT> load_out(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                        StorageLike&& strg) {
+      CytnxTensor<ElemT> result;
+      load(ctx, std::forward<StorageLike>(strg), result);
+      return result;
+    }
+
+    template <typename StorageLike>
+    static void save(context_handle_t<CytnxTensor<ElemT>>&, const CytnxTensor<ElemT>&,
+                     StorageLike&) {
+      static_assert(dependent_false_v<StorageLike>,
+                    "tci::save does not support input stream storage types");
+    }
+  };
+
+  // Output stream storage for CytnxTensor
+  template <typename ElemT, typename Storage>
+  struct storage_adapter<CytnxTensor<ElemT>, Storage,
+                         std::enable_if_t<is_output_stream_v<Storage>>> {
+    template <typename StorageLike>
+    static void load(context_handle_t<CytnxTensor<ElemT>>&, StorageLike&&, CytnxTensor<ElemT>&) {
+      static_assert(dependent_false_v<StorageLike>,
+                    "tci::load does not support output stream storage types");
+    }
+
+    template <typename StorageLike>
+    static CytnxTensor<ElemT> load_out(context_handle_t<CytnxTensor<ElemT>>&, StorageLike&&) {
+      static_assert(dependent_false_v<StorageLike>,
+                    "tci::load does not support output stream storage types");
+    }
+
+    template <typename StorageLike>
+    static void save(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                     StorageLike& strg) {
+      // Delegate to backend (cytnx::Tensor) implementation
+      context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+      storage_adapter<cytnx::Tensor, Storage>::save(backend_ctx, a.backend, strg);
     }
   };
 
