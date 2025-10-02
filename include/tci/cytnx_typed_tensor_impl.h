@@ -461,46 +461,9 @@ namespace tci {
   void trace(context_handle_t<CytnxTensor<ElemT>>& ctx,
              CytnxTensor<ElemT>& inout,
              const bond_idx_pairs_t<CytnxTensor<ElemT>>& bdidx_pairs) {
-    cytnx::Tensor result = inout.backend;
-
-    // Create index mapping to track axis renumbering after each trace
-    std::vector<cytnx::cytnx_int64> axis_map(result.shape().size());
-    std::iota(axis_map.begin(), axis_map.end(), 0);
-
-    // Sort pairs by maximum index in descending order
-    auto sorted_pairs = bdidx_pairs;
-    std::sort(sorted_pairs.begin(), sorted_pairs.end(),
-              [](const auto& a, const auto& b) {
-                return std::max(a.first, a.second) > std::max(b.first, b.second);
-              });
-
-    for (const auto& [orig_idx1, orig_idx2] : sorted_pairs) {
-      // Find current positions of these axes
-      auto it1 = std::find(axis_map.begin(), axis_map.end(), orig_idx1);
-      auto it2 = std::find(axis_map.begin(), axis_map.end(), orig_idx2);
-
-      if (it1 == axis_map.end() || it2 == axis_map.end()) {
-        throw std::invalid_argument("trace: axis index not found in mapping");
-      }
-
-      cytnx::cytnx_uint64 curr_idx1 = std::distance(axis_map.begin(), it1);
-      cytnx::cytnx_uint64 curr_idx2 = std::distance(axis_map.begin(), it2);
-
-      // Debug output
-      if (std::getenv("TCI_VERBOSE")) {
-        std::cerr << "trace: orig(" << orig_idx1 << "," << orig_idx2 << ") -> curr("
-                  << curr_idx1 << "," << curr_idx2 << ") rank=" << result.shape().size() << std::endl;
-      }
-
-      // Perform trace
-      result = result.Trace(curr_idx1, curr_idx2);
-
-      // Update axis mapping: remove the two traced axes
-      axis_map.erase(it1 < it2 ? it1 : it2);
-      axis_map.erase(it1 < it2 ? (it2 - 1) : it1);
-    }
-
-    inout.backend = result;
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::trace(backend_ctx, inout.backend, bdidx_pairs);
   }
 
   template <typename ElemT>
@@ -508,8 +471,9 @@ namespace tci {
              const CytnxTensor<ElemT>& in,
              const bond_idx_pairs_t<CytnxTensor<ElemT>>& bdidx_pairs,
              CytnxTensor<ElemT>& out) {
-    out.backend = in.backend.clone();
-    trace(ctx, out, bdidx_pairs);
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::trace(backend_ctx, in.backend, bdidx_pairs, out.backend);
   }
 
   // Contract - tensor contraction following Einstein summation
