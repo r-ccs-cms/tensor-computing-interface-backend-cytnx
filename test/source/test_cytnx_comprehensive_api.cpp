@@ -327,3 +327,138 @@ TEST_CASE("CytnxTensor - Utility functions") {
     CHECK(std::imag(elem) == doctest::Approx(2.5));
   }
 }
+
+TEST_CASE("CytnxTensor - Tensor Manipulation (expand/shrink/extract/replace)") {
+  using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
+  using Elem = double;
+  tci::context_handle_t<Tensor> ctx = -1;  // CPU
+
+  SUBCASE("expand function - in-place") {
+    Tensor tensor;
+    tci::fill(ctx, {2, 3}, 1.0, tensor);
+
+    // Expand dimension 0 by 1 and dimension 1 by 2
+    tci::Map<tci::bond_idx_t<Tensor>, tci::bond_dim_t<Tensor>> expand_map;
+    expand_map[0] = 1;  // dimension 0: 2 -> 3
+    expand_map[1] = 2;  // dimension 1: 3 -> 5
+
+    CHECK_NOTHROW(tci::expand(ctx, tensor, expand_map));
+
+    auto new_shape = tci::shape(ctx, tensor);
+    CHECK(new_shape[0] == 3);
+    CHECK(new_shape[1] == 5);
+
+    // Original elements should be preserved
+    auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
+    CHECK(std::abs(elem_00 - 1.0) < 1e-10);
+
+    // Expanded elements should be zero
+    auto elem_20 = tci::get_elem(ctx, tensor, {2, 0});
+    CHECK(std::abs(elem_20) < 1e-10);
+  }
+
+  SUBCASE("shrink function - in-place") {
+    Tensor tensor;
+    tci::fill(ctx, {4, 5}, 2.0, tensor);
+
+    // Shrink to [1:3, 1:4] -> shape becomes [2, 3]
+    tci::bond_idx_elem_coor_pair_map<Tensor> shrink_map;
+    shrink_map[0] = {1, 3};  // dimension 0: extract indices [1,3)
+    shrink_map[1] = {1, 4};  // dimension 1: extract indices [1,4)
+
+    CHECK_NOTHROW(tci::shrink(ctx, tensor, shrink_map));
+
+    auto new_shape = tci::shape(ctx, tensor);
+    CHECK(new_shape[0] == 2);
+    CHECK(new_shape[1] == 3);
+
+    // All elements should still be 2.0
+    auto elem = tci::get_elem(ctx, tensor, {0, 0});
+    CHECK(std::abs(elem - 2.0) < 1e-10);
+  }
+
+  SUBCASE("extract_sub function - in-place") {
+    Tensor tensor;
+    tci::fill(ctx, {4, 5}, 3.0, tensor);
+
+    // Extract subtensor [1:3, 2:5] -> shape becomes [2, 3]
+    tci::List<tci::Pair<tci::elem_coor_t<Tensor>, tci::elem_coor_t<Tensor>>> coor_pairs;
+    coor_pairs.push_back({1, 3});  // dimension 0: [1,3)
+    coor_pairs.push_back({2, 5});  // dimension 1: [2,5)
+
+    CHECK_NOTHROW(tci::extract_sub(ctx, tensor, coor_pairs));
+
+    auto new_shape = tci::shape(ctx, tensor);
+    CHECK(new_shape[0] == 2);
+    CHECK(new_shape[1] == 3);
+  }
+
+  SUBCASE("replace_sub function - in-place") {
+    Tensor tensor, sub_tensor;
+    tci::fill(ctx, {4, 5}, 1.0, tensor);
+    tci::fill(ctx, {2, 2}, 9.0, sub_tensor);
+
+    // Replace subtensor starting at [1, 1] with sub_tensor [2x2]
+    tci::elem_coors_t<Tensor> begin_pt = {1, 1};
+
+    CHECK_NOTHROW(tci::replace_sub(ctx, tensor, sub_tensor, begin_pt));
+
+    // Check that replaced region has value 9.0
+    auto elem_11 = tci::get_elem(ctx, tensor, {1, 1});
+    CHECK(std::abs(elem_11 - 9.0) < 1e-10);
+
+    auto elem_22 = tci::get_elem(ctx, tensor, {2, 2});
+    CHECK(std::abs(elem_22 - 9.0) < 1e-10);
+
+    // Check that outside region still has value 1.0
+    auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
+    CHECK(std::abs(elem_00 - 1.0) < 1e-10);
+  }
+
+  SUBCASE("concatenate function") {
+    Tensor a, b, result;
+    tci::fill(ctx, {2, 3}, 1.0, a);
+    tci::fill(ctx, {2, 3}, 2.0, b);
+
+    tci::List<Tensor> tensors = {a, b};
+
+    // Concatenate along dimension 0: [2,3] + [2,3] -> [4,3]
+    CHECK_NOTHROW(tci::concatenate(ctx, tensors, 0, result));
+
+    auto new_shape = tci::shape(ctx, result);
+    CHECK(new_shape[0] == 4);
+    CHECK(new_shape[1] == 3);
+
+    // First half should be 1.0
+    auto elem_00 = tci::get_elem(ctx, result, {0, 0});
+    CHECK(std::abs(elem_00 - 1.0) < 1e-10);
+
+    // Second half should be 2.0
+    auto elem_20 = tci::get_elem(ctx, result, {2, 0});
+    CHECK(std::abs(elem_20 - 2.0) < 1e-10);
+  }
+
+  SUBCASE("stack function") {
+    Tensor a, b, result;
+    tci::fill(ctx, {2, 3}, 1.0, a);
+    tci::fill(ctx, {2, 3}, 2.0, b);
+
+    tci::List<Tensor> tensors = {a, b};
+
+    // Stack along new dimension 0: [2,3], [2,3] -> [2, 2, 3]
+    CHECK_NOTHROW(tci::stack(ctx, tensors, 0, result));
+
+    auto new_shape = tci::shape(ctx, result);
+    CHECK(new_shape[0] == 2);
+    CHECK(new_shape[1] == 2);
+    CHECK(new_shape[2] == 3);
+
+    // First tensor elements
+    auto elem_000 = tci::get_elem(ctx, result, {0, 0, 0});
+    CHECK(std::abs(elem_000 - 1.0) < 1e-10);
+
+    // Second tensor elements
+    auto elem_100 = tci::get_elem(ctx, result, {1, 0, 0});
+    CHECK(std::abs(elem_100 - 2.0) < 1e-10);
+  }
+}

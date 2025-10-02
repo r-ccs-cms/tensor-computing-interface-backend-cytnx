@@ -976,4 +976,112 @@ namespace tci {
     }
   }
 
+  // Tensor Manipulation functions - delegate to cytnx::Tensor backend
+
+  // expand
+  template <typename ElemT>
+  void expand(context_handle_t<CytnxTensor<ElemT>>& ctx,
+              CytnxTensor<ElemT>& inout,
+              const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>& bond_idx_increment_map) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::expand(backend_ctx, inout.backend, bond_idx_increment_map);
+  }
+
+  template <typename ElemT>
+  void expand(context_handle_t<CytnxTensor<ElemT>>& ctx,
+              const CytnxTensor<ElemT>& in,
+              const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>& bond_idx_increment_map,
+              CytnxTensor<ElemT>& out) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::expand(backend_ctx, in.backend, bond_idx_increment_map, out.backend);
+  }
+
+  // shrink
+  template <typename ElemT>
+  void shrink(context_handle_t<CytnxTensor<ElemT>>& ctx,
+              CytnxTensor<ElemT>& inout,
+              const bond_idx_elem_coor_pair_map<CytnxTensor<ElemT>>& bd_idx_el_coor_pair_map) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::shrink(backend_ctx, inout.backend, bd_idx_el_coor_pair_map);
+  }
+
+  template <typename ElemT>
+  void shrink(context_handle_t<CytnxTensor<ElemT>>& ctx,
+              const CytnxTensor<ElemT>& in,
+              const bond_idx_elem_coor_pair_map<CytnxTensor<ElemT>>& bd_idx_el_coor_pair_map,
+              CytnxTensor<ElemT>& out) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::shrink(backend_ctx, in.backend, bd_idx_el_coor_pair_map, out.backend);
+  }
+
+  // extract_sub
+  template <typename ElemT>
+  void extract_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                   CytnxTensor<ElemT>& inout,
+                   const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>& coor_pairs) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::extract_sub(backend_ctx, inout.backend, coor_pairs);
+  }
+
+  template <typename ElemT>
+  void extract_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                   const CytnxTensor<ElemT>& in,
+                   const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>& coor_pairs,
+                   CytnxTensor<ElemT>& out) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::extract_sub(backend_ctx, in.backend, coor_pairs, out.backend);
+  }
+
+  // replace_sub
+  template <typename ElemT>
+  void replace_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                   CytnxTensor<ElemT>& inout,
+                   const CytnxTensor<ElemT>& sub,
+                   const elem_coors_t<CytnxTensor<ElemT>>& begin_pt) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::replace_sub(backend_ctx, inout.backend, sub.backend, begin_pt);
+  }
+
+  template <typename ElemT>
+  void replace_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                   const CytnxTensor<ElemT>& in,
+                   const CytnxTensor<ElemT>& sub,
+                   const elem_coors_t<CytnxTensor<ElemT>>& begin_pt,
+                   CytnxTensor<ElemT>& out) {
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::replace_sub(backend_ctx, in.backend, sub.backend, begin_pt, out.backend);
+  }
+
+  // concatenate
+  template <typename ElemT>
+  void concatenate(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                   const List<CytnxTensor<ElemT>>& ins,
+                   const bond_idx_t<CytnxTensor<ElemT>> axis,
+                   CytnxTensor<ElemT>& out) {
+    // Convert CytnxTensor list to cytnx::Tensor list
+    List<cytnx::Tensor> backend_tensors;
+    for (const auto& tensor : ins) {
+      backend_tensors.push_back(tensor.backend);
+    }
+
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::concatenate(backend_ctx, backend_tensors, axis, out.backend);
+  }
+
+  // stack
+  template <typename ElemT>
+  void stack(context_handle_t<CytnxTensor<ElemT>>& ctx,
+             const List<CytnxTensor<ElemT>>& ins,
+             const bond_idx_t<CytnxTensor<ElemT>> axis,
+             CytnxTensor<ElemT>& out) {
+    // Convert CytnxTensor list to cytnx::Tensor list
+    List<cytnx::Tensor> backend_tensors;
+    for (const auto& tensor : ins) {
+      backend_tensors.push_back(tensor.backend);
+    }
+
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::stack(backend_ctx, backend_tensors, axis, out.backend);
+  }
+
 }  // namespace tci
