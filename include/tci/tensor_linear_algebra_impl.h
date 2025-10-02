@@ -454,4 +454,50 @@ namespace tci {
     }
   }
 
+  /**
+   * @brief Diagonal extraction/construction implementation for cytnx::Tensor (Backend)
+   *
+   * This is the single source of truth for diag logic.
+   * Frontend (CytnxTensor) should delegate to this implementation.
+   */
+  template <>
+  inline void diag(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout) {
+    auto shape = inout.shape();
+
+    if (shape.size() == 1) {
+      // rank-1 → rank-2 diagonal matrix
+      auto n = shape[0];
+      cytnx::Tensor diag_matrix = cytnx::zeros({n, n}, inout.dtype(), ctx);
+
+      // Set diagonal elements
+      for (cytnx::cytnx_uint64 i = 0; i < n; ++i) {
+        auto val = inout.at({i});
+        diag_matrix.at({i, i}) = val;
+      }
+
+      inout = std::move(diag_matrix);
+    } else if (shape.size() == 2 && shape[0] == shape[1]) {
+      // rank-2 square matrix → rank-1 diagonal vector
+      auto n = shape[0];
+      cytnx::Tensor diag_vector = cytnx::zeros({n}, inout.dtype(), ctx);
+
+      // Extract diagonal elements
+      for (cytnx::cytnx_uint64 i = 0; i < n; ++i) {
+        auto val = inout.at({i, i});
+        diag_vector.at({i}) = val;
+      }
+
+      inout = std::move(diag_vector);
+    } else {
+      throw std::invalid_argument("diag: input must be rank-1 vector or square rank-2 matrix");
+    }
+  }
+
+  template <>
+  inline void diag(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& in,
+                   cytnx::Tensor& out) {
+    out = in.clone();
+    diag(ctx, out);
+  }
+
 }  // namespace tci

@@ -446,48 +446,18 @@ namespace tci {
   template <typename ElemT>
   void diag(context_handle_t<CytnxTensor<ElemT>>& ctx,
             CytnxTensor<ElemT>& inout) {
-    auto r = inout.backend.shape().size();
-    if (r == 1) {
-      // Create diagonal matrix from vector
-      auto dim = static_cast<cytnx::cytnx_uint64>(inout.backend.shape()[0]);
-      auto result = cytnx::zeros({dim, dim},
-                                  detail::elem_to_cytnx_type<ElemT>(),
-                                  ctx);
-
-      auto* data = inout.backend.storage().template data<ElemT>();
-      auto* result_data = result.storage().template data<ElemT>();
-
-      for (cytnx::cytnx_uint64 i = 0; i < dim; ++i) {
-        result_data[i * dim + i] = data[i];
-      }
-
-      inout.backend = result;
-    } else if (r == 2) {
-      // Extract diagonal from matrix
-      auto dim = static_cast<cytnx::cytnx_uint64>(
-          std::min(inout.backend.shape()[0], inout.backend.shape()[1]));
-      auto result = cytnx::zeros({dim},
-                                  detail::elem_to_cytnx_type<ElemT>(),
-                                  ctx);
-
-      auto rows = inout.backend.shape()[0];
-      auto* in_data = inout.backend.storage().template data<ElemT>();
-      auto* result_data = result.storage().template data<ElemT>();
-
-      for (cytnx::cytnx_uint64 i = 0; i < dim; ++i) {
-        result_data[i] = in_data[i * rows + i];
-      }
-
-      inout.backend = result;
-    }
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::diag(backend_ctx, inout.backend);
   }
 
   template <typename ElemT>
   void diag(context_handle_t<CytnxTensor<ElemT>>& ctx,
             const CytnxTensor<ElemT>& in,
             CytnxTensor<ElemT>& out) {
-    out.backend = in.backend.clone();
-    diag(ctx, out);
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::diag(backend_ctx, in.backend, out.backend);
   }
 
   // Trace - partial trace over specified bond pairs
