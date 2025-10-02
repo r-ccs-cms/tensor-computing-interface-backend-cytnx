@@ -119,9 +119,7 @@ namespace tci::detail {
       }
     }
 
-    inline void load_from_path(context_handle_t<cytnx::Tensor>& ctx,
-                               const std::filesystem::path& path, cytnx::Tensor& a) {
-      (void)ctx;
+    inline void load_from_path(const std::filesystem::path& path, cytnx::Tensor& a) {
       std::error_code ec;
       if (!std::filesystem::exists(path, ec)) {
         throw std::runtime_error("tci::load could not find file: " + path.string());
@@ -131,16 +129,13 @@ namespace tci::detail {
       a = std::move(loaded);
     }
 
-    inline cytnx::Tensor load_from_path(context_handle_t<cytnx::Tensor>& ctx,
-                                        const std::filesystem::path& path) {
+    inline cytnx::Tensor load_from_path(const std::filesystem::path& path) {
       cytnx::Tensor result;
-      load_from_path(ctx, path, result);
+      load_from_path(path, result);
       return result;
     }
 
-    inline void save_to_path(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
-                             const std::filesystem::path& path) {
-      (void)ctx;
+    inline void save_to_path(const cytnx::Tensor& a, const std::filesystem::path& path) {
       ensure_parent_exists(path);
 
       if (path.extension() == ".cytn") {
@@ -156,86 +151,7 @@ namespace tci::detail {
 
   }  // namespace
 
-  // Path-like storage (std::string, const char*, std::filesystem::path, ...)
-  template <typename Storage>
-  struct storage_adapter<cytnx::Tensor, Storage, std::enable_if_t<is_path_storage_v<Storage>>> {
-    template <typename StorageLike>
-    static void load(context_handle_t<cytnx::Tensor>& ctx, StorageLike&& strg, cytnx::Tensor& a) {
-      load_from_path(ctx, to_path(std::forward<StorageLike>(strg)), a);
-    }
-
-    template <typename StorageLike>
-    static cytnx::Tensor load_out(context_handle_t<cytnx::Tensor>& ctx, StorageLike&& strg) {
-      return load_from_path(ctx, to_path(std::forward<StorageLike>(strg)));
-    }
-
-    template <typename StorageLike> static void save(context_handle_t<cytnx::Tensor>& ctx,
-                                                     const cytnx::Tensor& a, StorageLike& strg) {
-      save_to_path(ctx, a, to_path(strg));
-    }
-  };
-
-  // Input stream storage (std::istream, std::ifstream, std::istringstream, ...)
-  template <typename Storage>
-  struct storage_adapter<cytnx::Tensor, Storage, std::enable_if_t<is_input_stream_v<Storage>>> {
-    template <typename StorageLike>
-    static void load(context_handle_t<cytnx::Tensor>& ctx, StorageLike&& strg, cytnx::Tensor& a) {
-      auto tmp_path = make_temp_cytn_file();
-      copy_stream_to_file(strg, tmp_path);
-      try {
-        load_from_path(ctx, tmp_path, a);
-      } catch (...) {
-        remove_file_silent(tmp_path);
-        throw;
-      }
-      remove_file_silent(tmp_path);
-    }
-
-    template <typename StorageLike>
-    static cytnx::Tensor load_out(context_handle_t<cytnx::Tensor>& ctx, StorageLike&& strg) {
-      cytnx::Tensor result;
-      load(ctx, std::forward<StorageLike>(strg), result);
-      return result;
-    }
-
-    template <typename StorageLike>
-    static void save(context_handle_t<cytnx::Tensor>&, const cytnx::Tensor&, StorageLike&) {
-      static_assert(dependent_false_v<StorageLike>,
-                    "tci::save does not support input stream storage types");
-    }
-  };
-
-  // Output stream storage (std::ostream, std::ofstream, std::ostringstream, ...)
-  template <typename Storage>
-  struct storage_adapter<cytnx::Tensor, Storage, std::enable_if_t<is_output_stream_v<Storage>>> {
-    template <typename StorageLike>
-    static void load(context_handle_t<cytnx::Tensor>&, StorageLike&&, cytnx::Tensor&) {
-      static_assert(dependent_false_v<StorageLike>,
-                    "tci::load does not support output stream storage types");
-    }
-
-    template <typename StorageLike>
-    static cytnx::Tensor load_out(context_handle_t<cytnx::Tensor>&, StorageLike&&) {
-      static_assert(dependent_false_v<StorageLike>,
-                    "tci::load does not support output stream storage types");
-    }
-
-    template <typename StorageLike> static void save(context_handle_t<cytnx::Tensor>& ctx,
-                                                     const cytnx::Tensor& a, StorageLike& strg) {
-      auto tmp_path = make_temp_cytn_file();
-      save_to_path(ctx, a, tmp_path);
-      try {
-        copy_file_to_stream(tmp_path, strg);
-      } catch (...) {
-        remove_file_silent(tmp_path);
-        throw;
-      }
-      remove_file_silent(tmp_path);
-    }
-  };
-
-  // CytnxTensor storage adapters - thin adapters delegating to cytnx::Tensor backend
-  // (Backend Unification Pattern)
+  // CytnxTensor storage adapters - direct implementation using a.backend
 
   // Path-like storage for CytnxTensor
   template <typename ElemT, typename Storage>
@@ -244,10 +160,8 @@ namespace tci::detail {
     template <typename StorageLike>
     static void load(context_handle_t<CytnxTensor<ElemT>>& ctx, StorageLike&& strg,
                      CytnxTensor<ElemT>& a) {
-      // Delegate to backend (cytnx::Tensor) implementation
-      context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-      storage_adapter<cytnx::Tensor, Storage>::load(backend_ctx, std::forward<StorageLike>(strg),
-                                                     a.backend);
+      (void)ctx;
+      load_from_path(to_path(std::forward<StorageLike>(strg)), a.backend);
     }
 
     template <typename StorageLike>
@@ -261,9 +175,8 @@ namespace tci::detail {
     template <typename StorageLike>
     static void save(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
                      StorageLike& strg) {
-      // Delegate to backend (cytnx::Tensor) implementation
-      context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-      storage_adapter<cytnx::Tensor, Storage>::save(backend_ctx, a.backend, strg);
+      (void)ctx;
+      save_to_path(a.backend, to_path(strg));
     }
   };
 
@@ -274,10 +187,16 @@ namespace tci::detail {
     template <typename StorageLike>
     static void load(context_handle_t<CytnxTensor<ElemT>>& ctx, StorageLike&& strg,
                      CytnxTensor<ElemT>& a) {
-      // Delegate to backend (cytnx::Tensor) implementation
-      context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-      storage_adapter<cytnx::Tensor, Storage>::load(backend_ctx, std::forward<StorageLike>(strg),
-                                                     a.backend);
+      (void)ctx;
+      auto tmp_path = make_temp_cytn_file();
+      copy_stream_to_file(strg, tmp_path);
+      try {
+        load_from_path(tmp_path, a.backend);
+      } catch (...) {
+        remove_file_silent(tmp_path);
+        throw;
+      }
+      remove_file_silent(tmp_path);
     }
 
     template <typename StorageLike>
@@ -315,9 +234,16 @@ namespace tci::detail {
     template <typename StorageLike>
     static void save(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
                      StorageLike& strg) {
-      // Delegate to backend (cytnx::Tensor) implementation
-      context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-      storage_adapter<cytnx::Tensor, Storage>::save(backend_ctx, a.backend, strg);
+      (void)ctx;
+      auto tmp_path = make_temp_cytn_file();
+      save_to_path(a.backend, tmp_path);
+      try {
+        copy_file_to_stream(tmp_path, strg);
+      } catch (...) {
+        remove_file_silent(tmp_path);
+        throw;
+      }
+      remove_file_silent(tmp_path);
     }
   };
 

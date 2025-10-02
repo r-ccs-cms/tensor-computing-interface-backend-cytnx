@@ -1032,9 +1032,32 @@ namespace tci {
           const CytnxTensor<ElemT>& a,
           const CytnxTensor<ElemT>& b,
           const elem_t<CytnxTensor<ElemT>> epsilon) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    elem_t<cytnx::Tensor> epsilon_variant = epsilon;
-    return tci::eq(backend_ctx, a.backend, b.backend, epsilon_variant);
+    (void)ctx;
+    // Check shape first
+    if (a.backend.shape() != b.backend.shape()) {
+      return false;
+    }
+
+    // Calculate the difference between tensors
+    cytnx::Tensor diff = a.backend - b.backend;
+
+    // Calculate the Frobenius norm of the difference
+    auto norm_result = cytnx::linalg::Norm(diff);
+
+    // Extract the scalar value
+    double diff_norm;
+    if (norm_result.dtype() == cytnx::Type.Double) {
+      diff_norm = static_cast<double>(norm_result.at({0}).real());
+    } else if (norm_result.dtype() == cytnx::Type.ComplexDouble) {
+      diff_norm = static_cast<double>(norm_result.at({0}).real());
+    } else {
+      auto converted = norm_result.astype(cytnx::Type.Double);
+      diff_norm = static_cast<double>(converted.at({0}).real());
+    }
+
+    // Compare with epsilon tolerance
+    double eps_magnitude = std::abs(epsilon);
+    return diff_norm <= eps_magnitude;
   }
 
   // assign_from_container - create tensor from container

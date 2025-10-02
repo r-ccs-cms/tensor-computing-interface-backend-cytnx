@@ -101,39 +101,6 @@ namespace tci {
                                                          const Ten1T& t1,
                                                          context_handle_t<Ten2T>& ctx2, Ten2T& t2);
 
-  // Implementation for eq (moved from .cpp for template visibility)
-  template <>
-  inline bool eq(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
-                 const cytnx::Tensor& b, const elem_t<cytnx::Tensor> epsilon) {
-    // Check shape first
-    if (a.shape() != b.shape()) {
-      return false;
-    }
-
-    // Calculate the difference between tensors
-    cytnx::Tensor diff = a - b;
-
-    // Calculate the Frobenius norm of the difference
-    auto norm_result = cytnx::linalg::Norm(diff);
-
-    // Extract the scalar value
-    double diff_norm;
-    if (norm_result.dtype() == cytnx::Type.Double) {
-      diff_norm = static_cast<double>(norm_result.at({0}).real());
-    } else if (norm_result.dtype() == cytnx::Type.ComplexDouble) {
-      diff_norm = static_cast<double>(norm_result.at({0}).real());
-    } else {
-      auto converted = norm_result.astype(cytnx::Type.Double);
-      diff_norm = static_cast<double>(converted.at({0}).real());
-    }
-
-    // Compare with epsilon tolerance using std::visit
-    double eps_magnitude = std::visit([](auto&& val) -> double {
-      return std::abs(val);
-    }, epsilon);
-    return diff_norm <= eps_magnitude;
-  }
-
 }  // namespace tci
 
 // Include implementation for CytnxTensor type conversions

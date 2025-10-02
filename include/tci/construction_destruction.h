@@ -93,44 +93,30 @@ namespace tci {
   template <typename TenT, typename RandomIt, typename Func>
   void assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
                              RandomIt init_elems_begin, Func&& coors2idx, TenT& a) {
-    if constexpr (std::is_same_v<TenT, cytnx::Tensor>) {
-      // Create tensor with the specified shape
-      allocate(ctx, shape, a);
+    // Create tensor with the specified shape
+    allocate(ctx, shape, a);
 
-      // Generate all coordinate combinations and assign values
-      std::function<void(elem_coors_t<TenT>, std::size_t)> assign_recursive;
-      assign_recursive = [&](elem_coors_t<TenT> current_coords, std::size_t dim) {
-        if (dim == shape.size()) {
-          // Base case: all dimensions set, assign the element
-          auto index = std::invoke(coors2idx, current_coords);
-          auto value = *(init_elems_begin + index);
-          elem_t<TenT> elem_val;
+    // Generate all coordinate combinations and assign values
+    std::function<void(elem_coors_t<TenT>, std::size_t)> assign_recursive;
+    assign_recursive = [&](elem_coors_t<TenT> current_coords, std::size_t dim) {
+      if (dim == shape.size()) {
+        // Base case: all dimensions set, assign the element
+        auto index = std::invoke(coors2idx, current_coords);
+        auto value = *(init_elems_begin + index);
+        elem_t<TenT> elem_val = static_cast<elem_t<TenT>>(value);
 
-          if constexpr (std::is_arithmetic_v<decltype(value)>) {
-            elem_val = cytnx::cytnx_complex128(static_cast<double>(value), 0.0);
-          } else if constexpr (std::is_same_v<decltype(value), std::complex<double>>) {
-            elem_val = cytnx::cytnx_complex128(value.real(), value.imag());
-          } else if constexpr (std::is_same_v<decltype(value), std::complex<float>>) {
-            elem_val = cytnx::cytnx_complex128(static_cast<double>(value.real()), static_cast<double>(value.imag()));
-          } else {
-            elem_val = static_cast<elem_t<TenT>>(value);
-          }
-
-          set_elem(ctx, a, current_coords, elem_val);
-        } else {
-          // Recursive case: iterate through current dimension
-          for (bond_dim_t<TenT> i = 0; i < shape[dim]; ++i) {
-            current_coords.push_back(i);
-            assign_recursive(current_coords, dim + 1);
-            current_coords.pop_back();
-          }
+        set_elem(ctx, a, current_coords, elem_val);
+      } else {
+        // Recursive case: iterate through current dimension
+        for (bond_dim_t<TenT> i = 0; i < shape[dim]; ++i) {
+          current_coords.push_back(i);
+          assign_recursive(current_coords, dim + 1);
+          current_coords.pop_back();
         }
-      };
+      }
+    };
 
-      assign_recursive({}, 0);
-    } else {
-      static_assert(sizeof(TenT) == 0, "assign_from_container not implemented for this tensor type");
-    }
+    assign_recursive({}, 0);
   }
 
   template <typename TenT, typename RandomIt, typename Func>
@@ -162,23 +148,7 @@ namespace tci {
     for (size_t flat_idx = 0; flat_idx < total_size; ++flat_idx) {
       // Generate random value and convert to appropriate elem_t
       auto raw_val = std::invoke(gen);
-      elem_t<TenT> elem_val;
-
-      if constexpr (std::is_same_v<TenT, cytnx::Tensor>) {
-        // Handle different types of raw_val for Cytnx tensors
-        if constexpr (std::is_arithmetic_v<decltype(raw_val)>) {
-          elem_val = cytnx::cytnx_complex128(static_cast<double>(raw_val), 0.0);
-        } else if constexpr (std::is_same_v<decltype(raw_val), std::complex<double>>) {
-          elem_val = cytnx::cytnx_complex128(raw_val.real(), raw_val.imag());
-        } else if constexpr (std::is_same_v<decltype(raw_val), std::complex<float>>) {
-          elem_val = cytnx::cytnx_complex128(static_cast<double>(raw_val.real()), static_cast<double>(raw_val.imag()));
-        } else {
-          // Fallback: try direct conversion
-          elem_val = static_cast<cytnx::cytnx_complex128>(raw_val);
-        }
-      } else {
-        elem_val = static_cast<elem_t<TenT>>(raw_val);
-      }
+      elem_t<TenT> elem_val = static_cast<elem_t<TenT>>(raw_val);
 
       set_elem(ctx, a, coords, elem_val);
 
