@@ -358,4 +358,55 @@ namespace tci {
     }
   }
 
+  /**
+   * @brief General matrix eigenvalue decomposition implementation for cytnx::Tensor (Backend)
+   *
+   * This is the single source of truth for eig logic.
+   * Frontend (CytnxTensor) should delegate to this implementation.
+   */
+  template <>
+  inline void eig(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
+                  const rank_t<cytnx::Tensor> num_of_bds_as_row,
+                  cplx_ten_t<cytnx::Tensor>& w_diag, cplx_ten_t<cytnx::Tensor>& v) {
+    (void)ctx;
+    auto shape = a.shape();
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
+      row_dim *= shape[i];
+    }
+    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
+      col_dim *= shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("eig: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = a.clone();
+    matrix.reshape_(
+        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    auto eig_result = cytnx::linalg::Eig(matrix);  // [eigenvalues, eigenvectors]
+    w_diag = eig_result[0];
+    v = eig_result[1];
+
+    if (w_diag.shape().size() != 1) {
+      w_diag.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+    if (w_diag.dtype() != cytnx::Type.ComplexDouble) {
+      w_diag = w_diag.astype(cytnx::Type.ComplexDouble);
+    }
+
+    if (v.shape().size() != 2) {
+      v.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                  static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+    if (v.dtype() != cytnx::Type.ComplexDouble) {
+      v = v.astype(cytnx::Type.ComplexDouble);
+    }
+  }
+
 }  // namespace tci
