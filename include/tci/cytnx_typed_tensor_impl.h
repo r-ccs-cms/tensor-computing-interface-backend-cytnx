@@ -194,8 +194,7 @@ namespace tci {
   template <typename ElemT>
   rank_t<CytnxTensor<ElemT>> rank(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                    const CytnxTensor<ElemT>& a) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    return tci::rank(backend_ctx, a.backend);
+    return static_cast<rank_t<CytnxTensor<ElemT>>>(a.backend.shape().size());
   }
 
   template <typename ElemT>
@@ -862,6 +861,165 @@ namespace tci {
       v_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
     }
     v_dag.backend = vt_backend.reshape(v_cytnx_shape);
+  }
+
+  // Eigenvalue decomposition - eigvals (general matrix eigenvalues)
+  template <typename ElemT>
+  void eigvals(context_handle_t<CytnxTensor<ElemT>>& ctx,
+               const CytnxTensor<ElemT>& a,
+               const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+               cplx_ten_t<CytnxTensor<ElemT>>& w_diag) {
+    auto a_shape = shape(ctx, a);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("eigvals: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = a.backend.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                     static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    auto eig_result = cytnx::linalg::Eig(matrix);
+    w_diag.backend = eig_result[0];
+
+    if (w_diag.backend.shape().size() != 1) {
+      w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+    if (w_diag.backend.dtype() != cytnx::Type.ComplexDouble) {
+      w_diag.backend = w_diag.backend.astype(cytnx::Type.ComplexDouble);
+    }
+  }
+
+  // Eigenvalue decomposition - eigvalsh (hermitian matrix eigenvalues)
+  template <typename ElemT>
+  void eigvalsh(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                const CytnxTensor<ElemT>& a,
+                const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                real_ten_t<CytnxTensor<ElemT>>& w_diag) {
+    auto a_shape = shape(ctx, a);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("eigvalsh: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = a.backend.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                     static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    auto eigh_result = cytnx::linalg::Eigh(matrix);
+    w_diag.backend = eigh_result[0];
+
+    if (w_diag.backend.shape().size() != 1) {
+      w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+  }
+
+  // Eigenvalue decomposition - eig (general matrix eigenvalues and eigenvectors)
+  template <typename ElemT>
+  void eig(context_handle_t<CytnxTensor<ElemT>>& ctx,
+           const CytnxTensor<ElemT>& a,
+           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+           cplx_ten_t<CytnxTensor<ElemT>>& w_diag,
+           cplx_ten_t<CytnxTensor<ElemT>>& v) {
+    auto a_shape = shape(ctx, a);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("eig: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = a.backend.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                     static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    auto eig_result = cytnx::linalg::Eig(matrix);
+    w_diag.backend = eig_result[0];
+    v.backend = eig_result[1];
+
+    if (w_diag.backend.shape().size() != 1) {
+      w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+    if (w_diag.backend.dtype() != cytnx::Type.ComplexDouble) {
+      w_diag.backend = w_diag.backend.astype(cytnx::Type.ComplexDouble);
+    }
+
+    if (v.backend.shape().size() != 2) {
+      v.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                          static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+    if (v.backend.dtype() != cytnx::Type.ComplexDouble) {
+      v.backend = v.backend.astype(cytnx::Type.ComplexDouble);
+    }
+  }
+
+  // Eigenvalue decomposition - eigh (hermitian matrix eigenvalues and eigenvectors)
+  template <typename ElemT>
+  void eigh(context_handle_t<CytnxTensor<ElemT>>& ctx,
+            const CytnxTensor<ElemT>& a,
+            const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+            real_ten_t<CytnxTensor<ElemT>>& w_diag,
+            CytnxTensor<ElemT>& v) {
+    auto a_shape = shape(ctx, a);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("eigh: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = a.backend.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                     static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    auto eigh_result = cytnx::linalg::Eigh(matrix);
+    w_diag.backend = eigh_result[0];
+    v.backend = eigh_result[1];
+
+    if (w_diag.backend.shape().size() != 1) {
+      w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+
+    if (v.backend.shape().size() != 2) {
+      v.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                          static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
   }
 
   // Tensor equality check with epsilon tolerance

@@ -7,6 +7,7 @@
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/cytnx_typed_tensor_impl.h"
 #include "tci/miscellaneous.h"
+#include "tci/tensor_linear_algebra.h"
 
 TEST_CASE("CytnxTensor - Type Traits") {
   SUBCASE("Double precision real tensor") {
@@ -659,5 +660,106 @@ TEST_CASE("CytnxTensor - Miscellaneous functions") {
     CHECK(std::abs(container[1] - 3.0) < 1e-10);
     CHECK(std::abs(container[2] - 2.0) < 1e-10);
     CHECK(std::abs(container[3] - 4.0) < 1e-10);
+  }
+}
+
+TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
+  using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+  using Elem = tci::tensor_traits<Tensor>::elem_t;
+  using CplxTensor = tci::tensor_traits<Tensor>::cplx_ten_t;
+  using RealTensor = tci::tensor_traits<Tensor>::real_ten_t;
+
+  tci::context_handle_t<Tensor> ctx;
+  tci::create_context(ctx);
+
+  SUBCASE("eigvals - General matrix eigenvalues") {
+    // Create a 2x2 matrix
+    Tensor matrix;
+    tci::allocate(ctx, {2, 2}, matrix);
+
+    // Fill with test values: [[1, 2], [3, 4]]
+    tci::set_elem(ctx, matrix, {0, 0}, Elem{1.0, 0.0});
+    tci::set_elem(ctx, matrix, {0, 1}, Elem{2.0, 0.0});
+    tci::set_elem(ctx, matrix, {1, 0}, Elem{3.0, 0.0});
+    tci::set_elem(ctx, matrix, {1, 1}, Elem{4.0, 0.0});
+
+    CplxTensor eigenvalues;
+
+    // Perform eigenvalue calculation
+    tci::eigvals(ctx, matrix, 1, eigenvalues);
+
+    // Should have 2 eigenvalues
+    CHECK(tci::shape(ctx, eigenvalues)[0] == 2);
+  }
+
+  SUBCASE("eigvalsh - Symmetric matrix eigenvalues") {
+    // Create a symmetric 2x2 matrix
+    Tensor matrix;
+    tci::allocate(ctx, {2, 2}, matrix);
+
+    // Fill with symmetric values: [[2, 1], [1, 3]]
+    tci::set_elem(ctx, matrix, {0, 0}, Elem{2.0, 0.0});
+    tci::set_elem(ctx, matrix, {0, 1}, Elem{1.0, 0.0});
+    tci::set_elem(ctx, matrix, {1, 0}, Elem{1.0, 0.0});
+    tci::set_elem(ctx, matrix, {1, 1}, Elem{3.0, 0.0});
+
+    RealTensor eigenvalues;
+
+    // Perform symmetric eigenvalue calculation
+    tci::eigvalsh(ctx, matrix, 1, eigenvalues);
+
+    // Should have 2 real eigenvalues
+    CHECK(tci::shape(ctx, eigenvalues)[0] == 2);
+  }
+
+  SUBCASE("eig - General matrix eigendecomposition") {
+    // Create identity matrix
+    Tensor matrix;
+    tci::eye(ctx, 2, matrix);
+
+    CplxTensor eigenvals, eigenvecs;
+
+    // Perform eigendecomposition
+    tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
+
+    // Check eigenvalues
+    CHECK(tci::rank(ctx, eigenvals) == 1);
+    CHECK(tci::size(ctx, eigenvals) == 2);
+
+    auto eval0 = tci::get_elem(ctx, eigenvals, {0});
+    auto eval1 = tci::get_elem(ctx, eigenvals, {1});
+    CHECK(std::abs(eval0.real() - 1.0) < 1e-10);
+    CHECK(std::abs(eval1.real() - 1.0) < 1e-10);
+
+    // Check eigenvectors
+    CHECK(tci::rank(ctx, eigenvecs) == 2);
+    CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
+    CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
+  }
+
+  SUBCASE("eigh - Hermitian matrix eigendecomposition") {
+    // Create identity matrix
+    Tensor matrix;
+    tci::eye(ctx, 2, matrix);
+
+    RealTensor eigenvals;
+    Tensor eigenvecs;
+
+    // Perform hermitian eigendecomposition
+    tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs);
+
+    // Check eigenvalues
+    CHECK(tci::rank(ctx, eigenvals) == 1);
+    CHECK(tci::size(ctx, eigenvals) == 2);
+
+    auto eval0 = tci::get_elem(ctx, eigenvals, {0});
+    auto eval1 = tci::get_elem(ctx, eigenvals, {1});
+    CHECK(std::abs(eval0 - 1.0) < 1e-10);
+    CHECK(std::abs(eval1 - 1.0) < 1e-10);
+
+    // Check eigenvectors
+    CHECK(tci::rank(ctx, eigenvecs) == 2);
+    CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
+    CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
   }
 }
