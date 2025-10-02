@@ -554,8 +554,36 @@ namespace tci {
                 const std::vector<bond_label_t<CytnxTensor<ElemT>>>& bd_labs_b,
                 CytnxTensor<ElemT>& c,
                 const std::vector<bond_label_t<CytnxTensor<ElemT>>>& bd_labs_c) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::contract(backend_ctx, a.backend, bd_labs_a, b.backend, bd_labs_b, c.backend, bd_labs_c);
+    (void)ctx;
+    // Convert to string labels for Cytnx Contract
+    std::string str_a, str_b, str_c;
+
+    // Map integer labels to characters
+    std::map<bond_label_t<CytnxTensor<ElemT>>, char> label_map;
+    char current_char = 'a';
+
+    for (auto label : bd_labs_a) {
+      if (label_map.find(label) == label_map.end()) {
+        label_map[label] = current_char++;
+      }
+      str_a += label_map[label];
+    }
+
+    for (auto label : bd_labs_b) {
+      if (label_map.find(label) == label_map.end()) {
+        label_map[label] = current_char++;
+      }
+      str_b += label_map[label];
+    }
+
+    for (auto label : bd_labs_c) {
+      if (label_map.find(label) == label_map.end()) {
+        label_map[label] = current_char++;
+      }
+      str_c += label_map[label];
+    }
+
+    c.backend = cytnx::Contract(a.backend, b.backend, str_a, str_b, str_c);
   }
 
   // Linear combination
@@ -1169,15 +1197,20 @@ namespace tci {
     }
   }
 
-  // Tensor Manipulation functions - delegate to cytnx::Tensor backend
+  // Tensor Manipulation functions - independent implementations needed
 
   // expand
+  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
+  // Search for "template <> void expand" to find cytnx::Tensor specialization
+  // Helper functions: copy_original_data_recursive (in anonymous namespace)
   template <typename ElemT>
   void expand(context_handle_t<CytnxTensor<ElemT>>& ctx,
               CytnxTensor<ElemT>& inout,
               const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>& bond_idx_increment_map) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::expand(backend_ctx, inout.backend, bond_idx_increment_map);
+    (void)ctx;
+    (void)inout;
+    (void)bond_idx_increment_map;
+    throw std::runtime_error("expand (in-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
   template <typename ElemT>
@@ -1185,17 +1218,24 @@ namespace tci {
               const CytnxTensor<ElemT>& in,
               const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>& bond_idx_increment_map,
               CytnxTensor<ElemT>& out) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::expand(backend_ctx, in.backend, bond_idx_increment_map, out.backend);
+    (void)ctx;
+    (void)in;
+    (void)bond_idx_increment_map;
+    (void)out;
+    throw std::runtime_error("expand (out-of-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
   // shrink
+  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
+  // Search for "template <> void shrink" to find cytnx::Tensor specialization
   template <typename ElemT>
   void shrink(context_handle_t<CytnxTensor<ElemT>>& ctx,
               CytnxTensor<ElemT>& inout,
               const bond_idx_elem_coor_pair_map<CytnxTensor<ElemT>>& bd_idx_el_coor_pair_map) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::shrink(backend_ctx, inout.backend, bd_idx_el_coor_pair_map);
+    (void)ctx;
+    (void)inout;
+    (void)bd_idx_el_coor_pair_map;
+    throw std::runtime_error("shrink (in-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
   template <typename ElemT>
@@ -1203,17 +1243,25 @@ namespace tci {
               const CytnxTensor<ElemT>& in,
               const bond_idx_elem_coor_pair_map<CytnxTensor<ElemT>>& bd_idx_el_coor_pair_map,
               CytnxTensor<ElemT>& out) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::shrink(backend_ctx, in.backend, bd_idx_el_coor_pair_map, out.backend);
+    (void)ctx;
+    (void)in;
+    (void)bd_idx_el_coor_pair_map;
+    (void)out;
+    throw std::runtime_error("shrink (out-of-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
   // extract_sub
+  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
+  // Search for "template <> void extract_sub" to find cytnx::Tensor specialization
+  // Helper functions: extract_elements_recursive (in anonymous namespace)
   template <typename ElemT>
   void extract_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
                    CytnxTensor<ElemT>& inout,
                    const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>& coor_pairs) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::extract_sub(backend_ctx, inout.backend, coor_pairs);
+    (void)ctx;
+    (void)inout;
+    (void)coor_pairs;
+    throw std::runtime_error("extract_sub (in-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
   template <typename ElemT>
@@ -1221,18 +1269,27 @@ namespace tci {
                    const CytnxTensor<ElemT>& in,
                    const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>& coor_pairs,
                    CytnxTensor<ElemT>& out) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::extract_sub(backend_ctx, in.backend, coor_pairs, out.backend);
+    (void)ctx;
+    (void)in;
+    (void)coor_pairs;
+    (void)out;
+    throw std::runtime_error("extract_sub (out-of-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
   // replace_sub
+  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
+  // Search for "template <> void replace_sub" to find cytnx::Tensor specialization
+  // Helper functions: replace_elements_recursive (in anonymous namespace)
   template <typename ElemT>
   void replace_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
                    CytnxTensor<ElemT>& inout,
                    const CytnxTensor<ElemT>& sub,
                    const elem_coors_t<CytnxTensor<ElemT>>& begin_pt) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::replace_sub(backend_ctx, inout.backend, sub.backend, begin_pt);
+    (void)ctx;
+    (void)inout;
+    (void)sub;
+    (void)begin_pt;
+    throw std::runtime_error("replace_sub (in-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
   template <typename ElemT>
@@ -1241,40 +1298,42 @@ namespace tci {
                    const CytnxTensor<ElemT>& sub,
                    const elem_coors_t<CytnxTensor<ElemT>>& begin_pt,
                    CytnxTensor<ElemT>& out) {
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::replace_sub(backend_ctx, in.backend, sub.backend, begin_pt, out.backend);
+    (void)ctx;
+    (void)in;
+    (void)sub;
+    (void)begin_pt;
+    (void)out;
+    throw std::runtime_error("replace_sub (out-of-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
   // concatenate
+  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
+  // Search for "template <> void concatenate" to find cytnx::Tensor specialization
   template <typename ElemT>
   void concatenate(context_handle_t<CytnxTensor<ElemT>>& ctx,
                    const List<CytnxTensor<ElemT>>& ins,
                    const bond_idx_t<CytnxTensor<ElemT>> axis,
                    CytnxTensor<ElemT>& out) {
-    // Convert CytnxTensor list to cytnx::Tensor list
-    List<cytnx::Tensor> backend_tensors;
-    for (const auto& tensor : ins) {
-      backend_tensors.push_back(tensor.backend);
-    }
-
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::concatenate(backend_ctx, backend_tensors, axis, out.backend);
+    (void)ctx;
+    (void)ins;
+    (void)axis;
+    (void)out;
+    throw std::runtime_error("concatenate not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
   // stack
+  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
+  // Search for "template <> void stack" to find cytnx::Tensor specialization
   template <typename ElemT>
   void stack(context_handle_t<CytnxTensor<ElemT>>& ctx,
              const List<CytnxTensor<ElemT>>& ins,
              const bond_idx_t<CytnxTensor<ElemT>> axis,
              CytnxTensor<ElemT>& out) {
-    // Convert CytnxTensor list to cytnx::Tensor list
-    List<cytnx::Tensor> backend_tensors;
-    for (const auto& tensor : ins) {
-      backend_tensors.push_back(tensor.backend);
-    }
-
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::stack(backend_ctx, backend_tensors, axis, out.backend);
+    (void)ctx;
+    (void)ins;
+    (void)axis;
+    (void)out;
+    throw std::runtime_error("stack not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
   }
 
 }  // namespace tci
