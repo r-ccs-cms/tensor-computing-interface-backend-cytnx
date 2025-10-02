@@ -3,7 +3,6 @@
 #include "tci/cytnx_typed_tensor.h"
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/tensor_traits.h"
-#include "tci/tensor_linear_algebra_impl.h"
 #include <cytnx.hpp>
 #include <vector>
 
@@ -399,27 +398,31 @@ namespace tci {
   template <typename ElemT>
   real_t<CytnxTensor<ElemT>> norm(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                   const CytnxTensor<ElemT>& a) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    return tci::norm(backend_ctx, a.backend);
+    return a.backend.Norm().template item<real_t<CytnxTensor<ElemT>>>();
   }
 
   // Normalize
   template <typename ElemT>
   real_t<CytnxTensor<ElemT>> normalize(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                        CytnxTensor<ElemT>& inout) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    return tci::normalize(backend_ctx, inout.backend);
+    auto n = norm(ctx, inout);
+    if (n > 0) {
+      inout.backend = inout.backend / n;
+    }
+    return n;
   }
 
   template <typename ElemT>
   real_t<CytnxTensor<ElemT>> normalize(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                        const CytnxTensor<ElemT>& in,
                                        CytnxTensor<ElemT>& out) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    return tci::normalize(backend_ctx, in.backend, out.backend);
+    auto n = norm(ctx, in);
+    if (n > 0) {
+      out.backend = in.backend / n;
+    } else {
+      out.backend = in.backend.clone();
+    }
+    return n;
   }
 
   // Scale
@@ -427,9 +430,7 @@ namespace tci {
   void scale(context_handle_t<CytnxTensor<ElemT>>& ctx,
              CytnxTensor<ElemT>& inout,
              const elem_t<CytnxTensor<ElemT>> s) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::scale(backend_ctx, inout.backend, s);
+    inout.backend = inout.backend * s;
   }
 
   template <typename ElemT>
@@ -437,27 +438,55 @@ namespace tci {
              const CytnxTensor<ElemT>& in,
              const elem_t<CytnxTensor<ElemT>> s,
              CytnxTensor<ElemT>& out) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::scale(backend_ctx, in.backend, s, out.backend);
+    out.backend = in.backend * s;
   }
 
   // Diag - extract diagonal or create diagonal matrix
   template <typename ElemT>
   void diag(context_handle_t<CytnxTensor<ElemT>>& ctx,
             CytnxTensor<ElemT>& inout) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::diag(backend_ctx, inout.backend);
+    auto r = inout.backend.shape().size();
+    if (r == 1) {
+      // Create diagonal matrix from vector
+      auto dim = static_cast<cytnx::cytnx_uint64>(inout.backend.shape()[0]);
+      auto result = cytnx::zeros({dim, dim},
+                                  detail::elem_to_cytnx_type<ElemT>(),
+                                  ctx);
+
+      auto* data = inout.backend.storage().template data<ElemT>();
+      auto* result_data = result.storage().template data<ElemT>();
+
+      for (cytnx::cytnx_uint64 i = 0; i < dim; ++i) {
+        result_data[i * dim + i] = data[i];
+      }
+
+      inout.backend = result;
+    } else if (r == 2) {
+      // Extract diagonal from matrix
+      auto dim = static_cast<cytnx::cytnx_uint64>(
+          std::min(inout.backend.shape()[0], inout.backend.shape()[1]));
+      auto result = cytnx::zeros({dim},
+                                  detail::elem_to_cytnx_type<ElemT>(),
+                                  ctx);
+
+      auto rows = inout.backend.shape()[0];
+      auto* in_data = inout.backend.storage().template data<ElemT>();
+      auto* result_data = result.storage().template data<ElemT>();
+
+      for (cytnx::cytnx_uint64 i = 0; i < dim; ++i) {
+        result_data[i] = in_data[i * rows + i];
+      }
+
+      inout.backend = result;
+    }
   }
 
   template <typename ElemT>
   void diag(context_handle_t<CytnxTensor<ElemT>>& ctx,
             const CytnxTensor<ElemT>& in,
             CytnxTensor<ElemT>& out) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::diag(backend_ctx, in.backend, out.backend);
+    out.backend = in.backend.clone();
+    diag(ctx, out);
   }
 
   // Trace - partial trace over specified bond pairs
@@ -465,9 +494,46 @@ namespace tci {
   void trace(context_handle_t<CytnxTensor<ElemT>>& ctx,
              CytnxTensor<ElemT>& inout,
              const bond_idx_pairs_t<CytnxTensor<ElemT>>& bdidx_pairs) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::trace(backend_ctx, inout.backend, bdidx_pairs);
+    cytnx::Tensor result = inout.backend;
+
+    // Create index mapping to track axis renumbering after each trace
+    std::vector<cytnx::cytnx_int64> axis_map(result.shape().size());
+    std::iota(axis_map.begin(), axis_map.end(), 0);
+
+    // Sort pairs by maximum index in descending order
+    auto sorted_pairs = bdidx_pairs;
+    std::sort(sorted_pairs.begin(), sorted_pairs.end(),
+              [](const auto& a, const auto& b) {
+                return std::max(a.first, a.second) > std::max(b.first, b.second);
+              });
+
+    for (const auto& [orig_idx1, orig_idx2] : sorted_pairs) {
+      // Find current positions of these axes
+      auto it1 = std::find(axis_map.begin(), axis_map.end(), orig_idx1);
+      auto it2 = std::find(axis_map.begin(), axis_map.end(), orig_idx2);
+
+      if (it1 == axis_map.end() || it2 == axis_map.end()) {
+        throw std::invalid_argument("trace: axis index not found in mapping");
+      }
+
+      cytnx::cytnx_uint64 curr_idx1 = std::distance(axis_map.begin(), it1);
+      cytnx::cytnx_uint64 curr_idx2 = std::distance(axis_map.begin(), it2);
+
+      // Debug output
+      if (std::getenv("TCI_VERBOSE")) {
+        std::cerr << "trace: orig(" << orig_idx1 << "," << orig_idx2 << ") -> curr("
+                  << curr_idx1 << "," << curr_idx2 << ") rank=" << result.shape().size() << std::endl;
+      }
+
+      // Perform trace
+      result = result.Trace(curr_idx1, curr_idx2);
+
+      // Update axis mapping: remove the two traced axes
+      axis_map.erase(it1 < it2 ? it1 : it2);
+      axis_map.erase(it1 < it2 ? (it2 - 1) : it1);
+    }
+
+    inout.backend = result;
   }
 
   template <typename ElemT>
@@ -475,9 +541,8 @@ namespace tci {
              const CytnxTensor<ElemT>& in,
              const bond_idx_pairs_t<CytnxTensor<ElemT>>& bdidx_pairs,
              CytnxTensor<ElemT>& out) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::trace(backend_ctx, in.backend, bdidx_pairs, out.backend);
+    out.backend = in.backend.clone();
+    trace(ctx, out, bdidx_pairs);
   }
 
   // Contract - tensor contraction following Einstein summation
@@ -523,7 +588,7 @@ namespace tci {
     }
   }
 
-  // SVD (full) - Frontend (CytnxTensor) thin adapter delegating to backend
+  // SVD (full)
   template <typename ElemT>
   void svd(context_handle_t<CytnxTensor<ElemT>>& ctx,
            const CytnxTensor<ElemT>& a,
@@ -531,39 +596,191 @@ namespace tci {
            CytnxTensor<ElemT>& u,
            real_ten_t<CytnxTensor<ElemT>>& s_diag,
            CytnxTensor<ElemT>& v_dag) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::svd(backend_ctx, a.backend, num_of_bds_as_row,
-             u.backend, s_diag.backend, v_dag.backend);
+    // Get shape and compute matrix dimensions
+    auto a_shape = shape(ctx, a);
+    cytnx::cytnx_uint64 left_dim = 1;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      left_dim *= a_shape[i];
+    }
+    cytnx::cytnx_uint64 right_dim = 1;
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      right_dim *= a_shape[i];
+    }
+
+    // Reshape to matrix
+    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
+                                          static_cast<cytnx::cytnx_int64>(right_dim)});
+
+    // Perform full SVD
+    auto svd_result = cytnx::linalg::Svd(a_reshaped, true);  // Return U, S, Vt
+
+    if (svd_result.size() < 3) {
+      throw std::runtime_error("svd: unexpected result size from Svd");
+    }
+
+    // Extract S, U, Vt (order: S, U, V†)
+    auto& s_backend = svd_result[0];
+    auto& u_backend = svd_result[1];
+    auto& vt_backend = svd_result[2];
+
+    bond_dim_t<CytnxTensor<ElemT>> bond_dim = s_backend.shape()[0];
+
+    // Extract real singular values
+    cytnx::Tensor s_real = s_backend.dtype() == cytnx::Type.Double ? s_backend : s_backend.real();
+
+    // Reshape U
+    shape_t<CytnxTensor<ElemT>> u_shape;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      u_shape.push_back(a_shape[i]);
+    }
+    u_shape.push_back(bond_dim);
+    std::vector<cytnx::cytnx_int64> u_cytnx_shape;
+    for (auto dim : u_shape) {
+      u_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    u.backend = u_backend.reshape(u_cytnx_shape);
+
+    // Set S (as real tensor)
+    s_diag.backend = s_real;
+
+    // Reshape V†
+    shape_t<CytnxTensor<ElemT>> v_shape;
+    v_shape.push_back(bond_dim);
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      v_shape.push_back(a_shape[i]);
+    }
+    std::vector<cytnx::cytnx_int64> v_cytnx_shape;
+    for (auto dim : v_shape) {
+      v_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    v_dag.backend = vt_backend.reshape(v_cytnx_shape);
   }
 
-  // QR decomposition - Frontend (CytnxTensor) thin adapter delegating to backend
+  // QR decomposition
   template <typename ElemT>
   void qr(context_handle_t<CytnxTensor<ElemT>>& ctx,
           const CytnxTensor<ElemT>& a,
           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
           CytnxTensor<ElemT>& q,
           CytnxTensor<ElemT>& r) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::qr(backend_ctx, a.backend, num_of_bds_as_row,
-            q.backend, r.backend);
+    // Get shape and compute matrix dimensions
+    auto a_shape = shape(ctx, a);
+    cytnx::cytnx_uint64 left_dim = 1;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      left_dim *= a_shape[i];
+    }
+    cytnx::cytnx_uint64 right_dim = 1;
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      right_dim *= a_shape[i];
+    }
+
+    // Reshape to matrix
+    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
+                                          static_cast<cytnx::cytnx_int64>(right_dim)});
+
+    // Perform QR
+    auto qr_result = cytnx::linalg::Qr(a_reshaped);
+
+    if (qr_result.size() < 2) {
+      throw std::runtime_error("qr: unexpected result size from Qr");
+    }
+
+    auto& q_backend = qr_result[0];
+    auto& r_backend = qr_result[1];
+
+    auto bond_dim = q_backend.shape()[1];
+
+    // Reshape Q
+    shape_t<CytnxTensor<ElemT>> q_shape;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      q_shape.push_back(a_shape[i]);
+    }
+    q_shape.push_back(bond_dim);
+    std::vector<cytnx::cytnx_int64> q_cytnx_shape;
+    for (auto dim : q_shape) {
+      q_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    q.backend = q_backend.reshape(q_cytnx_shape);
+
+    // Reshape R
+    shape_t<CytnxTensor<ElemT>> r_shape;
+    r_shape.push_back(bond_dim);
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      r_shape.push_back(a_shape[i]);
+    }
+    std::vector<cytnx::cytnx_int64> r_cytnx_shape;
+    for (auto dim : r_shape) {
+      r_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    r.backend = r_backend.reshape(r_cytnx_shape);
   }
 
-  // LQ decomposition - Frontend (CytnxTensor) thin adapter delegating to backend
+  // LQ decomposition
   template <typename ElemT>
   void lq(context_handle_t<CytnxTensor<ElemT>>& ctx,
           const CytnxTensor<ElemT>& a,
           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
           CytnxTensor<ElemT>& l,
           CytnxTensor<ElemT>& q) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::lq(backend_ctx, a.backend, num_of_bds_as_row,
-            l.backend, q.backend);
+    // LQ = (Q†L†)† where Q†L† is QR of A†
+    // Transpose and do QR, then transpose results back
+
+    auto a_shape = shape(ctx, a);
+    cytnx::cytnx_uint64 left_dim = 1;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      left_dim *= a_shape[i];
+    }
+    cytnx::cytnx_uint64 right_dim = 1;
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      right_dim *= a_shape[i];
+    }
+
+    // Reshape and transpose
+    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
+                                          static_cast<cytnx::cytnx_int64>(right_dim)});
+    auto a_t = a_reshaped.permute({1, 0});
+
+    // Perform QR on transposed
+    auto qr_result = cytnx::linalg::Qr(a_t);
+
+    if (qr_result.size() < 2) {
+      throw std::runtime_error("lq: unexpected result size from Qr");
+    }
+
+    auto& q_backend = qr_result[0];
+    auto& r_backend = qr_result[1];
+
+    // L = R†, Q = Q†
+    auto l_backend = r_backend.permute({1, 0});
+    auto q_backend_final = q_backend.permute({1, 0});
+
+    auto bond_dim = l_backend.shape()[1];
+
+    // Reshape L
+    shape_t<CytnxTensor<ElemT>> l_shape;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      l_shape.push_back(a_shape[i]);
+    }
+    l_shape.push_back(bond_dim);
+    std::vector<cytnx::cytnx_int64> l_cytnx_shape;
+    for (auto dim : l_shape) {
+      l_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    l.backend = l_backend.reshape(l_cytnx_shape);
+
+    // Reshape Q
+    shape_t<CytnxTensor<ElemT>> q_shape;
+    q_shape.push_back(bond_dim);
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      q_shape.push_back(a_shape[i]);
+    }
+    std::vector<cytnx::cytnx_int64> q_cytnx_shape;
+    for (auto dim : q_shape) {
+      q_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    q.backend = q_backend_final.reshape(q_cytnx_shape);
   }
 
-  // Frontend (CytnxTensor) - thin adapter delegating to backend (Backend Unification Pattern)
   template <typename ElemT>
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx,
                  const CytnxTensor<ElemT>& a,
@@ -574,11 +791,80 @@ namespace tci {
                  real_t<CytnxTensor<ElemT>>& trunc_err,
                  const bond_dim_t<CytnxTensor<ElemT>> chi_max,
                  const real_t<CytnxTensor<ElemT>> s_min) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::trunc_svd(backend_ctx, a.backend, num_of_bds_as_row,
-                   u.backend, s_diag.backend, v_dag.backend,
-                   trunc_err, chi_max, s_min);
+    // Get shape and compute matrix dimensions
+    auto a_shape = shape(ctx, a);
+    cytnx::cytnx_uint64 left_dim = 1;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      left_dim *= a_shape[i];
+    }
+    cytnx::cytnx_uint64 right_dim = 1;
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      right_dim *= a_shape[i];
+    }
+
+    // Reshape to matrix
+    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
+                                          static_cast<cytnx::cytnx_int64>(right_dim)});
+
+    // Perform SVD
+    // Parameters: tensor, chi_max, s_min, is_UvT, return_err, mindim
+    // Note: return_err=0 to avoid ASAN container-overflow in Cytnx's Svd_truncate
+    auto svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
+
+    if (svd_result.size() < 3) {
+      throw std::runtime_error("trunc_svd: unexpected result size from Svd_truncate");
+    }
+
+    // Extract S, U, Vt (order: S, U, V†)
+    auto& s_backend = svd_result[0];
+    auto& u_backend = svd_result[1];
+    auto& vt_backend = svd_result[2];
+
+    // Calculate truncation error manually from minimum singular value
+    bond_dim_t<CytnxTensor<ElemT>> bond_dim = s_backend.shape()[0];
+    if (bond_dim > 0) {
+      if (s_backend.dtype() == cytnx::Type.Double) {
+        auto* s_data = s_backend.template ptr_as<double>();
+        trunc_err = s_data[bond_dim - 1];
+      } else if (s_backend.dtype() == cytnx::Type.Float) {
+        auto* s_data = s_backend.template ptr_as<float>();
+        trunc_err = static_cast<double>(s_data[bond_dim - 1]);
+      } else {
+        trunc_err = 0.0;
+      }
+    } else {
+      trunc_err = 0.0;
+    }
+
+    // Extract real singular values (SVD of complex tensors may return complex-typed tensor)
+    cytnx::Tensor s_real = s_backend.dtype() == cytnx::Type.Double ? s_backend : s_backend.real();
+
+    // Reshape U
+    shape_t<CytnxTensor<ElemT>> u_shape;
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+      u_shape.push_back(a_shape[i]);
+    }
+    u_shape.push_back(bond_dim);
+    std::vector<cytnx::cytnx_int64> u_cytnx_shape;
+    for (auto dim : u_shape) {
+      u_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    u.backend = u_backend.reshape(u_cytnx_shape);
+
+    // Set S (as real tensor)
+    s_diag.backend = s_real;
+
+    // Reshape V†
+    shape_t<CytnxTensor<ElemT>> v_shape;
+    v_shape.push_back(bond_dim);
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      v_shape.push_back(a_shape[i]);
+    }
+    std::vector<cytnx::cytnx_int64> v_cytnx_shape;
+    for (auto dim : v_shape) {
+      v_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+    v_dag.backend = vt_backend.reshape(v_cytnx_shape);
   }
 
   // Eigenvalue decomposition - eigvals (general matrix eigenvalues)
@@ -587,9 +873,35 @@ namespace tci {
                const CytnxTensor<ElemT>& a,
                const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
                cplx_ten_t<CytnxTensor<ElemT>>& w_diag) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::eigvals(backend_ctx, a.backend, num_of_bds_as_row, w_diag.backend);
+    auto a_shape = shape(ctx, a);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("eigvals: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = a.backend.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                     static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    auto eig_result = cytnx::linalg::Eig(matrix);
+    w_diag.backend = eig_result[0];
+
+    if (w_diag.backend.shape().size() != 1) {
+      w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+    if (w_diag.backend.dtype() != cytnx::Type.ComplexDouble) {
+      w_diag.backend = w_diag.backend.astype(cytnx::Type.ComplexDouble);
+    }
   }
 
   // Eigenvalue decomposition - eigvalsh (hermitian matrix eigenvalues)
@@ -598,9 +910,32 @@ namespace tci {
                 const CytnxTensor<ElemT>& a,
                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
                 real_ten_t<CytnxTensor<ElemT>>& w_diag) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::eigvalsh(backend_ctx, a.backend, num_of_bds_as_row, w_diag.backend);
+    auto a_shape = shape(ctx, a);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("eigvalsh: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = a.backend.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                     static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    auto eigh_result = cytnx::linalg::Eigh(matrix);
+    w_diag.backend = eigh_result[0];
+
+    if (w_diag.backend.shape().size() != 1) {
+      w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
   }
 
   // Eigenvalue decomposition - eig (general matrix eigenvalues and eigenvectors)
@@ -610,9 +945,44 @@ namespace tci {
            const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
            cplx_ten_t<CytnxTensor<ElemT>>& w_diag,
            cplx_ten_t<CytnxTensor<ElemT>>& v) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::eig(backend_ctx, a.backend, num_of_bds_as_row, w_diag.backend, v.backend);
+    auto a_shape = shape(ctx, a);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("eig: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = a.backend.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                     static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    auto eig_result = cytnx::linalg::Eig(matrix);
+    w_diag.backend = eig_result[0];
+    v.backend = eig_result[1];
+
+    if (w_diag.backend.shape().size() != 1) {
+      w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+    if (w_diag.backend.dtype() != cytnx::Type.ComplexDouble) {
+      w_diag.backend = w_diag.backend.astype(cytnx::Type.ComplexDouble);
+    }
+
+    if (v.backend.shape().size() != 2) {
+      v.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                          static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+    if (v.backend.dtype() != cytnx::Type.ComplexDouble) {
+      v.backend = v.backend.astype(cytnx::Type.ComplexDouble);
+    }
   }
 
   // Eigenvalue decomposition - eigh (hermitian matrix eigenvalues and eigenvectors)
@@ -622,9 +992,38 @@ namespace tci {
             const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
             real_ten_t<CytnxTensor<ElemT>>& w_diag,
             CytnxTensor<ElemT>& v) {
-    // Delegate to backend (cytnx::Tensor) implementation
-    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
-    tci::eigh(backend_ctx, a.backend, num_of_bds_as_row, w_diag.backend, v.backend);
+    auto a_shape = shape(ctx, a);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("eigh: matrix must be square");
+    }
+
+    cytnx::Tensor matrix = a.backend.clone();
+    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                     static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    auto eigh_result = cytnx::linalg::Eigh(matrix);
+    w_diag.backend = eigh_result[0];
+    v.backend = eigh_result[1];
+
+    if (w_diag.backend.shape().size() != 1) {
+      w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
+
+    if (v.backend.shape().size() != 2) {
+      v.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
+                          static_cast<cytnx::cytnx_int64>(row_dim)});
+    }
   }
 
   // Tensor equality check with epsilon tolerance
