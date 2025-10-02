@@ -274,12 +274,12 @@ namespace tci {
     // keepdim = chi_max (maximum singular values to keep)
     // err = s_min (threshold for small singular values)
     // is_UvT = true (return U and V†)
-    // return_err = 1 (return truncation error)
+    // return_err = 0 (do NOT return truncation error - causes ASAN issues)
     // mindim = 1 (minimum number of singular values to keep)
     std::vector<cytnx::Tensor> svd_result = cytnx::linalg::Svd_truncate(
-        matrix, static_cast<cytnx::cytnx_uint64>(chi_max), s_min, true, 1, 1);
+        matrix, static_cast<cytnx::cytnx_uint64>(chi_max), s_min, true, 0, 1);
 
-    if (svd_result.size() < 4) {
+    if (svd_result.size() < 3) {
       throw std::runtime_error("trunc_svd: unexpected result size from Svd_truncate");
     }
 
@@ -287,14 +287,22 @@ namespace tci {
     u = svd_result[1];       // Left unitary matrix U
     v_dag = svd_result[2];   // Right unitary matrix V†
 
-    // Extract truncation error (last element in result)
-    cytnx::Tensor err_tensor = svd_result[3];
-    if (err_tensor.dtype() == cytnx::Type.Double) {
-      trunc_err = err_tensor.item<double>();
-    } else if (err_tensor.dtype() == cytnx::Type.Float) {
-      trunc_err = static_cast<double>(err_tensor.item<float>());
+    // Calculate truncation error manually
+    // trunc_err is set to the minimum kept singular value (following Cytnx convention)
+    auto s_shape = s_diag.shape();
+    if (s_shape.size() > 0 && s_shape[0] > 0) {
+      // Get the minimum singular value (last element)
+      if (s_diag.dtype() == cytnx::Type.Double) {
+        auto* s_data = s_diag.ptr_as<double>();
+        trunc_err = s_data[s_shape[0] - 1];
+      } else if (s_diag.dtype() == cytnx::Type.Float) {
+        auto* s_data = s_diag.ptr_as<float>();
+        trunc_err = static_cast<double>(s_data[s_shape[0] - 1]);
+      } else {
+        trunc_err = 0.0;
+      }
     } else {
-      trunc_err = 0.0;  // Default if we can't extract the error
+      trunc_err = 0.0;
     }
 
     // Reshape results to match original tensor structure

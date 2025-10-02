@@ -807,27 +807,31 @@ namespace tci {
                                           static_cast<cytnx::cytnx_int64>(right_dim)});
 
     // Perform SVD
-    // Parameters: tensor, chi_max, s_min, is_UvT, mindim, return_err
-    auto svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 1, 1);
+    // Parameters: tensor, chi_max, s_min, is_UvT, return_err, mindim
+    // Note: return_err=0 to avoid ASAN container-overflow in Cytnx's Svd_truncate
+    auto svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
 
-    if (svd_result.size() < 4) {
+    if (svd_result.size() < 3) {
       throw std::runtime_error("trunc_svd: unexpected result size from Svd_truncate");
     }
 
-    // Extract S, U, Vt, error (order: S, U, V†, err)
+    // Extract S, U, Vt (order: S, U, V†)
     auto& s_backend = svd_result[0];
     auto& u_backend = svd_result[1];
     auto& vt_backend = svd_result[2];
-    auto& err_tensor = svd_result[3];
 
-    // Extract truncation error from result
+    // Calculate truncation error manually from minimum singular value
     bond_dim_t<CytnxTensor<ElemT>> bond_dim = s_backend.shape()[0];
-    if (err_tensor.dtype() == cytnx::Type.Double) {
-      trunc_err = err_tensor.template item<double>();
-    } else if (err_tensor.dtype() == cytnx::Type.Float) {
-      trunc_err = static_cast<double>(err_tensor.template item<float>());
-    } else if (err_tensor.dtype() == cytnx::Type.ComplexDouble) {
-      trunc_err = std::real(err_tensor.template item<cytnx::cytnx_complex128>());
+    if (bond_dim > 0) {
+      if (s_backend.dtype() == cytnx::Type.Double) {
+        auto* s_data = s_backend.template ptr_as<double>();
+        trunc_err = s_data[bond_dim - 1];
+      } else if (s_backend.dtype() == cytnx::Type.Float) {
+        auto* s_data = s_backend.template ptr_as<float>();
+        trunc_err = static_cast<double>(s_data[bond_dim - 1]);
+      } else {
+        trunc_err = 0.0;
+      }
     } else {
       trunc_err = 0.0;
     }
