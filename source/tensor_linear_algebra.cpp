@@ -34,50 +34,8 @@ namespace tci {
 
   // contract implementations moved to header for template visibility
 
-  template <> void svd(context_handle_t<cytnx::Tensor>& ctx, const cytnx::Tensor& a,
-                       const rank_t<cytnx::Tensor> num_of_bds_as_row, cytnx::Tensor& u,
-                       real_ten_t<cytnx::Tensor>& s_diag, cytnx::Tensor& v_dag) {
-    auto shape = a.shape();
-
-    // Calculate row and column dimensions based on num_of_bds_as_row
-    cytnx::cytnx_uint64 row_dim = 1;
-    cytnx::cytnx_uint64 col_dim = 1;
-
-    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row && i < shape.size(); ++i) {
-      row_dim *= shape[i];
-    }
-    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
-      col_dim *= shape[i];
-    }
-
-    // Reshape tensor to matrix form for SVD
-    cytnx::Tensor matrix = a.clone();
-    matrix.reshape_(
-        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
-
-    // Perform SVD using Cytnx. Return order is [S, U, V^T].
-    auto svd_result = cytnx::linalg::Svd(matrix);
-
-    s_diag = svd_result[0];  // Singular values as a rank-1 tensor
-    u = svd_result[1];       // Left singular vectors
-    v_dag = svd_result[2];   // Right singular vectors (already transposed)
-
-    // Reshape U to match original bond structure
-    std::vector<cytnx::cytnx_uint64> u_shape;
-    for (cytnx::cytnx_uint64 i = 0; i < num_of_bds_as_row; ++i) {
-      u_shape.push_back(shape[i]);
-    }
-    u_shape.push_back(s_diag.shape()[0]);  // Add bond dimension
-    u.reshape_(u_shape);
-
-    // Reshape V† to match original bond structure
-    std::vector<cytnx::cytnx_uint64> v_shape;
-    v_shape.push_back(s_diag.shape()[0]);  // Bond dimension first
-    for (cytnx::cytnx_uint64 i = num_of_bds_as_row; i < shape.size(); ++i) {
-      v_shape.push_back(shape[i]);
-    }
-    v_dag.reshape_(v_shape);
-  }
+  // svd implementation moved to include/tci/tensor_linear_algebra_impl.h
+  // (Backend Unification Pattern)
 
   template <>
   elem_t<cytnx::Tensor> normalize(context_handle_t<cytnx::Tensor>& ctx, cytnx::Tensor& inout) {

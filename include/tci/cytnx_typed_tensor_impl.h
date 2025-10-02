@@ -589,7 +589,7 @@ namespace tci {
     }
   }
 
-  // SVD (full)
+  // SVD (full) - Frontend (CytnxTensor) thin adapter delegating to backend
   template <typename ElemT>
   void svd(context_handle_t<CytnxTensor<ElemT>>& ctx,
            const CytnxTensor<ElemT>& a,
@@ -597,64 +597,10 @@ namespace tci {
            CytnxTensor<ElemT>& u,
            real_ten_t<CytnxTensor<ElemT>>& s_diag,
            CytnxTensor<ElemT>& v_dag) {
-    // Get shape and compute matrix dimensions
-    auto a_shape = shape(ctx, a);
-    cytnx::cytnx_uint64 left_dim = 1;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
-      left_dim *= a_shape[i];
-    }
-    cytnx::cytnx_uint64 right_dim = 1;
-    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
-      right_dim *= a_shape[i];
-    }
-
-    // Reshape to matrix
-    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
-                                          static_cast<cytnx::cytnx_int64>(right_dim)});
-
-    // Perform full SVD
-    auto svd_result = cytnx::linalg::Svd(a_reshaped, true);  // Return U, S, Vt
-
-    if (svd_result.size() < 3) {
-      throw std::runtime_error("svd: unexpected result size from Svd");
-    }
-
-    // Extract S, U, Vt (order: S, U, V†)
-    auto& s_backend = svd_result[0];
-    auto& u_backend = svd_result[1];
-    auto& vt_backend = svd_result[2];
-
-    bond_dim_t<CytnxTensor<ElemT>> bond_dim = s_backend.shape()[0];
-
-    // Extract real singular values
-    cytnx::Tensor s_real = s_backend.dtype() == cytnx::Type.Double ? s_backend : s_backend.real();
-
-    // Reshape U
-    shape_t<CytnxTensor<ElemT>> u_shape;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
-      u_shape.push_back(a_shape[i]);
-    }
-    u_shape.push_back(bond_dim);
-    std::vector<cytnx::cytnx_int64> u_cytnx_shape;
-    for (auto dim : u_shape) {
-      u_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
-    }
-    u.backend = u_backend.reshape(u_cytnx_shape);
-
-    // Set S (as real tensor)
-    s_diag.backend = s_real;
-
-    // Reshape V†
-    shape_t<CytnxTensor<ElemT>> v_shape;
-    v_shape.push_back(bond_dim);
-    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
-      v_shape.push_back(a_shape[i]);
-    }
-    std::vector<cytnx::cytnx_int64> v_cytnx_shape;
-    for (auto dim : v_shape) {
-      v_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
-    }
-    v_dag.backend = vt_backend.reshape(v_cytnx_shape);
+    // Delegate to backend (cytnx::Tensor) implementation
+    context_handle_t<cytnx::Tensor> backend_ctx = ctx;
+    tci::svd(backend_ctx, a.backend, num_of_bds_as_row,
+             u.backend, s_diag.backend, v_dag.backend);
   }
 
   // QR decomposition
