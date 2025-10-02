@@ -253,6 +253,14 @@ namespace tci {
     return result;
   }
 
+  // Clear operation
+  template <typename ElemT>
+  void clear(context_handle_t<CytnxTensor<ElemT>>& ctx,
+             CytnxTensor<ElemT>& a) {
+    // Create empty tensor
+    a.backend = cytnx::Tensor();
+  }
+
   // Reshape operation
   template <typename ElemT>
   void reshape(context_handle_t<CytnxTensor<ElemT>>& ctx,

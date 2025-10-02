@@ -159,6 +159,26 @@ TEST_CASE("CytnxTensor - Construction") {
     CHECK(t2.backend.shape().size() == 2);
   }
 
+  SUBCASE("clear function") {
+    using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
+    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+
+    // Create and fill a tensor
+    Tensor tensor;
+    tci::fill(ctx, {3, 4}, 5.0, tensor);
+
+    // Verify tensor is initialized
+    CHECK(tensor.backend.shape().size() == 2);
+    CHECK(tensor.backend.shape()[0] == 3);
+    CHECK(tensor.backend.shape()[1] == 4);
+
+    // Clear the tensor
+    CHECK_NOTHROW(tci::clear(ctx, tensor));
+
+    // After clear, tensor should be empty (shape size 0)
+    CHECK(tensor.backend.shape().size() == 0);
+  }
+
   SUBCASE("assign_from_container with row-major indexing") {
     using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
     using Elem = tci::tensor_traits<Tensor>::elem_t;
