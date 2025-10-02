@@ -157,6 +157,76 @@ TEST_CASE("CytnxTensor - Construction") {
     // t2 should have a valid backend
     CHECK(t2.backend.shape().size() == 2);
   }
+
+  SUBCASE("assign_from_container with row-major indexing") {
+    using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+    using Elem = tci::tensor_traits<Tensor>::elem_t;
+    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+
+    // Create a 2x3 tensor from std::vector
+    std::vector<std::complex<double>> container = {
+        {1.0, 0.0}, {2.0, 0.0}, {3.0, 0.0},
+        {4.0, 0.0}, {5.0, 0.0}, {6.0, 0.0}
+    };
+
+    auto coors2idx = [](const tci::elem_coors_t<Tensor>& coors) -> std::size_t {
+      return coors[0] * 3 + coors[1];  // row-major for 2x3 matrix
+    };
+
+    tci::shape_t<Tensor> shape = {2, 3};
+    Tensor tensor;
+
+    CHECK_NOTHROW(tci::assign_from_container(ctx, shape, container.begin(), coors2idx, tensor));
+
+    // Verify tensor properties
+    CHECK(tensor.backend.shape().size() == 2);
+    CHECK(tensor.backend.shape()[0] == 2);
+    CHECK(tensor.backend.shape()[1] == 3);
+
+    // Verify element values
+    Elem elem_00 = tci::get_elem(ctx, tensor, {0, 0});
+    CHECK(std::abs(elem_00.real() - 1.0) < 1e-10);
+
+    Elem elem_01 = tci::get_elem(ctx, tensor, {0, 1});
+    CHECK(std::abs(elem_01.real() - 2.0) < 1e-10);
+
+    Elem elem_10 = tci::get_elem(ctx, tensor, {1, 0});
+    CHECK(std::abs(elem_10.real() - 4.0) < 1e-10);
+
+    Elem elem_12 = tci::get_elem(ctx, tensor, {1, 2});
+    CHECK(std::abs(elem_12.real() - 6.0) < 1e-10);
+  }
+
+  SUBCASE("assign_from_container with column-major indexing") {
+    using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
+    using Elem = tci::tensor_traits<Tensor>::elem_t;
+    tci::context_handle_t<Tensor> ctx = -1;  // CPU
+
+    // Create a 2x2 tensor with column-major layout
+    std::vector<double> container = {1.0, 3.0, 2.0, 4.0};
+
+    auto coors2idx = [](const tci::elem_coors_t<Tensor>& coors) -> std::size_t {
+      return coors[1] * 2 + coors[0];  // column-major for 2x2 matrix
+    };
+
+    tci::shape_t<Tensor> shape = {2, 2};
+    Tensor tensor;
+
+    CHECK_NOTHROW(tci::assign_from_container(ctx, shape, container.begin(), coors2idx, tensor));
+
+    // Verify element values with column-major layout
+    Elem elem_00 = tci::get_elem(ctx, tensor, {0, 0});
+    CHECK(std::abs(elem_00 - 1.0) < 1e-10);
+
+    Elem elem_01 = tci::get_elem(ctx, tensor, {0, 1});
+    CHECK(std::abs(elem_01 - 2.0) < 1e-10);
+
+    Elem elem_10 = tci::get_elem(ctx, tensor, {1, 0});
+    CHECK(std::abs(elem_10 - 3.0) < 1e-10);
+
+    Elem elem_11 = tci::get_elem(ctx, tensor, {1, 1});
+    CHECK(std::abs(elem_11 - 4.0) < 1e-10);
+  }
 }
 
 TEST_CASE("CytnxTensor - TCI API Integration") {
