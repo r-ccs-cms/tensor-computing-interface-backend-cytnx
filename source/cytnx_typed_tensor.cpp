@@ -55,6 +55,9 @@ namespace tci {
       real_t<CytnxTensor<ComplexElem>>& trunc_err,
       const bond_dim_t<CytnxTensor<ComplexElem>> chi_max,
       const real_t<CytnxTensor<ComplexElem>> s_min);
+  // TODO: This explicit instantiation is redundant since trunc_svd is fully
+  // defined in cytnx_typed_tensor_impl.h (Consider removing this
+  // to be consistent with svd/qr/lq which only use header-complete implementation.
 
   // Instantiate assign_from_container
   // Note: Cannot explicitly instantiate template with template template parameters,
