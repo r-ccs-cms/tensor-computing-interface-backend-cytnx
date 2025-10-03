@@ -1791,4 +1791,26 @@ namespace tci {
     to_cplx(ctx, in, result);
     return result;
   }
+
+  // contract - tensor contraction (string version)
+  template <typename ElemT>
+  void contract(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                const CytnxTensor<ElemT>& a,
+                const std::string_view bd_labs_str_a,
+                const CytnxTensor<ElemT>& b,
+                const std::string_view bd_labs_str_b,
+                CytnxTensor<ElemT>& c,
+                const std::string_view bd_labs_str_c) {
+    List<bond_label_t<CytnxTensor<ElemT>>> bd_labs_a, bd_labs_b, bd_labs_c;
+    for (char ch : bd_labs_str_a) {
+      bd_labs_a.push_back(static_cast<bond_label_t<CytnxTensor<ElemT>>>(ch));
+    }
+    for (char ch : bd_labs_str_b) {
+      bd_labs_b.push_back(static_cast<bond_label_t<CytnxTensor<ElemT>>>(ch));
+    }
+    for (char ch : bd_labs_str_c) {
+      bd_labs_c.push_back(static_cast<bond_label_t<CytnxTensor<ElemT>>>(ch));
+    }
+    contract(ctx, a, bd_labs_a, b, bd_labs_b, c, bd_labs_c);
+  }
 }  // namespace tci
