@@ -1813,4 +1813,41 @@ namespace tci {
     }
     contract(ctx, a, bd_labs_a, b, bd_labs_b, c, bd_labs_c);
   }
+
+  // Explicit specializations for zeros (out-of-place) for all supported element types
+  template <>
+  inline CytnxTensor<cytnx::cytnx_double> zeros<CytnxTensor<cytnx::cytnx_double>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape) {
+    CytnxTensor<cytnx::cytnx_double> result;
+    zeros(ctx, shape, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_float> zeros<CytnxTensor<cytnx::cytnx_float>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape) {
+    CytnxTensor<cytnx::cytnx_float> result;
+    zeros(ctx, shape, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex128> zeros<CytnxTensor<cytnx::cytnx_complex128>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape) {
+    CytnxTensor<cytnx::cytnx_complex128> result;
+    zeros(ctx, shape, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex64> zeros<CytnxTensor<cytnx::cytnx_complex64>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape) {
+    CytnxTensor<cytnx::cytnx_complex64> result;
+    zeros(ctx, shape, result);
+    return result;
+  }
 }  // namespace tci
