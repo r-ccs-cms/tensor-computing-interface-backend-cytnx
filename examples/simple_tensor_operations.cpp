@@ -14,7 +14,7 @@
 #include <random>
 #include <functional>
 
-using Ten = cytnx::Tensor;
+using Ten = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using namespace tci;
 
 /**
@@ -51,7 +51,7 @@ void basic_tensor_operations() {
     // Demonstrate element access
     std::cout << "\nElement access:" << std::endl;
     auto eye_elem = get_elem(ctx, eye_tensor, {1, 1});
-    // Note: elem_t for cytnx::Tensor is std::variant
+    // Note: elem_t for tci::CytnxTensor<cytnx::cytnx_complex128> is std::variant
     std::visit([](auto&& val) {
       std::cout << "  eye[1,1] = " << std::real(val) << " + " << std::imag(val) << "i" << std::endl;
     }, eye_elem);

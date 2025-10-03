@@ -9,7 +9,7 @@ int main() {
   std::cout << "===============================\n\n";
 
   // Create context
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   try {
@@ -20,15 +20,15 @@ int main() {
 
     // Create tensors for contraction: A_{ijk} * B_{kjl} -> C_{il}
     std::cout << "Creating tensor A with shape [3, 4, 2]...\n";
-    auto A = tci::random<cytnx::Tensor>(ctx, {3, 4, 2}, rand_gen);
+    auto A = tci::random<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, {3, 4, 2}, rand_gen);
 
     std::cout << "Creating tensor B with shape [2, 4, 5]...\n";
-    auto B = tci::random<cytnx::Tensor>(ctx, {2, 4, 5}, rand_gen);
+    auto B = tci::random<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, {2, 4, 5}, rand_gen);
 
     // Perform contraction using string notation
     // A_{ijk} * B_{kjl} -> C_{il}
     std::cout << "\nPerforming contraction: A_{ijk} * B_{kjl} -> C_{il}...\n";
-    cytnx::Tensor C;
+    tci::CytnxTensor<cytnx::cytnx_complex128> C;
     tci::contract(ctx, A, "ijk", B, "kjl", C, "il");
 
     auto C_shape = tci::shape(ctx, C);

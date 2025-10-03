@@ -9,7 +9,7 @@ int main() {
   std::cout << "===============\n\n";
 
   // Create context
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   try {
@@ -20,7 +20,7 @@ int main() {
 
     // Create a random tensor for SVD: shape [3, 4, 12]
     std::cout << "Creating random tensor with shape [3, 4, 12]...\n";
-    auto A = tci::random<cytnx::Tensor>(ctx, {3, 4, 12}, rand_gen);
+    auto A = tci::random<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, {3, 4, 12}, rand_gen);
 
     std::cout << "Original tensor shape: ";
     auto shape = tci::shape(ctx, A);
@@ -32,8 +32,8 @@ int main() {
 
     // Perform SVD: treat first 2 bonds as rows, last bond as columns
     std::cout << "\nPerforming SVD (first 2 bonds as rows)...\n";
-    cytnx::Tensor U, V_dag;
-    cytnx::Tensor S_diag;
+    tci::CytnxTensor<cytnx::cytnx_complex128> U, V_dag;
+    tci::CytnxTensor<cytnx::cytnx_complex128> S_diag;
 
     tci::svd(ctx, A, 2, U, S_diag, V_dag);
 
@@ -66,8 +66,8 @@ int main() {
     // Show some singular values
     std::cout << "\nFirst few singular values:\n";
     for (int i = 0; i < std::min(5, static_cast<int>(S_shape[0])); ++i) {
-      auto sv = tci::get_elem(ctx, S_diag, {static_cast<tci::elem_coor_t<cytnx::Tensor>>(i)});
-      // Note: elem_t for cytnx::Tensor is std::variant, so we use std::visit
+      auto sv = tci::get_elem(ctx, S_diag, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i)});
+      // Note: elem_t for tci::CytnxTensor<cytnx::cytnx_complex128> is std::variant, so we use std::visit
       std::visit([i](auto&& val) {
         std::cout << "S[" << i << "] = " << std::real(val) << "\n";
       }, sv);

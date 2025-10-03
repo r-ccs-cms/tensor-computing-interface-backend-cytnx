@@ -8,13 +8,13 @@ int main() {
   std::cout << "========================\n\n";
 
   // Create context
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   try {
     // Create a 3x4 tensor filled with zeros
     std::cout << "Creating a 3x4 zero tensor...\n";
-    auto a = tci::zeros<cytnx::Tensor>(ctx, {3, 4});
+    auto a = tci::zeros<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, {3, 4});
 
     std::cout << "Tensor shape: ";
     auto shape = tci::shape(ctx, a);
@@ -33,14 +33,14 @@ int main() {
 
     // Get element back
     auto elem = tci::get_elem(ctx, a, {1, 2});
-    // Note: elem_t for cytnx::Tensor is std::variant, so we use std::visit to print it
+    // Note: elem_t for tci::CytnxTensor<cytnx::cytnx_complex128> is std::variant, so we use std::visit to print it
     std::visit([](auto&& val) {
       std::cout << "Element at (1,2): " << val << "\n";
     }, elem);
 
     // Create identity matrix
     std::cout << "\nCreating 3x3 identity matrix...\n";
-    auto eye_tensor = tci::eye<cytnx::Tensor>(ctx, 3);
+    auto eye_tensor = tci::eye<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, 3);
     std::cout << "Identity matrix created.\n";
 
     // Print tensors
