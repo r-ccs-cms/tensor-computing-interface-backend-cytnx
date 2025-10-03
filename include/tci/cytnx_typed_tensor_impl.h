@@ -1999,6 +1999,87 @@ namespace tci {
     return result;
   }
 
+  // ===================================================================
+  // Linear Algebra Operations
+  // ===================================================================
+
+  // exp - matrix exponential (in-place)
+  template <typename ElemT>
+  void exp(context_handle_t<CytnxTensor<ElemT>>& ctx,
+           CytnxTensor<ElemT>& inout,
+           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
+    auto a_shape = shape(ctx, inout);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("exp: matrix must be square");
+    }
+
+    // Reshape to 2D matrix
+    cytnx::Tensor reshaped = inout.backend.reshape({static_cast<cytnx::cytnx_int64>(row_dim),
+                                                     static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // Apply matrix exponential
+    cytnx::Tensor result = cytnx::linalg::ExpM(reshaped);
+
+    // Reshape back to original shape
+    std::vector<cytnx::cytnx_int64> original_shape;
+    for (auto s : a_shape) {
+      original_shape.push_back(static_cast<cytnx::cytnx_int64>(s));
+    }
+    inout.backend = result.reshape(original_shape);
+  }
+
+  // exp - matrix exponential (out-of-place)
+  template <typename ElemT>
+  void exp(context_handle_t<CytnxTensor<ElemT>>& ctx,
+           const CytnxTensor<ElemT>& in,
+           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+           CytnxTensor<ElemT>& out) {
+    auto a_shape = shape(ctx, in);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim) {
+      throw std::invalid_argument("exp: matrix must be square");
+    }
+
+    // Reshape to 2D matrix
+    cytnx::Tensor reshaped = in.backend.reshape({static_cast<cytnx::cytnx_int64>(row_dim),
+                                                  static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    // Apply matrix exponential
+    cytnx::Tensor result = cytnx::linalg::ExpM(reshaped);
+
+    // Reshape back to original shape
+    std::vector<cytnx::cytnx_int64> original_shape;
+    for (auto s : a_shape) {
+      original_shape.push_back(static_cast<cytnx::cytnx_int64>(s));
+    }
+    out.backend = result.reshape(original_shape);
+  }
+
+  // ===================================================================
+  // Context Management
+  // ===================================================================
+
   // Context management for CytnxTensor<ElemT>
   template <typename ElemT>
   void create_context(context_handle_t<CytnxTensor<ElemT>>& ctx) {
