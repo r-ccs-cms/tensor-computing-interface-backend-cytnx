@@ -57,6 +57,12 @@ namespace tci {
   template <typename ElemT1, typename ElemT2>
   void convert(context_handle_t<CytnxTensor<ElemT1>>& ctx1, const CytnxTensor<ElemT1>& t1,
                context_handle_t<CytnxTensor<ElemT2>>& ctx2, CytnxTensor<ElemT2>& t2) {
+    // Handle empty tensor case
+    if (t1.backend.dtype() == cytnx::Type.Void || t1.backend.shape().size() == 0) {
+      t2.backend = cytnx::Tensor();
+      return;
+    }
+
     // Create tensor info string for profiling
     std::ostringstream info;
     auto shape = t1.backend.shape();
@@ -71,9 +77,15 @@ namespace tci {
 
     TCI_TIME_FUNCTION_WITH_INFO("tci::convert", info.str());
 
-    // Convert element type using Cytnx's astype
-    unsigned int target_type = detail::get_cytnx_type_id<ElemT2>();
-    cytnx::Tensor converted = t1.backend.astype(target_type);
+    // If same type, clone to ensure deep copy
+    cytnx::Tensor converted;
+    if constexpr (std::is_same_v<ElemT1, ElemT2>) {
+      converted = t1.backend.clone();
+    } else {
+      // Convert element type using Cytnx's astype
+      unsigned int target_type = detail::get_cytnx_type_id<ElemT2>();
+      converted = t1.backend.astype(target_type);
+    }
 
     // Handle device transfer if contexts differ
     if (ctx1 != ctx2) {
