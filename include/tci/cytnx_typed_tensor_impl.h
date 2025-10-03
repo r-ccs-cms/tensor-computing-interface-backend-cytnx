@@ -1924,4 +1924,41 @@ namespace tci {
     allocate(ctx, shape, result);
     return result;
   }
+
+  // Explicit specializations for copy (out-of-place) for all supported element types
+  template <>
+  inline CytnxTensor<cytnx::cytnx_double> copy<CytnxTensor<cytnx::cytnx_double>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
+      const CytnxTensor<cytnx::cytnx_double>& orig) {
+    CytnxTensor<cytnx::cytnx_double> result;
+    copy(ctx, orig, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_float> copy<CytnxTensor<cytnx::cytnx_float>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
+      const CytnxTensor<cytnx::cytnx_float>& orig) {
+    CytnxTensor<cytnx::cytnx_float> result;
+    copy(ctx, orig, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex128> copy<CytnxTensor<cytnx::cytnx_complex128>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
+      const CytnxTensor<cytnx::cytnx_complex128>& orig) {
+    CytnxTensor<cytnx::cytnx_complex128> result;
+    copy(ctx, orig, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex64> copy<CytnxTensor<cytnx::cytnx_complex64>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
+      const CytnxTensor<cytnx::cytnx_complex64>& orig) {
+    CytnxTensor<cytnx::cytnx_complex64> result;
+    copy(ctx, orig, result);
+    return result;
+  }
 }  // namespace tci
