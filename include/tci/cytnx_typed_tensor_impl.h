@@ -1567,7 +1567,7 @@ namespace tci {
                    const CytnxTensor<ElemT>& sub,
                    const elem_coors_t<CytnxTensor<ElemT>>& begin_pt,
                    CytnxTensor<ElemT>& out) {
-    out = in;
+    out.backend = in.backend.clone();
     replace_sub(ctx, out, sub, begin_pt);
   }
 
