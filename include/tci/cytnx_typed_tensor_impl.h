@@ -1358,18 +1358,93 @@ namespace tci {
 
   // Tensor Manipulation functions - independent implementations needed
 
-  // expand
-  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
-  // Search for "template <> void expand" to find cytnx::Tensor specialization
-  // Helper functions: copy_original_data_recursive (in anonymous namespace)
+  // expand, extract_sub, replace_sub helper functions
+  // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
+  namespace {
+    void copy_original_data_recursive(const cytnx::Tensor& src, cytnx::Tensor& dst, std::size_t dim,
+                                      std::vector<cytnx::cytnx_uint64> current_coords,
+                                      const std::vector<cytnx::cytnx_uint64>& original_shape) {
+      if (dim == original_shape.size()) {
+        // Base case: copy element
+        auto src_elem = src.at(current_coords);
+        dst.at(current_coords) = src_elem;
+        return;
+      }
+
+      for (cytnx::cytnx_uint64 i = 0; i < original_shape[dim]; ++i) {
+        current_coords.push_back(i);
+        copy_original_data_recursive(src, dst, dim + 1, current_coords, original_shape);
+        current_coords.pop_back();
+      }
+    }
+
+    void extract_elements_recursive(
+        const cytnx::Tensor& src, cytnx::Tensor& dst, std::size_t dim,
+        std::vector<cytnx::cytnx_uint64> src_coords, std::vector<cytnx::cytnx_uint64> dst_coords,
+        const List<Pair<cytnx::cytnx_uint64, cytnx::cytnx_uint64>>& coor_pairs) {
+      if (dim == coor_pairs.size()) {
+        // Base case: copy element
+        auto elem = src.at(src_coords);
+        dst.at(dst_coords) = elem;
+        return;
+      }
+
+      auto [start, end] = coor_pairs[dim];
+      for (cytnx::cytnx_uint64 i = start; i < end; ++i) {
+        src_coords.push_back(i);
+        dst_coords.push_back(i - start);
+        extract_elements_recursive(src, dst, dim + 1, src_coords, dst_coords, coor_pairs);
+        src_coords.pop_back();
+        dst_coords.pop_back();
+      }
+    }
+
+    void replace_elements_recursive(cytnx::Tensor& main_tensor, const cytnx::Tensor& sub_tensor,
+                                    std::size_t dim, const std::vector<cytnx::cytnx_uint64>& begin_pt,
+                                    std::vector<cytnx::cytnx_uint64>& sub_coords,
+                                    const std::vector<cytnx::cytnx_uint64>& sub_shape) {
+      if (dim == sub_shape.size()) {
+        // Base case: copy element from sub to main
+        std::vector<cytnx::cytnx_uint64> main_coords;
+        for (std::size_t i = 0; i < begin_pt.size(); ++i) {
+          main_coords.push_back(begin_pt[i] + sub_coords[i]);
+        }
+        auto elem = sub_tensor.at(sub_coords);
+        main_tensor.at(main_coords) = elem;
+        return;
+      }
+
+      for (cytnx::cytnx_uint64 i = 0; i < sub_shape[dim]; ++i) {
+        sub_coords[dim] = i;
+        replace_elements_recursive(main_tensor, sub_tensor, dim + 1, begin_pt, sub_coords,
+                                   sub_shape);
+      }
+    }
+  }  // anonymous namespace
+
   template <typename ElemT>
   void expand(context_handle_t<CytnxTensor<ElemT>>& ctx,
               CytnxTensor<ElemT>& inout,
               const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>& bond_idx_increment_map) {
-    (void)ctx;
-    (void)inout;
-    (void)bond_idx_increment_map;
-    throw std::runtime_error("expand (in-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
+    auto original_shape = inout.backend.shape();
+    std::vector<cytnx::cytnx_uint64> new_shape(original_shape.begin(), original_shape.end());
+
+    // Apply increments to shape
+    for (const auto& [bond_idx, increment] : bond_idx_increment_map) {
+      if (bond_idx >= new_shape.size()) {
+        throw std::invalid_argument("Bond index out of range");
+      }
+      new_shape[bond_idx] += increment;
+    }
+
+    // Create new tensor with expanded shape, initialized to zero
+    cytnx::Tensor expanded = cytnx::zeros(new_shape, inout.backend.dtype(), ctx);
+
+    // Copy original data to the beginning of each expanded dimension
+    auto original_coords = original_shape;
+    copy_original_data_recursive(inout.backend, expanded, 0, {}, original_coords);
+
+    inout.backend = std::move(expanded);
   }
 
   template <typename ElemT>
@@ -1377,24 +1452,37 @@ namespace tci {
               const CytnxTensor<ElemT>& in,
               const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>& bond_idx_increment_map,
               CytnxTensor<ElemT>& out) {
-    (void)ctx;
-    (void)in;
-    (void)bond_idx_increment_map;
-    (void)out;
-    throw std::runtime_error("expand (out-of-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
+    out = in;
+    expand(ctx, out, bond_idx_increment_map);
   }
 
   // shrink
-  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
-  // Search for "template <> void shrink" to find cytnx::Tensor specialization
+  // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
   template <typename ElemT>
   void shrink(context_handle_t<CytnxTensor<ElemT>>& ctx,
               CytnxTensor<ElemT>& inout,
               const bond_idx_elem_coor_pair_map<CytnxTensor<ElemT>>& bd_idx_el_coor_pair_map) {
-    (void)ctx;
-    (void)inout;
-    (void)bd_idx_el_coor_pair_map;
-    throw std::runtime_error("shrink (in-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
+    auto original_shape = inout.backend.shape();
+
+    // Build coordinate pairs list from the map
+    List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>> coor_pairs;
+    coor_pairs.resize(original_shape.size());
+
+    // Initialize with full ranges
+    for (std::size_t i = 0; i < original_shape.size(); ++i) {
+      coor_pairs[i] = {0, original_shape[i]};
+    }
+
+    // Apply shrinking ranges from the map
+    for (const auto& [bond_idx, coor_pair] : bd_idx_el_coor_pair_map) {
+      if (bond_idx >= original_shape.size()) {
+        throw std::invalid_argument("Bond index out of range");
+      }
+      coor_pairs[bond_idx] = coor_pair;
+    }
+
+    // Use extract_sub to perform the shrinking
+    extract_sub(ctx, inout, coor_pairs);
   }
 
   template <typename ElemT>
@@ -1402,25 +1490,39 @@ namespace tci {
               const CytnxTensor<ElemT>& in,
               const bond_idx_elem_coor_pair_map<CytnxTensor<ElemT>>& bd_idx_el_coor_pair_map,
               CytnxTensor<ElemT>& out) {
-    (void)ctx;
-    (void)in;
-    (void)bd_idx_el_coor_pair_map;
-    (void)out;
-    throw std::runtime_error("shrink (out-of-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
+    out = in;
+    shrink(ctx, out, bd_idx_el_coor_pair_map);
   }
 
   // extract_sub
-  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
-  // Search for "template <> void extract_sub" to find cytnx::Tensor specialization
-  // Helper functions: extract_elements_recursive (in anonymous namespace)
+  // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
   template <typename ElemT>
   void extract_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
                    CytnxTensor<ElemT>& inout,
                    const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>& coor_pairs) {
-    (void)ctx;
-    (void)inout;
-    (void)coor_pairs;
-    throw std::runtime_error("extract_sub (in-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
+    auto original_shape = inout.backend.shape();
+
+    if (coor_pairs.size() != original_shape.size()) {
+      throw std::invalid_argument("Number of coordinate pairs must match tensor rank");
+    }
+
+    // Calculate new shape
+    std::vector<cytnx::cytnx_uint64> new_shape;
+    for (std::size_t i = 0; i < coor_pairs.size(); ++i) {
+      auto [start, end] = coor_pairs[i];
+      if (start >= end || end > original_shape[i]) {
+        throw std::invalid_argument("Invalid coordinate range");
+      }
+      new_shape.push_back(end - start);
+    }
+
+    // Create result tensor
+    cytnx::Tensor result = cytnx::zeros(new_shape, inout.backend.dtype(), ctx);
+
+    // Extract sub-tensor by copying elements
+    extract_elements_recursive(inout.backend, result, 0, {}, {}, coor_pairs);
+
+    inout.backend = std::move(result);
   }
 
   template <typename ElemT>
@@ -1428,27 +1530,34 @@ namespace tci {
                    const CytnxTensor<ElemT>& in,
                    const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>& coor_pairs,
                    CytnxTensor<ElemT>& out) {
-    (void)ctx;
-    (void)in;
-    (void)coor_pairs;
-    (void)out;
-    throw std::runtime_error("extract_sub (out-of-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
+    out = in;
+    extract_sub(ctx, out, coor_pairs);
   }
 
   // replace_sub
-  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
-  // Search for "template <> void replace_sub" to find cytnx::Tensor specialization
-  // Helper functions: replace_elements_recursive (in anonymous namespace)
+  // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
   template <typename ElemT>
   void replace_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
                    CytnxTensor<ElemT>& inout,
                    const CytnxTensor<ElemT>& sub,
                    const elem_coors_t<CytnxTensor<ElemT>>& begin_pt) {
-    (void)ctx;
-    (void)inout;
-    (void)sub;
-    (void)begin_pt;
-    throw std::runtime_error("replace_sub (in-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
+    auto main_shape = inout.backend.shape();
+    auto sub_shape = sub.backend.shape();
+
+    if (begin_pt.size() != main_shape.size() || sub_shape.size() != main_shape.size()) {
+      throw std::invalid_argument("Dimension mismatch");
+    }
+
+    // Check bounds
+    for (std::size_t i = 0; i < begin_pt.size(); ++i) {
+      if (begin_pt[i] + sub_shape[i] > main_shape[i]) {
+        throw std::invalid_argument("Sub-tensor exceeds bounds");
+      }
+    }
+
+    // Replace elements recursively
+    std::vector<cytnx::cytnx_uint64> sub_coords(sub_shape.size(), 0);
+    replace_elements_recursive(inout.backend, sub.backend, 0, begin_pt, sub_coords, sub_shape);
   }
 
   template <typename ElemT>
@@ -1457,12 +1566,8 @@ namespace tci {
                    const CytnxTensor<ElemT>& sub,
                    const elem_coors_t<CytnxTensor<ElemT>>& begin_pt,
                    CytnxTensor<ElemT>& out) {
-    (void)ctx;
-    (void)in;
-    (void)sub;
-    (void)begin_pt;
-    (void)out;
-    throw std::runtime_error("replace_sub (out-of-place) not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
+    out = in;
+    replace_sub(ctx, out, sub, begin_pt);
   }
 
   // concatenate
