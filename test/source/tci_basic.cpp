@@ -47,45 +47,51 @@ TEST_CASE("TCI Tensor Creation") {
     tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     std::size_t counter = 0;
 
+    // gen() should return elem_t<TenT> (cytnx_complex128 in this case)
     auto gen = [&]() -> cytnx::cytnx_complex128 {
-      return cytnx::cytnx_complex128(static_cast<double>(counter++), 0.0);
+      double val = static_cast<double>(counter++);
+      return cytnx::cytnx_complex128(val, val + 0.5);
     };
 
     CHECK_NOTHROW(tci::random(ctx, shape, gen, tensor));
-    CHECK(counter == 6);
+    CHECK(counter == 6);  // 6 complex elements = 6 gen() calls
 
     auto result_shape = tci::shape(ctx, tensor);
     CHECK(result_shape == shape);
 
     auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});
     CHECK(std::abs(tci::real(elem_00) - 0.0) < 1e-10);
-    CHECK(std::abs(tci::imag(elem_00)) < 1e-10);
+    CHECK(std::abs(tci::imag(elem_00) - 0.5) < 1e-10);
 
     auto elem_01 = tci::get_elem(ctx, tensor, {0, 1});
     CHECK(std::abs(tci::real(elem_01) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::imag(elem_01) - 1.5) < 1e-10);
 
     auto elem_12 = tci::get_elem(ctx, tensor, {1, 2});
     CHECK(std::abs(tci::real(elem_12) - 5.0) < 1e-10);
+    CHECK(std::abs(tci::imag(elem_12) - 5.5) < 1e-10);
   }
 
   SUBCASE("Create random tensor (out-of-place)") {
     tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
     std::size_t counter = 0;
 
+    // gen() should return elem_t<TenT> (cytnx_complex128 in this case)
     auto gen = [&]() -> cytnx::cytnx_complex128 {
-      return cytnx::cytnx_complex128(static_cast<double>(counter++), 0.0);
+      double val = static_cast<double>(counter++);
+      return cytnx::cytnx_complex128(val, val + 0.5);
     };
 
     tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     CHECK_NOTHROW(tensor = tci::random<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, shape, gen));
-    CHECK(counter == 4);
+    CHECK(counter == 4);  // 4 complex elements = 4 gen() calls
 
     auto result_shape = tci::shape(ctx, tensor);
     CHECK(result_shape == shape);
 
     auto elem_11 = tci::get_elem(ctx, tensor, {1, 1});
     CHECK(std::abs(tci::real(elem_11) - 3.0) < 1e-10);
-    CHECK(std::abs(tci::imag(elem_11)) < 1e-10);
+    CHECK(std::abs(tci::imag(elem_11) - 3.5) < 1e-10);
   }
 
   tci::destroy_context(ctx);

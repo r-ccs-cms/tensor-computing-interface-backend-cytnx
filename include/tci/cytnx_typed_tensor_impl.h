@@ -229,15 +229,11 @@ namespace tci {
     auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
     auto* data = a.backend.storage().template data<ElemT>();
 
-    std::uniform_real_distribution<real_t<CytnxTensor<ElemT>>> dist(0.0, 1.0);
+    // gen() should return elem_t<CytnxTensor<ElemT>> (i.e., ElemT)
+    // For real types: gen() returns cytnx_double, cytnx_float, etc.
+    // For complex types: gen() returns cytnx_complex128, cytnx_complex64, etc.
     for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
-      if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
-                    std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
-        using RealType = typename ElemT::value_type;
-        data[i] = ElemT(dist(gen), dist(gen));
-      } else {
-        data[i] = dist(gen);
-      }
+      data[i] = gen();
     }
   }
 
