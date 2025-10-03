@@ -4,25 +4,25 @@
 #include <cytnx.hpp>
 
 TEST_CASE("tci::to_cplx API functionality") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_double>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Convert real tensor to complex (out-of-place version)") {
     // Create a real tensor with some values
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor real_tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_double>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_double> real_tensor;
     tci::zeros(ctx, shape, real_tensor);
 
     // Set some real values
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord01 = {0, 1};
-    tci::elem_coors_t<cytnx::Tensor> coord10 = {1, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_double>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_double>> coord01 = {0, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_double>> coord10 = {1, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_double>> coord11 = {1, 1};
 
-    tci::set_elem(ctx, real_tensor, coord00, cytnx::cytnx_complex128(1.5, 0.0));
-    tci::set_elem(ctx, real_tensor, coord01, cytnx::cytnx_complex128(2.5, 0.0));
-    tci::set_elem(ctx, real_tensor, coord10, cytnx::cytnx_complex128(3.5, 0.0));
-    tci::set_elem(ctx, real_tensor, coord11, cytnx::cytnx_complex128(4.5, 0.0));
+    tci::set_elem(ctx, real_tensor, coord00, cytnx::cytnx_double(1.5));
+    tci::set_elem(ctx, real_tensor, coord01, cytnx::cytnx_double(2.5));
+    tci::set_elem(ctx, real_tensor, coord10, cytnx::cytnx_double(3.5));
+    tci::set_elem(ctx, real_tensor, coord11, cytnx::cytnx_double(4.5));
 
     // Convert to complex using return version
     auto complex_tensor = tci::to_cplx(ctx, real_tensor);
@@ -46,19 +46,19 @@ TEST_CASE("tci::to_cplx API functionality") {
 
   SUBCASE("Convert real tensor to complex (in-place version)") {
     // Create a real tensor with some values
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor real_tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_double>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_double> real_tensor;
     tci::zeros(ctx, shape, real_tensor);
 
     // Set some real values
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_double>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_double>> coord11 = {1, 1};
 
-    tci::set_elem(ctx, real_tensor, coord00, cytnx::cytnx_complex128(7.25, 0.0));
-    tci::set_elem(ctx, real_tensor, coord11, cytnx::cytnx_complex128(8.75, 0.0));
+    tci::set_elem(ctx, real_tensor, coord00, cytnx::cytnx_double(7.25));
+    tci::set_elem(ctx, real_tensor, coord11, cytnx::cytnx_double(8.75));
 
     // Convert to complex using output parameter version
-    tci::cplx_ten_t<cytnx::Tensor> complex_output;
+    tci::cplx_ten_t<tci::CytnxTensor<cytnx::cytnx_double>> complex_output;
     tci::to_cplx(ctx, real_tensor, complex_output);
 
     // Verify the conversion preserved values correctly
@@ -73,57 +73,63 @@ TEST_CASE("tci::to_cplx API functionality") {
   }
 
   SUBCASE("Convert already complex tensor to complex should preserve values") {
+    // This subcase needs a different context for complex tensors
+    tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx_cplx;
+    tci::create_context(ctx_cplx);
+
     // Create a complex tensor with both real and imaginary parts
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor complex_tensor;
-    tci::zeros(ctx, shape, complex_tensor);
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> complex_tensor;
+    tci::zeros(ctx_cplx, shape, complex_tensor);
 
     // Set complex values
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
 
-    tci::set_elem(ctx, complex_tensor, coord00, cytnx::cytnx_complex128(3.14, 2.71));
-    tci::set_elem(ctx, complex_tensor, coord11, cytnx::cytnx_complex128(-1.41, 1.73));
+    tci::set_elem(ctx_cplx, complex_tensor, coord00, cytnx::cytnx_complex128(3.14, 2.71));
+    tci::set_elem(ctx_cplx, complex_tensor, coord11, cytnx::cytnx_complex128(-1.41, 1.73));
 
     // Convert complex to complex
-    auto result_tensor = tci::to_cplx(ctx, complex_tensor);
+    auto result_tensor = tci::to_cplx(ctx_cplx, complex_tensor);
 
     // Verify values are preserved
-    auto elem00 = tci::get_elem(ctx, result_tensor, coord00);
-    auto elem11 = tci::get_elem(ctx, result_tensor, coord11);
+    auto elem00 = tci::get_elem(ctx_cplx, result_tensor, coord00);
+    auto elem11 = tci::get_elem(ctx_cplx, result_tensor, coord11);
 
     // This will FAIL if to_cplx doesn't handle complex input correctly
     CHECK(std::abs(tci::real(elem00) - 3.14) < 1e-10);
     CHECK(std::abs(tci::imag(elem00) - 2.71) < 1e-10);
     CHECK(std::abs(tci::real(elem11) - (-1.41)) < 1e-10);
     CHECK(std::abs(tci::imag(elem11) - 1.73) < 1e-10);
+
+    tci::destroy_context(ctx_cplx);
   }
 
   tci::destroy_context(ctx);
 }
 
 TEST_CASE("tci::shrink API functionality") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Shrink 3x3 tensor to 2x2 (in-place version)") {
     // Create a 3x3 tensor with known values
-    tci::shape_t<cytnx::Tensor> shape = {3, 3};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::zeros(ctx, shape, tensor);
 
     // Fill with distinct values for verification
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        tci::elem_coors_t<cytnx::Tensor> coord = {static_cast<tci::elem_coor_t<cytnx::Tensor>>(i),
-                                                   static_cast<tci::elem_coor_t<cytnx::Tensor>>(j)};
+        tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord = {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i),
+                                                   static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(j)};
         double value = i * 3 + j + 1;  // Values 1-9
         tci::set_elem(ctx, tensor, coord, cytnx::cytnx_complex128(value, 0.0));
       }
     }
 
     // Shrink to extract 2x2 sub-tensor from [0:2, 0:2]
-    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    tci::bond_idx_elem_coor_pair_map<tci::CytnxTensor<cytnx::cytnx_complex128>> shrink_map;
     shrink_map[0] = std::make_pair(0, 2);  // Bond 0: from 0 to 2 (range [0, 2), 2 elements)
     shrink_map[1] = std::make_pair(0, 2);  // Bond 1: from 0 to 2 (range [0, 2), 2 elements)
 
@@ -136,10 +142,10 @@ TEST_CASE("tci::shrink API functionality") {
     CHECK(result_shape[1] == 2);
 
     // Check values: should be top-left 2x2 of original
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord01 = {0, 1};
-    tci::elem_coors_t<cytnx::Tensor> coord10 = {1, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord01 = {0, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord10 = {1, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
 
     auto elem00 = tci::get_elem(ctx, tensor, coord00);
     auto elem01 = tci::get_elem(ctx, tensor, coord01);
@@ -155,15 +161,15 @@ TEST_CASE("tci::shrink API functionality") {
 
   SUBCASE("Shrink 4x4 tensor to 2x2 (out-of-place version)") {
     // Create a 4x4 tensor
-    tci::shape_t<cytnx::Tensor> shape = {4, 4};
-    cytnx::Tensor input_tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {4, 4};
+    tci::CytnxTensor<cytnx::cytnx_complex128> input_tensor;
     tci::zeros(ctx, shape, input_tensor);
 
     // Fill with values in center 2x2 region [1:3, 1:3]
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
-    tci::elem_coors_t<cytnx::Tensor> coord12 = {1, 2};
-    tci::elem_coors_t<cytnx::Tensor> coord21 = {2, 1};
-    tci::elem_coors_t<cytnx::Tensor> coord22 = {2, 2};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord12 = {1, 2};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord21 = {2, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord22 = {2, 2};
 
     tci::set_elem(ctx, input_tensor, coord11, cytnx::cytnx_complex128(11.0, 0.0));
     tci::set_elem(ctx, input_tensor, coord12, cytnx::cytnx_complex128(12.0, 0.0));
@@ -171,11 +177,11 @@ TEST_CASE("tci::shrink API functionality") {
     tci::set_elem(ctx, input_tensor, coord22, cytnx::cytnx_complex128(22.0, 0.0));
 
     // Shrink to extract center 2x2 sub-tensor
-    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    tci::bond_idx_elem_coor_pair_map<tci::CytnxTensor<cytnx::cytnx_complex128>> shrink_map;
     shrink_map[0] = std::make_pair(1, 3);  // Bond 0: from 1 to 3 (range [1, 3), 2 elements)
     shrink_map[1] = std::make_pair(1, 3);  // Bond 1: from 1 to 3 (range [1, 3), 2 elements)
 
-    cytnx::Tensor output_tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> output_tensor;
     tci::shrink(ctx, input_tensor, shrink_map, output_tensor);
 
     // Verify the result
@@ -185,10 +191,10 @@ TEST_CASE("tci::shrink API functionality") {
     CHECK(result_shape[1] == 2);
 
     // Check extracted values
-    tci::elem_coors_t<cytnx::Tensor> out_coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> out_coord01 = {0, 1};
-    tci::elem_coors_t<cytnx::Tensor> out_coord10 = {1, 0};
-    tci::elem_coors_t<cytnx::Tensor> out_coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> out_coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> out_coord01 = {0, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> out_coord10 = {1, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> out_coord11 = {1, 1};
 
     auto elem00 = tci::get_elem(ctx, output_tensor, out_coord00);
     auto elem01 = tci::get_elem(ctx, output_tensor, out_coord01);
@@ -204,15 +210,15 @@ TEST_CASE("tci::shrink API functionality") {
 
   SUBCASE("Shrink should preserve complex values") {
     // Create a 3x3 tensor with complex values
-    tci::shape_t<cytnx::Tensor> shape = {3, 3};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::zeros(ctx, shape, tensor);
 
     // Set complex values in top-left 2x2
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord01 = {0, 1};
-    tci::elem_coors_t<cytnx::Tensor> coord10 = {1, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord01 = {0, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord10 = {1, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
 
     tci::set_elem(ctx, tensor, coord00, cytnx::cytnx_complex128(1.5, 2.5));
     tci::set_elem(ctx, tensor, coord01, cytnx::cytnx_complex128(3.5, 4.5));
@@ -220,11 +226,11 @@ TEST_CASE("tci::shrink API functionality") {
     tci::set_elem(ctx, tensor, coord11, cytnx::cytnx_complex128(7.5, 8.5));
 
     // Shrink to 2x2
-    tci::bond_idx_elem_coor_pair_map<cytnx::Tensor> shrink_map;
+    tci::bond_idx_elem_coor_pair_map<tci::CytnxTensor<cytnx::cytnx_complex128>> shrink_map;
     shrink_map[0] = std::make_pair(0, 2);  // Range [0, 2), 2 elements
     shrink_map[1] = std::make_pair(0, 2);  // Range [0, 2), 2 elements
 
-    cytnx::Tensor output;
+    tci::CytnxTensor<cytnx::cytnx_complex128> output;
     tci::shrink(ctx, tensor, shrink_map, output);
 
     // Verify complex values are preserved
@@ -248,18 +254,18 @@ TEST_CASE("tci::shrink API functionality") {
 }
 
 TEST_CASE("tci::real and tci::imag extraction functionality") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Extract real part from complex tensor (out-of-place version)") {
     // Create a complex tensor
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor complex_tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> complex_tensor;
     tci::zeros(ctx, shape, complex_tensor);
 
     // Set complex values
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
 
     tci::set_elem(ctx, complex_tensor, coord00, cytnx::cytnx_complex128(3.14, 2.71));
     tci::set_elem(ctx, complex_tensor, coord11, cytnx::cytnx_complex128(-1.59, 0.58));
@@ -280,13 +286,13 @@ TEST_CASE("tci::real and tci::imag extraction functionality") {
 
   SUBCASE("Extract imaginary part from complex tensor (out-of-place version)") {
     // Create a complex tensor
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor complex_tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> complex_tensor;
     tci::zeros(ctx, shape, complex_tensor);
 
     // Set complex values
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
 
     tci::set_elem(ctx, complex_tensor, coord00, cytnx::cytnx_complex128(3.14, 2.71));
     tci::set_elem(ctx, complex_tensor, coord11, cytnx::cytnx_complex128(-1.59, 0.58));
@@ -307,19 +313,19 @@ TEST_CASE("tci::real and tci::imag extraction functionality") {
 
   SUBCASE("Extract real and imaginary parts (in-place versions)") {
     // Create a complex tensor
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor complex_tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> complex_tensor;
     tci::zeros(ctx, shape, complex_tensor);
 
     // Set complex values
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
 
     tci::set_elem(ctx, complex_tensor, coord00, cytnx::cytnx_complex128(5.25, 7.75));
     tci::set_elem(ctx, complex_tensor, coord11, cytnx::cytnx_complex128(-2.25, -3.75));
 
     // Extract using in-place versions
-    tci::real_ten_t<cytnx::Tensor> real_output, imag_output;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> real_output, imag_output;
     tci::real(ctx, complex_tensor, real_output);
     tci::imag(ctx, complex_tensor, imag_output);
 
@@ -342,20 +348,20 @@ TEST_CASE("tci::real and tci::imag extraction functionality") {
 }
 
 TEST_CASE("tci::cplx_conj complex conjugate functionality") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Complex conjugate (in-place version)") {
     // Create a complex tensor
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::zeros(ctx, shape, tensor);
 
     // Set complex values
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord01 = {0, 1};
-    tci::elem_coors_t<cytnx::Tensor> coord10 = {1, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord01 = {0, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord10 = {1, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
 
     tci::set_elem(ctx, tensor, coord00, cytnx::cytnx_complex128(1.0, 2.0));
     tci::set_elem(ctx, tensor, coord01, cytnx::cytnx_complex128(-3.0, 4.0));
@@ -384,19 +390,19 @@ TEST_CASE("tci::cplx_conj complex conjugate functionality") {
 
   SUBCASE("Complex conjugate (out-of-place version)") {
     // Create a complex tensor
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor input_tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> input_tensor;
     tci::zeros(ctx, shape, input_tensor);
 
     // Set complex values
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
 
     tci::set_elem(ctx, input_tensor, coord00, cytnx::cytnx_complex128(3.14, 2.71));
     tci::set_elem(ctx, input_tensor, coord11, cytnx::cytnx_complex128(-1.41, -1.73));
 
     // Apply complex conjugate out-of-place
-    cytnx::Tensor output_tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> output_tensor;
     tci::cplx_conj(ctx, input_tensor, output_tensor);
 
     // Verify input is unchanged

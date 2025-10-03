@@ -67,14 +67,14 @@ TEST_CASE("tci::for_each API compliance test - CytnxTensor") {
 }
 
 TEST_CASE("tci::linear_combine API compliance test") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("linear_combine uniform coefficients - basic tensor addition") {
     // Create test tensors with known values
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
 
-    cytnx::Tensor tensor_a, tensor_b, tensor_c, result;
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor_a, tensor_b, tensor_c, result;
     tci::zeros(ctx, shape, tensor_a);
     tci::zeros(ctx, shape, tensor_b);
     tci::zeros(ctx, shape, tensor_c);
@@ -98,7 +98,7 @@ TEST_CASE("tci::linear_combine API compliance test") {
     tci::set_elem(ctx, tensor_c, {1, 1}, cytnx::cytnx_complex128(1.0, 0.0));
 
     // Test uniform linear combination (simple addition)
-    tci::List<cytnx::Tensor> tensors = {tensor_a, tensor_b, tensor_c};
+    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {tensor_a, tensor_b, tensor_c};
     CHECK_NOTHROW(tci::linear_combine(ctx, tensors, result));
 
     // Expected result: [[7, 9], [11, 13]] = [[1+5+1, 2+6+1], [3+7+1, 4+8+1]]
@@ -110,9 +110,9 @@ TEST_CASE("tci::linear_combine API compliance test") {
 
   SUBCASE("linear_combine with specified coefficients - weighted combination") {
     // Create test tensors
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
 
-    cytnx::Tensor tensor_a, tensor_b, result;
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor_a, tensor_b, result;
     tci::zeros(ctx, shape, tensor_a);
     tci::zeros(ctx, shape, tensor_b);
 
@@ -129,8 +129,8 @@ TEST_CASE("tci::linear_combine API compliance test") {
     tci::set_elem(ctx, tensor_b, {1, 1}, cytnx::cytnx_complex128(7.0, 0.0));
 
     // Test weighted linear combination: 0.5 * tensor_a + 2.0 * tensor_b
-    tci::List<cytnx::Tensor> tensors = {tensor_a, tensor_b};
-    tci::List<tci::elem_t<cytnx::Tensor>> coefficients = {
+    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {tensor_a, tensor_b};
+    tci::List<tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> coefficients = {
         cytnx::cytnx_complex128(0.5, 0.0),
         cytnx::cytnx_complex128(2.0, 0.0)
     };
@@ -145,18 +145,18 @@ TEST_CASE("tci::linear_combine API compliance test") {
   }
 
   SUBCASE("linear_combine edge cases") {
-    tci::shape_t<cytnx::Tensor> shape = {1, 1};
-    cytnx::Tensor single_tensor, result;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {1, 1};
+    tci::CytnxTensor<cytnx::cytnx_complex128> single_tensor, result;
     tci::zeros(ctx, shape, single_tensor);
     tci::set_elem(ctx, single_tensor, {0, 0}, cytnx::cytnx_complex128(5.0, 0.0));
 
     // Test single tensor uniform combination
-    tci::List<cytnx::Tensor> single_list = {single_tensor};
+    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> single_list = {single_tensor};
     CHECK_NOTHROW(tci::linear_combine(ctx, single_list, result));
     CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 0})) - 5.0) < 1e-10);
 
     // Test single tensor with coefficient
-    tci::List<tci::elem_t<cytnx::Tensor>> single_coef = {cytnx::cytnx_complex128(3.0, 0.0)};
+    tci::List<tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> single_coef = {cytnx::cytnx_complex128(3.0, 0.0)};
     CHECK_NOTHROW(tci::linear_combine(ctx, single_list, single_coef, result));
     CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 0})) - 15.0) < 1e-10);
   }
@@ -165,13 +165,13 @@ TEST_CASE("tci::linear_combine API compliance test") {
 }
 
 TEST_CASE("tci::normalize API compliance test") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("normalize in-place version - basic normalization") {
     // Create test tensor with known values
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::zeros(ctx, shape, tensor);
 
     // Set tensor = [[3, 4], [0, 0]] with norm = 5
@@ -200,8 +200,8 @@ TEST_CASE("tci::normalize API compliance test") {
 
   SUBCASE("normalize out-of-place version - preserve original") {
     // Create test tensor with known values
-    tci::shape_t<cytnx::Tensor> shape = {3, 1};
-    cytnx::Tensor original, normalized;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 1};
+    tci::CytnxTensor<cytnx::cytnx_complex128> original, normalized;
     tci::zeros(ctx, shape, original);
 
     // Set original = [[2], [2], [1]] with norm = 3 (2² + 2² + 1² = 9, √9 = 3)
@@ -231,10 +231,10 @@ TEST_CASE("tci::normalize API compliance test") {
   }
 
   SUBCASE("normalize edge cases") {
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
 
     // Test with single non-zero element
-    cytnx::Tensor single_elem;
+    tci::CytnxTensor<cytnx::cytnx_complex128> single_elem;
     tci::zeros(ctx, shape, single_elem);
     tci::set_elem(ctx, single_elem, {1, 1}, cytnx::cytnx_complex128(7.0, 0.0));
 
@@ -243,7 +243,7 @@ TEST_CASE("tci::normalize API compliance test") {
     CHECK(std::abs(tci::real(tci::get_elem(ctx, single_elem, {1, 1})) - 1.0) < 1e-10);
 
     // Test with zero tensor (should not crash, original implementation handles this)
-    cytnx::Tensor zero_tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> zero_tensor;
     tci::zeros(ctx, shape, zero_tensor);
 
     auto norm_zero = tci::normalize(ctx, zero_tensor);

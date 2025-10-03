@@ -4,11 +4,11 @@
 #include <cytnx.hpp>
 
 TEST_CASE("TCI Norm Calculation") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("3x3 identity matrix Frobenius norm should be sqrt(3)") {
-    cytnx::Tensor identity;
+    tci::CytnxTensor<cytnx::cytnx_complex128> identity;
     tci::eye(ctx, 3, identity);
 
     auto norm_val = tci::norm(ctx, identity);
@@ -19,7 +19,7 @@ TEST_CASE("TCI Norm Calculation") {
   }
 
   SUBCASE("2x2 identity matrix Frobenius norm should be sqrt(2)") {
-    cytnx::Tensor identity;
+    tci::CytnxTensor<cytnx::cytnx_complex128> identity;
     tci::eye(ctx, 2, identity);
 
     auto norm_val = tci::norm(ctx, identity);
@@ -33,22 +33,22 @@ TEST_CASE("TCI Norm Calculation") {
 }
 
 TEST_CASE("TCI Expand Operations") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Expand tensor dimensions - in-place version") {
     // Test based on documentation example: {2, 2, 2} -> {3, 4, 2}
-    cytnx::Tensor a;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a;
     tci::zeros(ctx, {2, 2, 2}, a);
 
     // Apply expand operation: {{1, 2}, {0, 1}} means bond 1 +2, bond 0 +1
-    tci::Map<tci::bond_idx_t<cytnx::Tensor>, tci::bond_dim_t<cytnx::Tensor>> bond_map
+    tci::Map<tci::bond_idx_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bond_map
         = {{1, 2}, {0, 1}};
     CHECK_NOTHROW(tci::expand(ctx, a, bond_map));
 
     // Verify new shape is {3, 4, 2}
     auto s = tci::shape(ctx, a);
-    tci::shape_t<cytnx::Tensor> expected_shape = {3, 4, 2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> expected_shape = {3, 4, 2};
     CHECK(s == expected_shape);
 
     // Verify expanded elements are zero (as documented)
@@ -57,19 +57,19 @@ TEST_CASE("TCI Expand Operations") {
   }
 
   SUBCASE("Expand tensor dimensions - out-of-place version") {
-    cytnx::Tensor a, expanded;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, expanded;
     tci::zeros(ctx, {2, 2, 2}, a);
 
     // Set a non-zero element to verify preservation
     tci::set_elem(ctx, a, {1, 1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
 
-    tci::Map<tci::bond_idx_t<cytnx::Tensor>, tci::bond_dim_t<cytnx::Tensor>> bond_map
+    tci::Map<tci::bond_idx_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bond_map
         = {{1, 2}, {0, 1}};
     CHECK_NOTHROW(tci::expand(ctx, a, bond_map, expanded));
 
     // Verify new shape
     auto s = tci::shape(ctx, expanded);
-    tci::shape_t<cytnx::Tensor> expected_shape = {3, 4, 2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> expected_shape = {3, 4, 2};
     CHECK(s == expected_shape);
 
     // Verify original data is preserved
@@ -82,7 +82,7 @@ TEST_CASE("TCI Expand Operations") {
   }
 
   SUBCASE("Expand single dimension") {
-    cytnx::Tensor a;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a;
     tci::zeros(ctx, {3, 3}, a);
 
     // Set some test data
@@ -90,13 +90,13 @@ TEST_CASE("TCI Expand Operations") {
     tci::set_elem(ctx, a, {2, 2}, cytnx::cytnx_complex128(2.0, 0.0));
 
     // Expand only dimension 1 by 2
-    tci::Map<tci::bond_idx_t<cytnx::Tensor>, tci::bond_dim_t<cytnx::Tensor>> bond_map
+    tci::Map<tci::bond_idx_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bond_map
         = {{1, 2}};
     tci::expand(ctx, a, bond_map);
 
     // Verify shape changes from {3, 3} to {3, 5}
     auto s = tci::shape(ctx, a);
-    tci::shape_t<cytnx::Tensor> expected_shape = {3, 5};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> expected_shape = {3, 5};
     CHECK(s == expected_shape);
 
     // Verify original data preservation
@@ -111,11 +111,11 @@ TEST_CASE("TCI Expand Operations") {
   }
 
   SUBCASE("Expand with invalid bond index should throw") {
-    cytnx::Tensor a;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a;
     tci::zeros(ctx, {2, 2}, a);
 
     // Try to expand bond index 3 which doesn't exist (tensor is 2D)
-    tci::Map<tci::bond_idx_t<cytnx::Tensor>, tci::bond_dim_t<cytnx::Tensor>> invalid_map
+    tci::Map<tci::bond_idx_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> invalid_map
         = {{3, 1}};
     CHECK_THROWS(tci::expand(ctx, a, invalid_map));
   }
@@ -124,12 +124,12 @@ TEST_CASE("TCI Expand Operations") {
 }
 
 TEST_CASE("TCI Extract Sub Operations") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Extract sub-tensor - out-of-place version (documentation example)") {
     // Test based on documentation example: {3, 4, 2} with {{1, 3}, {0, 2}, {0, 2}}
-    cytnx::Tensor a, sub;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, sub;
     tci::zeros(ctx, {3, 4, 2}, a);  // create test tensor
 
     // Set known values for verification
@@ -137,13 +137,13 @@ TEST_CASE("TCI Extract Sub Operations") {
     tci::set_elem(ctx, a, {2, 1, 1}, cytnx::cytnx_complex128(13.0, 0.0));
 
     // Extract subtensor as per documentation: {{1, 3}, {0, 2}, {0, 2}}
-    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> coor_pairs
+    tci::List<tci::Pair<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>> coor_pairs
         = {{1, 3}, {0, 2}, {0, 2}};
     CHECK_NOTHROW(tci::extract_sub(ctx, a, coor_pairs, sub));
 
     // Verify shape: {3,4,2} -> {2,2,2} (ranges: [1,3), [0,2), [0,2))
     auto sub_shape = tci::shape(ctx, sub);
-    tci::shape_t<cytnx::Tensor> expected_shape = {2, 2, 2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> expected_shape = {2, 2, 2};
     CHECK(sub_shape == expected_shape);
 
     // Verify element mapping as in documentation: el1 == el2
@@ -159,7 +159,7 @@ TEST_CASE("TCI Extract Sub Operations") {
   }
 
   SUBCASE("Extract sub-tensor - in-place version") {
-    cytnx::Tensor a;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a;
     tci::zeros(ctx, {4, 3, 2}, a);
 
     // Set known values
@@ -168,13 +168,13 @@ TEST_CASE("TCI Extract Sub Operations") {
     tci::set_elem(ctx, a, {2, 2, 0}, cytnx::cytnx_complex128(3.0, 0.0));
 
     // Extract middle portion: {{1, 3}, {1, 3}, {0, 2}}
-    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> coor_pairs
+    tci::List<tci::Pair<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>> coor_pairs
         = {{1, 3}, {1, 3}, {0, 2}};
     CHECK_NOTHROW(tci::extract_sub(ctx, a, coor_pairs));
 
     // Verify new shape: {4,3,2} -> {2,2,2}
     auto new_shape = tci::shape(ctx, a);
-    tci::shape_t<cytnx::Tensor> expected_shape = {2, 2, 2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> expected_shape = {2, 2, 2};
     CHECK(new_shape == expected_shape);
 
     // Verify element at (1,1,1) in original is now at (0,0,1)
@@ -183,18 +183,18 @@ TEST_CASE("TCI Extract Sub Operations") {
   }
 
   SUBCASE("Extract single element") {
-    cytnx::Tensor a, sub;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, sub;
     tci::zeros(ctx, {3, 3}, a);
     tci::set_elem(ctx, a, {1, 2}, cytnx::cytnx_complex128(99.0, 0.0));
 
     // Extract single element at position (1,2)
-    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> coor_pairs
+    tci::List<tci::Pair<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>> coor_pairs
         = {{1, 2}, {2, 3}};
     tci::extract_sub(ctx, a, coor_pairs, sub);
 
     // Should result in 1x1 tensor
     auto sub_shape = tci::shape(ctx, sub);
-    tci::shape_t<cytnx::Tensor> expected_shape = {1, 1};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> expected_shape = {1, 1};
     CHECK(sub_shape == expected_shape);
 
     auto extracted_val = tci::get_elem(ctx, sub, {0, 0});
@@ -202,21 +202,21 @@ TEST_CASE("TCI Extract Sub Operations") {
   }
 
   SUBCASE("Error handling - invalid coordinate pairs") {
-    cytnx::Tensor a;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a;
     tci::zeros(ctx, {3, 3}, a);
 
     // Wrong number of coordinate pairs (tensor is 2D, but 3 pairs provided)
-    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> wrong_count
+    tci::List<tci::Pair<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>> wrong_count
         = {{0, 2}, {0, 2}, {0, 1}};
     CHECK_THROWS(tci::extract_sub(ctx, a, wrong_count));
 
     // Invalid range (start >= end)
-    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> invalid_range
+    tci::List<tci::Pair<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>> invalid_range
         = {{2, 1}, {0, 2}};
     CHECK_THROWS(tci::extract_sub(ctx, a, invalid_range));
 
     // Out of bounds range
-    tci::List<tci::Pair<tci::elem_coor_t<cytnx::Tensor>, tci::elem_coor_t<cytnx::Tensor>>> out_of_bounds
+    tci::List<tci::Pair<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>> out_of_bounds
         = {{0, 2}, {0, 5}};  // 5 > tensor dimension 3
     CHECK_THROWS(tci::extract_sub(ctx, a, out_of_bounds));
   }
@@ -225,12 +225,12 @@ TEST_CASE("TCI Extract Sub Operations") {
 }
 
 TEST_CASE("TCI Replace Sub Operations") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Replace sub-tensor - in-place version (documentation example)") {
     // Test based on documentation example: {3, 4, 2} with {2, 2, 2} sub at {1, 2, 0}
-    cytnx::Tensor a, sub;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, sub;
     tci::zeros(ctx, {3, 4, 2}, a);
     tci::zeros(ctx, {2, 2, 2}, sub);
 
@@ -239,7 +239,7 @@ TEST_CASE("TCI Replace Sub Operations") {
     tci::set_elem(ctx, sub, {1, 1, 1}, cytnx::cytnx_complex128(13.0, 0.0));
 
     // Replace subtensor as per documentation: sub at {1, 2, 0}
-    tci::elem_coors_t<cytnx::Tensor> begin_pt = {1, 2, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> begin_pt = {1, 2, 0};
     CHECK_NOTHROW(tci::replace_sub(ctx, a, sub, begin_pt));
 
     // Verify element mapping as in documentation: el1 == el2
@@ -260,7 +260,7 @@ TEST_CASE("TCI Replace Sub Operations") {
   }
 
   SUBCASE("Replace sub-tensor - out-of-place version") {
-    cytnx::Tensor a, sub, result;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, sub, result;
     tci::zeros(ctx, {4, 4}, a);
     tci::zeros(ctx, {2, 2}, sub);
     tci::fill(ctx, {2, 2}, cytnx::cytnx_complex128(1.0, 0.0), sub);  // sub-tensor filled with 1.0
@@ -269,7 +269,7 @@ TEST_CASE("TCI Replace Sub Operations") {
     tci::set_elem(ctx, a, {0, 0}, cytnx::cytnx_complex128(99.0, 0.0));
 
     // Replace 2x2 sub at position (1,1)
-    tci::elem_coors_t<cytnx::Tensor> begin_pt = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> begin_pt = {1, 1};
     CHECK_NOTHROW(tci::replace_sub(ctx, a, sub, begin_pt, result));
 
     // Verify replacement
@@ -288,13 +288,13 @@ TEST_CASE("TCI Replace Sub Operations") {
   }
 
   SUBCASE("Replace single element") {
-    cytnx::Tensor a, sub;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, sub;
     tci::zeros(ctx, {3, 3}, a);
     tci::zeros(ctx, {1, 1}, sub);
     tci::set_elem(ctx, sub, {0, 0}, cytnx::cytnx_complex128(777.0, 0.0));
 
     // Replace single element at position (1,2)
-    tci::elem_coors_t<cytnx::Tensor> begin_pt = {1, 2};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> begin_pt = {1, 2};
     tci::replace_sub(ctx, a, sub, begin_pt);
 
     // Verify replacement
@@ -307,13 +307,13 @@ TEST_CASE("TCI Replace Sub Operations") {
   }
 
   SUBCASE("Replace with boundary conditions") {
-    cytnx::Tensor a, sub;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, sub;
     tci::zeros(ctx, {3, 3}, a);
     tci::zeros(ctx, {2, 2}, sub);
     tci::fill(ctx, {2, 2}, cytnx::cytnx_complex128(1.0, 0.0), sub);
 
     // Replace at boundary (should fit exactly)
-    tci::elem_coors_t<cytnx::Tensor> begin_pt = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> begin_pt = {1, 1};
     tci::replace_sub(ctx, a, sub, begin_pt);
 
     // Verify corner replacement
@@ -322,31 +322,31 @@ TEST_CASE("TCI Replace Sub Operations") {
   }
 
   SUBCASE("Error handling - dimension mismatch") {
-    cytnx::Tensor a, sub;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, sub;
     tci::zeros(ctx, {3, 3}, a);    // 2D tensor
     tci::zeros(ctx, {2, 2, 2}, sub); // 3D tensor
 
-    tci::elem_coors_t<cytnx::Tensor> begin_pt = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> begin_pt = {0, 0};
     CHECK_THROWS(tci::replace_sub(ctx, a, sub, begin_pt));
   }
 
   SUBCASE("Error handling - begin_pt dimension mismatch") {
-    cytnx::Tensor a, sub;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, sub;
     tci::zeros(ctx, {3, 3}, a);
     tci::zeros(ctx, {2, 2}, sub);
 
     // Wrong number of coordinates in begin_pt
-    tci::elem_coors_t<cytnx::Tensor> wrong_begin_pt = {0}; // only 1 coordinate for 2D tensor
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> wrong_begin_pt = {0}; // only 1 coordinate for 2D tensor
     CHECK_THROWS(tci::replace_sub(ctx, a, sub, wrong_begin_pt));
   }
 
   SUBCASE("Error handling - sub-tensor exceeds bounds") {
-    cytnx::Tensor a, sub;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, sub;
     tci::zeros(ctx, {3, 3}, a);
     tci::zeros(ctx, {2, 2}, sub);
 
     // begin_pt + sub_shape would exceed tensor bounds
-    tci::elem_coors_t<cytnx::Tensor> out_of_bounds_pt = {2, 2}; // 2+2 > 3
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> out_of_bounds_pt = {2, 2}; // 2+2 > 3
     CHECK_THROWS(tci::replace_sub(ctx, a, sub, out_of_bounds_pt));
   }
 
@@ -354,13 +354,13 @@ TEST_CASE("TCI Replace Sub Operations") {
 }
 
 TEST_CASE("TCI Diagonal Operations") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Vector to diagonal matrix conversion") {
     // Create a vector [1, 2, 3]
-    tci::shape_t<cytnx::Tensor> shape = {3};
-    cytnx::Tensor vector;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> vector;
     tci::zeros(ctx, shape, vector);
 
     tci::set_elem(ctx, vector, {0}, cytnx::cytnx_complex128(1.0, 0.0));
@@ -386,7 +386,7 @@ TEST_CASE("TCI Diagonal Operations") {
   }
 
   SUBCASE("Diagonal matrix to vector conversion") {
-    cytnx::Tensor identity;
+    tci::CytnxTensor<cytnx::cytnx_complex128> identity;
     tci::eye(ctx, 3, identity);
 
     // Convert to diagonal vector
@@ -409,13 +409,13 @@ TEST_CASE("TCI Diagonal Operations") {
 // This appears to be a bug in the Cytnx library itself (UniTensor::UniTensor constructor)
 // Skip this entire test case until the Cytnx library issue is resolved
 TEST_CASE("TCI Trace Operations" * doctest::skip()) {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Matrix trace calculation") {
     // Create a 3x3 matrix with specific diagonal values
-    tci::shape_t<cytnx::Tensor> shape = {3, 3};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     // Set diagonal to [2, 3, 4]
@@ -428,7 +428,7 @@ TEST_CASE("TCI Trace Operations" * doctest::skip()) {
     tci::set_elem(ctx, matrix, {1, 2}, cytnx::cytnx_complex128(6.0, 0.0));
 
     // Calculate trace (sum of diagonal elements)
-    tci::bond_idx_pairs_t<cytnx::Tensor> pairs = {{0, 1}};
+    tci::bond_idx_pairs_t<tci::CytnxTensor<cytnx::cytnx_complex128>> pairs = {{0, 1}};
     tci::trace(ctx, matrix, pairs);
 
     // Should now be scalar with value 2+3+4 = 9
@@ -438,8 +438,8 @@ TEST_CASE("TCI Trace Operations" * doctest::skip()) {
 
   SUBCASE("3D tensor trace calculation") {
     // Create a 2x3x2 tensor and trace over first and last dimensions
-    tci::shape_t<cytnx::Tensor> shape = {2, 3, 2};
-    cytnx::Tensor tensor3d;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 3, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor3d;
     tci::zeros(ctx, shape, tensor3d);
 
     // Set diagonal elements T[i,j,i] where i=0,1 and j=0,1,2
@@ -455,8 +455,8 @@ TEST_CASE("TCI Trace Operations" * doctest::skip()) {
     tci::set_elem(ctx, tensor3d, {1, 1, 0}, cytnx::cytnx_complex128(20.0, 0.0));
 
     // Calculate trace over dimensions 0 and 2
-    tci::bond_idx_pairs_t<cytnx::Tensor> pairs = {{0, 2}};
-    cytnx::Tensor result;
+    tci::bond_idx_pairs_t<tci::CytnxTensor<cytnx::cytnx_complex128>> pairs = {{0, 2}};
+    tci::CytnxTensor<cytnx::cytnx_complex128> result;
     tci::trace(ctx, tensor3d, pairs, result);
 
     // Result should be 1D tensor with shape [3] containing [1+4, 2+5, 3+6] = [5, 7, 9]
@@ -471,8 +471,8 @@ TEST_CASE("TCI Trace Operations" * doctest::skip()) {
 
   SUBCASE("4D tensor trace calculation") {
     // Create a 2x2x3x2 tensor and trace over dimensions 0 and 3
-    tci::shape_t<cytnx::Tensor> shape = {2, 2, 3, 2};
-    cytnx::Tensor tensor4d;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2, 3, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor4d;
     tci::zeros(ctx, shape, tensor4d);
 
     // Set diagonal elements T[i,j,k,i] where i=0,1, j=0,1, k=0,1,2
@@ -484,8 +484,8 @@ TEST_CASE("TCI Trace Operations" * doctest::skip()) {
     }
 
     // Calculate trace over dimensions 0 and 3
-    tci::bond_idx_pairs_t<cytnx::Tensor> pairs = {{0, 3}};
-    cytnx::Tensor result;
+    tci::bond_idx_pairs_t<tci::CytnxTensor<cytnx::cytnx_complex128>> pairs = {{0, 3}};
+    tci::CytnxTensor<cytnx::cytnx_complex128> result;
     tci::trace(ctx, tensor4d, pairs, result);
 
     // Result should be 2D tensor with shape [2, 3]
@@ -502,8 +502,8 @@ TEST_CASE("TCI Trace Operations" * doctest::skip()) {
 
   SUBCASE("Complex tensor trace calculation") {
     // Test with complex numbers
-    tci::shape_t<cytnx::Tensor> shape = {3, 2, 3};
-    cytnx::Tensor tensor_complex;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 2, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor_complex;
     tci::zeros(ctx, shape, tensor_complex);
 
     // Set complex diagonal elements T[i,j,i]
@@ -515,8 +515,8 @@ TEST_CASE("TCI Trace Operations" * doctest::skip()) {
     tci::set_elem(ctx, tensor_complex, {2, 1, 2}, cytnx::cytnx_complex128(-0.5, 4.0));
 
     // Calculate trace over dimensions 0 and 2
-    tci::bond_idx_pairs_t<cytnx::Tensor> pairs = {{0, 2}};
-    cytnx::Tensor result;
+    tci::bond_idx_pairs_t<tci::CytnxTensor<cytnx::cytnx_complex128>> pairs = {{0, 2}};
+    tci::CytnxTensor<cytnx::cytnx_complex128> result;
     tci::trace(ctx, tensor_complex, pairs, result);
 
     // Result should be 1D tensor with shape [2]
@@ -538,15 +538,15 @@ TEST_CASE("TCI Trace Operations" * doctest::skip()) {
 }
 
 TEST_CASE("TCI Tensor Contraction") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Einstein notation contraction") {
     // Create two tensors for contraction
-    tci::shape_t<cytnx::Tensor> shape_a = {2, 3};
-    tci::shape_t<cytnx::Tensor> shape_b = {3, 2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_a = {2, 3};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_b = {3, 2};
 
-    cytnx::Tensor a, b, c;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c;
     tci::zeros(ctx, shape_a, a);
     tci::fill(ctx, shape_a, cytnx::cytnx_complex128(1.0, 0.0), a);
 
@@ -561,10 +561,10 @@ TEST_CASE("TCI Tensor Contraction") {
 
   SUBCASE("Label-based contraction") {
     // Create two tensors for contraction
-    tci::shape_t<cytnx::Tensor> shape_a = {2, 3};
-    tci::shape_t<cytnx::Tensor> shape_b = {3, 2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_a = {2, 3};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_b = {3, 2};
 
-    cytnx::Tensor a, b, c;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c;
     tci::zeros(ctx, shape_a, a);
     tci::fill(ctx, shape_a, cytnx::cytnx_complex128(1.0, 0.0), a);
 
@@ -572,9 +572,9 @@ TEST_CASE("TCI Tensor Contraction") {
     tci::fill(ctx, shape_b, cytnx::cytnx_complex128(1.0, 0.0), b);
 
     // Test label-based contraction
-    tci::List<tci::bond_label_t<cytnx::Tensor>> labs_a = {1, -1};
-    tci::List<tci::bond_label_t<cytnx::Tensor>> labs_b = {-1, 2};
-    tci::List<tci::bond_label_t<cytnx::Tensor>> labs_c = {1, 2};
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> labs_a = {1, -1};
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> labs_b = {-1, 2};
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> labs_c = {1, 2};
 
     // TODO: Uncomment when contract is fully implemented
     // CHECK_THROWS_AS(tci::contract(ctx, a, labs_a, b, labs_b, c, labs_c), std::runtime_error);
@@ -585,13 +585,13 @@ TEST_CASE("TCI Tensor Contraction") {
 }
 
 TEST_CASE("TCI Tensor Contraction") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Matrix multiplication via contraction: ij,jk->ik") {
     // Create two 2x2 matrices for testing
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor a, b, c;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
 
@@ -624,29 +624,29 @@ TEST_CASE("TCI Tensor Contraction") {
 
   SUBCASE("NCON notation basic test") {
     // Create test tensors for contraction
-    tci::shape_t<cytnx::Tensor> shape_a = {2, 3};
-    tci::shape_t<cytnx::Tensor> shape_b = {3, 2};
-    cytnx::Tensor a, b, c;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_a = {2, 3};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_b = {3, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c;
     tci::zeros(ctx, shape_a, a);
     tci::zeros(ctx, shape_b, b);
 
     // Fill with simple test values
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 3; ++j) {
-        tci::set_elem(ctx, a, {static_cast<tci::elem_coor_t<cytnx::Tensor>>(i), static_cast<tci::elem_coor_t<cytnx::Tensor>>(j)}, cytnx::cytnx_complex128(i * 3 + j + 1, 0.0));
+        tci::set_elem(ctx, a, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i), static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(j)}, cytnx::cytnx_complex128(i * 3 + j + 1, 0.0));
       }
     }
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 2; ++j) {
-        tci::set_elem(ctx, b, {static_cast<tci::elem_coor_t<cytnx::Tensor>>(i), static_cast<tci::elem_coor_t<cytnx::Tensor>>(j)}, cytnx::cytnx_complex128(i * 2 + j + 1, 0.0));
+        tci::set_elem(ctx, b, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i), static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(j)}, cytnx::cytnx_complex128(i * 2 + j + 1, 0.0));
       }
     }
 
     // Test NCON with mixed positive/negative output labels
-    tci::List<tci::bond_label_t<cytnx::Tensor>> bd_labs_a = {1, 2};  // positive labels for tensor a
-    tci::List<tci::bond_label_t<cytnx::Tensor>> bd_labs_b
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_a = {1, 2};  // positive labels for tensor a
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_b
         = {2, 3};  // mixed: 2 (contract), 3 (positive output)
-    tci::List<tci::bond_label_t<cytnx::Tensor>> bd_labs_c
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_c
         = {1, 3};  // Output labels matching the free axes
 
     // Perform contraction
@@ -660,8 +660,8 @@ TEST_CASE("TCI Tensor Contraction") {
 
   SUBCASE("Vector dot product via contraction: i,i->") {
     // Create two vectors for dot product
-    tci::shape_t<cytnx::Tensor> shape = {3};
-    cytnx::Tensor a, b, c;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
 
@@ -686,9 +686,9 @@ TEST_CASE("TCI Tensor Contraction") {
 
   SUBCASE("Outer product via contraction: i,j->ij") {
     // Create two vectors for outer product
-    tci::shape_t<cytnx::Tensor> shape_a = {2};
-    tci::shape_t<cytnx::Tensor> shape_b = {3};
-    cytnx::Tensor a, b, c;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_a = {2};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_b = {3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c;
     tci::zeros(ctx, shape_a, a);
     tci::zeros(ctx, shape_b, b);
 
@@ -719,13 +719,13 @@ TEST_CASE("TCI Tensor Contraction") {
 }
 
 TEST_CASE("TCI Stack Operations") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Stack three 2x4 tensors along axis 1") {
     // Create three tensors with identical shape {2, 4} - matching documentation example
-    tci::shape_t<cytnx::Tensor> shape = {2, 4};
-    cytnx::Tensor a, b, c, d;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 4};
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c, d;
 
     // Create simple tensors with known values for debugging
     tci::zeros(ctx, shape, a);
@@ -738,7 +738,7 @@ TEST_CASE("TCI Stack Operations") {
     tci::set_elem(ctx, c, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
 
     // Stack tensors along axis 1 (matching documentation example)
-    tci::List<cytnx::Tensor> tensors = {a, b, c};
+    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b, c};
     tci::stack(ctx, tensors, 1, d);
 
     // Verify output shape is {2, 3, 4} - new dimension of size 3 at position 1
@@ -766,8 +766,8 @@ TEST_CASE("TCI Stack Operations") {
 
   SUBCASE("Stack two 3x3 tensors along axis 0") {
     // Create two simple test tensors
-    tci::shape_t<cytnx::Tensor> shape = {3, 3};
-    cytnx::Tensor a, b, result;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, result;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
 
@@ -776,7 +776,7 @@ TEST_CASE("TCI Stack Operations") {
     tci::set_elem(ctx, b, {2, 2}, cytnx::cytnx_complex128(6.0, 0.0));
 
     // Stack along axis 0
-    tci::List<cytnx::Tensor> tensors = {a, b};
+    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b};
     tci::stack(ctx, tensors, 0, result);
 
     // Verify output shape is {2, 3, 3}
@@ -795,8 +795,8 @@ TEST_CASE("TCI Stack Operations") {
 
   SUBCASE("Stack along last dimension (axis 2)") {
     // Create two 2x3 tensors
-    tci::shape_t<cytnx::Tensor> shape = {2, 3};
-    cytnx::Tensor a, b, result;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, result;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
 
@@ -805,7 +805,7 @@ TEST_CASE("TCI Stack Operations") {
     tci::set_elem(ctx, b, {1, 2}, cytnx::cytnx_complex128(8.0, 0.0));
 
     // Stack along axis 2 (end)
-    tci::List<cytnx::Tensor> tensors = {a, b};
+    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b};
     tci::stack(ctx, tensors, 2, result);
 
     // Verify output shape is {2, 3, 2}
@@ -823,21 +823,21 @@ TEST_CASE("TCI Stack Operations") {
   }
 
   SUBCASE("Error handling: empty tensor list") {
-    cytnx::Tensor result;
-    tci::List<cytnx::Tensor> empty_tensors = {};
+    tci::CytnxTensor<cytnx::cytnx_complex128> result;
+    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> empty_tensors = {};
 
     // Should throw exception for empty input
     CHECK_THROWS_AS(tci::stack(ctx, empty_tensors, 0, result), std::invalid_argument);
   }
 
   SUBCASE("Error handling: mismatched tensor shapes") {
-    tci::shape_t<cytnx::Tensor> shape1 = {2, 3};
-    tci::shape_t<cytnx::Tensor> shape2 = {2, 4};  // Different shape
-    cytnx::Tensor a, b, result;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape1 = {2, 3};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape2 = {2, 4};  // Different shape
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, result;
     tci::zeros(ctx, shape1, a);
     tci::zeros(ctx, shape2, b);
 
-    tci::List<cytnx::Tensor> tensors = {a, b};
+    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b};
 
     // Should throw exception for mismatched shapes
     CHECK_THROWS_AS(tci::stack(ctx, tensors, 0, result), std::invalid_argument);

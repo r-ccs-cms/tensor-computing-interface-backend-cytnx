@@ -6,7 +6,7 @@
 #include <vector>
 
 TEST_CASE("Miscellaneous Functions") {
-  using Ten = cytnx::Tensor;
+  using Ten = tci::CytnxTensor<cytnx::cytnx_complex128>;
   using namespace tci;
 
   // Setup context
@@ -237,7 +237,7 @@ TEST_CASE("TCI_VERBOSE Environment Variable Support") {
 }
 
 TEST_CASE("Integration with TCI_VERBOSE") {
-  using Ten = cytnx::Tensor;
+  using Ten = tci::CytnxTensor<cytnx::cytnx_complex128>;
   using namespace tci;
 
   // Setup context

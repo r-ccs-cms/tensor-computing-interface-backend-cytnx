@@ -2,7 +2,7 @@
 #include <cytnx.hpp>
 #include "tci/tci.h"
 
-using Tensor = cytnx::Tensor;
+using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
 using ContextHandle = tci::context_handle_t<Tensor>;
 
 TEST_CASE("Contract Axis Mapping Debug - NCON notation") {

@@ -3,7 +3,7 @@
 #include <vector>
 #include <complex>
 
-using Ten = cytnx::Tensor;
+using Ten = tci::CytnxTensor<cytnx::cytnx_double>;
 
 TEST_CASE("Template Function Completeness Test") {
   using namespace tci;
@@ -22,7 +22,7 @@ TEST_CASE("Template Function Completeness Test") {
       tci::for_each_with_coors(ctx, a, [&test_passed](tci::elem_t<Ten>& elem, const tci::elem_coors_t<Ten>& coors) {
         // Simple operation: set diagonal elements to 2.0
         if (coors[0] == coors[1]) {
-          elem = cytnx::cytnx_complex128(2.0, 0.0);
+          elem = 2.0;
         }
         test_passed = true;
       });

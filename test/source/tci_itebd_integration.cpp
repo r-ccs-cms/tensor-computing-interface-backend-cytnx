@@ -5,10 +5,10 @@
 
 #include "tci/tci.h"
 
-using Tensor = cytnx::Tensor;
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using ContextHandle = tci::context_handle_t<Tensor>;
 using Elem = tci::elem_t<Tensor>;
-using Real = tci::real_t<Tensor>;
+using Real = double;
 using Int = tci::bond_label_t<Tensor>;
 
 TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {

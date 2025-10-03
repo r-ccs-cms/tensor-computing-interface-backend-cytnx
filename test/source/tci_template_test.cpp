@@ -3,7 +3,7 @@
 #include <vector>
 #include <complex>
 
-using Ten = cytnx::Tensor;
+using Ten = tci::CytnxTensor<cytnx::cytnx_double>;
 
 TEST_CASE("Template Function const Type Issues") {
   using namespace tci;

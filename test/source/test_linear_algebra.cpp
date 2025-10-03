@@ -4,13 +4,13 @@
 #include <cytnx.hpp>
 
 TEST_CASE("TCI Matrix Decomposition - QR") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("QR decomposition of 3x3 matrix") {
     // Create a 3x3 test matrix
-    tci::shape_t<cytnx::Tensor> shape = {3, 3};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     // Fill with test values
@@ -24,7 +24,7 @@ TEST_CASE("TCI Matrix Decomposition - QR") {
     tci::set_elem(ctx, matrix, {2, 1}, cytnx::cytnx_complex128(8.0, 0.0));
     tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(9.0, 0.0));
 
-    cytnx::Tensor q, r;
+    tci::CytnxTensor<cytnx::cytnx_complex128> q, r;
     // TODO: Uncomment when QR is implemented
     // CHECK_THROWS_AS(tci::qr(ctx, matrix, 2, q, r), std::runtime_error);
     (void)q;
@@ -35,13 +35,13 @@ TEST_CASE("TCI Matrix Decomposition - QR") {
 }
 
 TEST_CASE("TCI Matrix Decomposition - LQ") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("LQ decomposition of 3x3 matrix") {
     // Create a 3x3 test matrix
-    tci::shape_t<cytnx::Tensor> shape = {3, 3};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     // Fill with test values
@@ -52,7 +52,7 @@ TEST_CASE("TCI Matrix Decomposition - LQ") {
     tci::set_elem(ctx, matrix, {2, 0}, cytnx::cytnx_complex128(5.0, 0.0));
     tci::set_elem(ctx, matrix, {2, 1}, cytnx::cytnx_complex128(6.0, 0.0));
 
-    cytnx::Tensor l, q;
+    tci::CytnxTensor<cytnx::cytnx_complex128> l, q;
     tci::lq(ctx, matrix, 2, l, q);
 
     CHECK(tci::rank(ctx, l) == 3);
@@ -63,22 +63,22 @@ TEST_CASE("TCI Matrix Decomposition - LQ") {
 }
 
 TEST_CASE("TCI Matrix Decomposition - Truncated SVD") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Truncated SVD with chi_max constraint") {
     // Create a 4x4 matrix for truncation testing
-    tci::shape_t<cytnx::Tensor> shape = {4, 4};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {4, 4};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     // Create a matrix with known singular values
     for (int i = 0; i < 4; ++i) {
-      tci::set_elem(ctx, matrix, {static_cast<tci::elem_coor_t<cytnx::Tensor>>(i), static_cast<tci::elem_coor_t<cytnx::Tensor>>(i)}, cytnx::cytnx_complex128(4.0 - i, 0.0));  // [4,3,2,1]
+      tci::set_elem(ctx, matrix, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i), static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i)}, cytnx::cytnx_complex128(4.0 - i, 0.0));  // [4,3,2,1]
     }
 
-    cytnx::Tensor u, v_dag;
-    cytnx::Tensor s_diag;
+    tci::CytnxTensor<cytnx::cytnx_complex128> u, v_dag;
+    tci::CytnxTensor<cytnx::cytnx_complex128> s_diag;
     double trunc_err;
 
     // Test truncated SVD implementation
@@ -105,27 +105,27 @@ TEST_CASE("TCI Matrix Decomposition - Truncated SVD") {
 }
 
 TEST_CASE("TCI Eigenvalue Problems") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Eigenvalues of diagonal matrix") {
     // Create a 3x3 diagonal matrix
-    cytnx::Tensor diagonal;
+    tci::CytnxTensor<cytnx::cytnx_complex128> diagonal;
     tci::eye(ctx, 3, diagonal);
 
     // Scale diagonal elements to [1, 2, 3]
     tci::set_elem(ctx, diagonal, {1, 1}, cytnx::cytnx_complex128(2.0, 0.0));
     tci::set_elem(ctx, diagonal, {2, 2}, cytnx::cytnx_complex128(3.0, 0.0));
 
-    cytnx::Tensor eigenvals;
+    tci::CytnxTensor<cytnx::cytnx_complex128> eigenvals;
     // This should fail with invalid argument (matrix must be square)
     CHECK_THROWS_AS(tci::eigvals(ctx, diagonal, 2, eigenvals), std::invalid_argument);
   }
 
   SUBCASE("Eigenvalues of symmetric matrix") {
     // Create a symmetric 2x2 matrix
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor symmetric;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> symmetric;
     tci::zeros(ctx, shape, symmetric);
 
     tci::set_elem(ctx, symmetric, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
@@ -133,16 +133,16 @@ TEST_CASE("TCI Eigenvalue Problems") {
     tci::set_elem(ctx, symmetric, {1, 0}, cytnx::cytnx_complex128(2.0, 0.0));
     tci::set_elem(ctx, symmetric, {1, 1}, cytnx::cytnx_complex128(3.0, 0.0));
 
-    cytnx::Tensor eigenvals;
+    tci::CytnxTensor<cytnx::cytnx_complex128> eigenvals;
     // This should fail with invalid argument (matrix must be square)
     CHECK_THROWS_AS(tci::eigvalsh(ctx, symmetric, 2, eigenvals), std::invalid_argument);
   }
 
   SUBCASE("Eigenvalues and eigenvectors") {
-    cytnx::Tensor matrix;
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::eye(ctx, 2, matrix);
 
-    cytnx::Tensor eigenvals, eigenvecs;
+    tci::CytnxTensor<cytnx::cytnx_complex128> eigenvals, eigenvecs;
     tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
 
     CHECK(tci::rank(ctx, eigenvals) == 1);
@@ -158,10 +158,10 @@ TEST_CASE("TCI Eigenvalue Problems") {
   }
 
   SUBCASE("Symmetric eigendecomposition") {
-    cytnx::Tensor matrix;
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::eye(ctx, 2, matrix);
 
-    cytnx::Tensor eigenvals, eigenvecs;
+    tci::CytnxTensor<cytnx::cytnx_complex128> eigenvals, eigenvecs;
     tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs);
 
     CHECK(tci::rank(ctx, eigenvals) == 1);
@@ -180,20 +180,20 @@ TEST_CASE("TCI Eigenvalue Problems") {
 }
 
 TEST_CASE("TCI Advanced Linear Algebra") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Matrix exponential - basic functionality") {
     // Create a small 2x2 matrix
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
     tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(2.0, 0.0));
 
     // Test matrix exponential (should work now)
-    cytnx::Tensor result;
+    tci::CytnxTensor<cytnx::cytnx_complex128> result;
     CHECK_NOTHROW(tci::exp(ctx, matrix, 1, result));
 
     // Verify dimensions are preserved
@@ -203,7 +203,7 @@ TEST_CASE("TCI Advanced Linear Algebra") {
     CHECK(result_shape[1] == 2);
 
     // Test in-place version
-    cytnx::Tensor matrix_copy;
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix_copy;
     tci::copy(ctx, matrix, matrix_copy);
     CHECK_NOTHROW(tci::exp(ctx, matrix_copy, 1));
 
@@ -213,10 +213,10 @@ TEST_CASE("TCI Advanced Linear Algebra") {
 
   SUBCASE("Matrix exponential - mathematical verification") {
     // Test case 1: Identity matrix exponential (spec example)
-    cytnx::Tensor identity;
+    tci::CytnxTensor<cytnx::cytnx_complex128> identity;
     tci::eye(ctx, 3, identity);
 
-    cytnx::Tensor exp_identity;
+    tci::CytnxTensor<cytnx::cytnx_complex128> exp_identity;
     tci::exp(ctx, identity, 1, exp_identity);
 
     // For identity matrix, exp(I) = e * I, so diagonal elements should be e ≈ 2.71828
@@ -226,15 +226,15 @@ TEST_CASE("TCI Advanced Linear Algebra") {
     CHECK(std::abs(tci::imag(elem11)) < 1e-10);
 
     // Test case 2: Diagonal matrix with known result
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor diagonal;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> diagonal;
     tci::zeros(ctx, shape, diagonal);
 
     // Create diagonal matrix [[1, 0], [0, 2]]
     tci::set_elem(ctx, diagonal, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
     tci::set_elem(ctx, diagonal, {1, 1}, cytnx::cytnx_complex128(2.0, 0.0));
 
-    cytnx::Tensor exp_diagonal;
+    tci::CytnxTensor<cytnx::cytnx_complex128> exp_diagonal;
     tci::exp(ctx, diagonal, 1, exp_diagonal);
 
     // For diagonal matrix, exp([[1, 0], [0, 2]]) = [[e^1, 0], [0, e^2]]
@@ -252,10 +252,10 @@ TEST_CASE("TCI Advanced Linear Algebra") {
     CHECK(std::abs(tci::real(elem10)) < 1e-10);  // off-diagonal should be zero
 
     // Test case 3: Zero matrix → Identity matrix
-    cytnx::Tensor zero_matrix;
+    tci::CytnxTensor<cytnx::cytnx_complex128> zero_matrix;
     tci::zeros(ctx, {2, 2}, zero_matrix);
 
-    cytnx::Tensor exp_zero;
+    tci::CytnxTensor<cytnx::cytnx_complex128> exp_zero;
     tci::exp(ctx, zero_matrix, 1, exp_zero);
 
     // exp(0) = I
@@ -270,11 +270,11 @@ TEST_CASE("TCI Advanced Linear Algebra") {
     CHECK(std::abs(tci::real(z10)) < 1e-10);
 
     // Test case 4: Nilpotent matrix [[0, 1], [0, 0]]
-    cytnx::Tensor nilpotent;
+    tci::CytnxTensor<cytnx::cytnx_complex128> nilpotent;
     tci::zeros(ctx, {2, 2}, nilpotent);
     tci::set_elem(ctx, nilpotent, {0, 1}, cytnx::cytnx_complex128(1.0, 0.0));
 
-    cytnx::Tensor exp_nilpotent;
+    tci::CytnxTensor<cytnx::cytnx_complex128> exp_nilpotent;
     tci::exp(ctx, nilpotent, 1, exp_nilpotent);
 
     // For nilpotent matrices, exp(A) behavior depends on implementation
@@ -293,23 +293,23 @@ TEST_CASE("TCI Advanced Linear Algebra") {
 
   SUBCASE("Matrix exponential - error conditions") {
     // Test non-square matrix error
-    tci::shape_t<cytnx::Tensor> non_square_shape = {2, 3};
-    cytnx::Tensor non_square;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> non_square_shape = {2, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> non_square;
     tci::zeros(ctx, non_square_shape, non_square);
 
-    cytnx::Tensor result;
+    tci::CytnxTensor<cytnx::cytnx_complex128> result;
     CHECK_THROWS_AS(tci::exp(ctx, non_square, 1, result), std::invalid_argument);
 
     // Test invalid num_of_bds_as_row
-    cytnx::Tensor square;
+    tci::CytnxTensor<cytnx::cytnx_complex128> square;
     tci::zeros(ctx, {2, 2}, square);
     CHECK_THROWS_AS(tci::exp(ctx, square, 3, result), std::invalid_argument);
   }
 
   SUBCASE("Matrix inverse") {
     // Create an invertible 2x2 matrix
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
@@ -325,13 +325,13 @@ TEST_CASE("TCI Advanced Linear Algebra") {
 }
 
 TEST_CASE("TCI Truncated SVD") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Truncated SVD with max bond dimension") {
     // Create a 4x4 matrix with known singular values
-    tci::shape_t<cytnx::Tensor> shape = {4, 4};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {4, 4};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     // Fill diagonal with values [3, 2, 1, 0.1] for known singular values
@@ -340,9 +340,9 @@ TEST_CASE("TCI Truncated SVD") {
     tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(1.0, 0.0));
     tci::set_elem(ctx, matrix, {3, 3}, cytnx::cytnx_complex128(0.1, 0.0));
 
-    cytnx::Tensor u, v_dag;
-    tci::real_ten_t<cytnx::Tensor> s_diag;
-    tci::real_t<cytnx::Tensor> trunc_err;
+    tci::CytnxTensor<cytnx::cytnx_complex128> u, v_dag;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> s_diag;
+    tci::real_t<tci::CytnxTensor<cytnx::cytnx_complex128>> trunc_err;
 
     // Test truncated SVD with chi_max=2 and s_min=0.5
     CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err, 2, 0.5));
@@ -364,13 +364,13 @@ TEST_CASE("TCI Truncated SVD") {
 }
 
 TEST_CASE("TCI QR Decomposition") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("QR decomposition of square matrix") {
     // Create a 3x3 matrix
-    tci::shape_t<cytnx::Tensor> shape = {3, 3};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     // Fill with test values
@@ -384,7 +384,7 @@ TEST_CASE("TCI QR Decomposition") {
     tci::set_elem(ctx, matrix, {2, 1}, cytnx::cytnx_complex128(8.0, 0.0));
     tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(9.0, 0.0));
 
-    cytnx::Tensor q, r;
+    tci::CytnxTensor<cytnx::cytnx_complex128> q, r;
 
     // Perform QR decomposition
     tci::qr(ctx, matrix, 1, q, r);
@@ -398,13 +398,13 @@ TEST_CASE("TCI QR Decomposition") {
 }
 
 TEST_CASE("TCI LQ Decomposition") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("LQ decomposition of square matrix") {
     // Create a 3x3 matrix
-    tci::shape_t<cytnx::Tensor> shape = {3, 3};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     // Fill with test values
@@ -418,7 +418,7 @@ TEST_CASE("TCI LQ Decomposition") {
     tci::set_elem(ctx, matrix, {2, 1}, cytnx::cytnx_complex128(8.0, 0.0));
     tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(9.0, 0.0));
 
-    cytnx::Tensor l, q;
+    tci::CytnxTensor<cytnx::cytnx_complex128> l, q;
 
     // Perform LQ decomposition
     tci::lq(ctx, matrix, 1, l, q);
@@ -432,13 +432,13 @@ TEST_CASE("TCI LQ Decomposition") {
 }
 
 TEST_CASE("TCI Eigenvalue Functions") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("General matrix eigenvalues") {
     // Create a 2x2 matrix
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     // Fill with test values
@@ -447,7 +447,7 @@ TEST_CASE("TCI Eigenvalue Functions") {
     tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(3.0, 0.0));
     tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
 
-    tci::cplx_ten_t<cytnx::Tensor> eigenvalues;
+    tci::cplx_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> eigenvalues;
 
     // Perform eigenvalue calculation
     tci::eigvals(ctx, matrix, 1, eigenvalues);
@@ -458,8 +458,8 @@ TEST_CASE("TCI Eigenvalue Functions") {
 
   SUBCASE("Symmetric matrix eigenvalues") {
     // Create a symmetric 2x2 matrix
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor matrix;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, shape, matrix);
 
     // Fill with symmetric values
@@ -468,7 +468,7 @@ TEST_CASE("TCI Eigenvalue Functions") {
     tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(1.0, 0.0));
     tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(3.0, 0.0));
 
-    tci::real_ten_t<cytnx::Tensor> eigenvalues;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> eigenvalues;
 
     // Perform symmetric eigenvalue calculation
     tci::eigvalsh(ctx, matrix, 1, eigenvalues);
@@ -481,12 +481,12 @@ TEST_CASE("TCI Eigenvalue Functions") {
 }
 
 TEST_CASE("TCI SVD Decomposition") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Basic 3x3 matrix SVD") {
     // Create a 3x3 real matrix for SVD test
-    cytnx::Tensor matrix;
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, {3, 3}, matrix);
 
     // Set up a simple test matrix with known properties
@@ -501,8 +501,8 @@ TEST_CASE("TCI SVD Decomposition") {
     tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(9.0, 0.0));
 
     // Declare output tensors for SVD
-    cytnx::Tensor u, v_dag;
-    tci::real_ten_t<cytnx::Tensor> s_diag;
+    tci::CytnxTensor<cytnx::cytnx_complex128> u, v_dag;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> s_diag;
 
     // Perform SVD: A = U * S * V^dagger
     // num_of_bds_as_row = 1 means first 1 bond (rows) vs rest (columns)
@@ -532,7 +532,7 @@ TEST_CASE("TCI SVD Decomposition") {
 
   SUBCASE("2x3 rectangular matrix SVD") {
     // Test SVD on a rectangular matrix
-    cytnx::Tensor rect_matrix;
+    tci::CytnxTensor<cytnx::cytnx_complex128> rect_matrix;
     tci::zeros(ctx, {2, 3}, rect_matrix);
 
     // Create a rank-2 matrix for testing
@@ -543,8 +543,8 @@ TEST_CASE("TCI SVD Decomposition") {
     tci::set_elem(ctx, rect_matrix, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
     tci::set_elem(ctx, rect_matrix, {1, 2}, cytnx::cytnx_complex128(6.0, 0.0));
 
-    cytnx::Tensor u, v_dag;
-    tci::real_ten_t<cytnx::Tensor> s_diag;
+    tci::CytnxTensor<cytnx::cytnx_complex128> u, v_dag;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> s_diag;
 
     // Should not throw for rectangular matrix
     CHECK_NOTHROW(tci::svd(ctx, rect_matrix, 1, u, s_diag, v_dag));
@@ -565,11 +565,11 @@ TEST_CASE("TCI SVD Decomposition") {
 
   SUBCASE("Identity matrix SVD") {
     // SVD of identity matrix should give identity factors
-    cytnx::Tensor identity;
+    tci::CytnxTensor<cytnx::cytnx_complex128> identity;
     tci::eye(ctx, 2, identity);
 
-    cytnx::Tensor u, v_dag;
-    tci::real_ten_t<cytnx::Tensor> s_diag;
+    tci::CytnxTensor<cytnx::cytnx_complex128> u, v_dag;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> s_diag;
 
     CHECK_NOTHROW(tci::svd(ctx, identity, 1, u, s_diag, v_dag));
 
@@ -585,20 +585,20 @@ TEST_CASE("TCI SVD Decomposition") {
 }
 
 TEST_CASE("TCI SVD Type Investigation") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Investigate s_diag element types") {
     // Create a simple 2x2 matrix
-    cytnx::Tensor matrix;
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, {2, 2}, matrix);
 
     // Set up a diagonal matrix with known singular values
     tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
     tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(1.0, 0.0));
 
-    cytnx::Tensor u, v_dag;
-    tci::real_ten_t<cytnx::Tensor> s_diag;
+    tci::CytnxTensor<cytnx::cytnx_complex128> u, v_dag;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> s_diag;
 
     CHECK_NOTHROW(tci::svd(ctx, matrix, 1, u, s_diag, v_dag));
 
@@ -629,7 +629,7 @@ TEST_CASE("TCI SVD Type Investigation") {
 
   SUBCASE("Complex input matrix SVD type check") {
     // Create a matrix with complex elements
-    cytnx::Tensor matrix;
+    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::zeros(ctx, {2, 2}, matrix);
 
     // Set complex values
@@ -638,8 +638,8 @@ TEST_CASE("TCI SVD Type Investigation") {
     tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(-1.0, 0.2));
     tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(0.5, 1.0));
 
-    cytnx::Tensor u, v_dag;
-    tci::real_ten_t<cytnx::Tensor> s_diag;
+    tci::CytnxTensor<cytnx::cytnx_complex128> u, v_dag;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> s_diag;
 
     CHECK_NOTHROW(tci::svd(ctx, matrix, 1, u, s_diag, v_dag));
 

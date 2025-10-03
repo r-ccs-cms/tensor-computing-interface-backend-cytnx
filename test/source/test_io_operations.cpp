@@ -4,12 +4,12 @@
 #include <cytnx.hpp>
 
 TEST_CASE("tci::allocate API compliance test") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("In-place allocate creates tensor with correct shape") {
-    tci::shape_t<cytnx::Tensor> shape = {3, 4, 5};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 4, 5};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
 
     tci::allocate(ctx, shape, tensor);
 
@@ -25,9 +25,9 @@ TEST_CASE("tci::allocate API compliance test") {
   }
 
   SUBCASE("Out-of-place allocate returns tensor with correct shape") {
-    tci::shape_t<cytnx::Tensor> shape = {2, 3};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 3};
 
-    cytnx::Tensor tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::allocate(ctx, shape, tensor);
 
     auto tensor_shape = tci::shape(ctx, tensor);
@@ -45,8 +45,8 @@ TEST_CASE("tci::allocate API compliance test") {
   // Uncomment when Cytnx adds scalar tensor support
   /*
   SUBCASE("Allocate with empty shape creates scalar tensor") {
-    tci::shape_t<cytnx::Tensor> shape = {};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
 
     tci::allocate(ctx, shape, tensor);
 
@@ -59,8 +59,8 @@ TEST_CASE("tci::allocate API compliance test") {
   */
 
   SUBCASE("Allocate with single dimension") {
-    tci::shape_t<cytnx::Tensor> shape = {10};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {10};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
 
     tci::allocate(ctx, shape, tensor);
 
@@ -76,12 +76,12 @@ TEST_CASE("tci::allocate API compliance test") {
 }
 
 TEST_CASE("tci::save API compliance test") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Save tensor to file path") {
     // Create a simple 2x2 identity tensor
-    cytnx::Tensor tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::eye(ctx, 2, tensor);
 
     std::string filepath = "/tmp/claude/test_tensor.cytnx";
@@ -95,13 +95,13 @@ TEST_CASE("tci::save API compliance test") {
 
   SUBCASE("Save and verify tensor data integrity") {
     // Create a tensor with known values
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::zeros(ctx, shape, tensor);
 
     // Set specific values
-    tci::elem_coors_t<cytnx::Tensor> coord00 = {0, 0};
-    tci::elem_coors_t<cytnx::Tensor> coord11 = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord00 = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord11 = {1, 1};
     cytnx::cytnx_complex128 value(1.0, 0.0);
 
     tci::set_elem(ctx, tensor, coord00, value);
@@ -116,7 +116,7 @@ TEST_CASE("tci::save API compliance test") {
     CHECK(std::filesystem::exists(filepath));
 
     // Load back and verify data integrity
-    cytnx::Tensor loaded_tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> loaded_tensor;
     CHECK_NOTHROW(tci::load(ctx, filepath, loaded_tensor));
 
     // Verify shape
@@ -140,12 +140,12 @@ TEST_CASE("tci::save API compliance test") {
 }
 
 TEST_CASE("tci::load API compliance test") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("In-place load from file path") {
     std::string filepath = "/tmp/claude/nonexistent_tensor.cytnx";
-    cytnx::Tensor tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
 
     // Load should throw when file doesn't exist
     CHECK_THROWS_WITH(tci::load(ctx, filepath, tensor),
@@ -156,19 +156,19 @@ TEST_CASE("tci::load API compliance test") {
     std::string filepath = "/tmp/claude/nonexistent_tensor.cytnx";
 
     // Load should throw when file doesn't exist
-    CHECK_THROWS_WITH(tci::load<cytnx::Tensor>(ctx, filepath),
+    CHECK_THROWS_WITH(tci::load<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, filepath),
                       doctest::Contains("could not find file"));
   }
 
   SUBCASE("Load tensor and verify data integrity") {
     // First save a tensor to ensure file exists
-    cytnx::Tensor original_tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> original_tensor;
     tci::eye(ctx, 2, original_tensor);
     std::string filepath = "/tmp/claude/test_tensor_load.cytnx";
     tci::save(ctx, original_tensor, filepath);
 
     // Now load and verify
-    cytnx::Tensor loaded_tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> loaded_tensor;
     CHECK_NOTHROW(tci::load(ctx, filepath, loaded_tensor));
 
     // Verify shape matches
@@ -184,13 +184,13 @@ TEST_CASE("tci::load API compliance test") {
 }
 
 TEST_CASE("tci::clear API compliance test") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Clear tensor resets it to empty state") {
     // Create a tensor with some data
-    tci::shape_t<cytnx::Tensor> shape = {3, 3};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::eye(ctx, 3, tensor);
 
     // Verify tensor has data before clearing
@@ -207,15 +207,15 @@ TEST_CASE("tci::clear API compliance test") {
   }
 
   SUBCASE("Clear already empty tensor") {
-    cytnx::Tensor empty_tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> empty_tensor;
 
     // Clearing an empty tensor should not throw
     CHECK_NOTHROW(tci::clear(ctx, empty_tensor));
   }
 
   SUBCASE("Clear and reallocate tensor") {
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::eye(ctx, 2, tensor);
 
     // Clear the tensor
@@ -229,23 +229,23 @@ TEST_CASE("tci::clear API compliance test") {
 }
 
 TEST_CASE("tci::move API compliance test") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("In-place move transfers tensor data") {
     // Create source tensor with data
-    cytnx::Tensor source;
+    tci::CytnxTensor<cytnx::cytnx_complex128> source;
     tci::eye(ctx, 3, source);
 
     auto source_size = tci::size(ctx, source);
     auto source_shape = tci::shape(ctx, source);
 
     // Get a reference element before move
-    tci::elem_coors_t<cytnx::Tensor> coord = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord = {0, 0};
     auto original_elem = tci::get_elem(ctx, source, coord);
 
     // Create destination tensor
-    cytnx::Tensor destination;
+    tci::CytnxTensor<cytnx::cytnx_complex128> destination;
 
     // Move source to destination
     tci::move(ctx, source, destination);
@@ -263,14 +263,14 @@ TEST_CASE("tci::move API compliance test") {
 
   SUBCASE("Out-of-place move returns moved tensor") {
     // Create source tensor
-    cytnx::Tensor source;
+    tci::CytnxTensor<cytnx::cytnx_complex128> source;
     tci::eye(ctx, 2, source);
 
     auto source_size = tci::size(ctx, source);
     auto source_shape = tci::shape(ctx, source);
 
     // Get reference element
-    tci::elem_coors_t<cytnx::Tensor> coord = {1, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord = {1, 1};
     auto original_elem = tci::get_elem(ctx, source, coord);
 
     // Move and get result
@@ -288,8 +288,8 @@ TEST_CASE("tci::move API compliance test") {
   }
 
   SUBCASE("Move empty tensor") {
-    cytnx::Tensor empty_source;
-    cytnx::Tensor destination;
+    tci::CytnxTensor<cytnx::cytnx_complex128> empty_source;
+    tci::CytnxTensor<cytnx::cytnx_complex128> destination;
 
     // Should be able to move empty tensor without throwing
     CHECK_NOTHROW(tci::move(ctx, empty_source, destination));
@@ -297,13 +297,13 @@ TEST_CASE("tci::move API compliance test") {
 
   SUBCASE("Move preserves tensor element values") {
     // Create a tensor with specific values
-    tci::shape_t<cytnx::Tensor> shape = {2, 3};
-    cytnx::Tensor source;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 3};
+    tci::CytnxTensor<cytnx::cytnx_complex128> source;
     tci::zeros(ctx, shape, source);
 
     // Set some specific values
-    tci::elem_coors_t<cytnx::Tensor> coord1 = {0, 1};
-    tci::elem_coors_t<cytnx::Tensor> coord2 = {1, 2};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord1 = {0, 1};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord2 = {1, 2};
     cytnx::cytnx_complex128 val1(2.5, 1.5);
     cytnx::cytnx_complex128 val2(3.7, -2.1);
 
@@ -311,7 +311,7 @@ TEST_CASE("tci::move API compliance test") {
     tci::set_elem(ctx, source, coord2, val2);
 
     // Move to destination
-    cytnx::Tensor destination;
+    tci::CytnxTensor<cytnx::cytnx_complex128> destination;
     tci::move(ctx, source, destination);
 
     // Check values are preserved

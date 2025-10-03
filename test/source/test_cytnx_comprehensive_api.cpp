@@ -11,7 +11,7 @@ TEST_CASE("CytnxTensor - Basic manipulation functions") {
   using Elem = cytnx::cytnx_complex128;
   using Real = double;
 
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("copy function") {
@@ -92,7 +92,7 @@ TEST_CASE("CytnxTensor - Linear algebra functions") {
   using Elem = cytnx::cytnx_complex128;
   using Real = double;
 
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("norm and normalize") {
@@ -204,7 +204,7 @@ TEST_CASE("CytnxTensor - Contract and trace") {
   using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
   using Elem = cytnx::cytnx_complex128;
 
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("contract simple") {
@@ -254,7 +254,7 @@ TEST_CASE("CytnxTensor - Utility functions") {
   using Elem = cytnx::cytnx_complex128;
   using Real = double;
 
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("size_bytes function") {

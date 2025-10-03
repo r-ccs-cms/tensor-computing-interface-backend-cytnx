@@ -5,16 +5,16 @@
 #include <cytnx.hpp>
 
 TEST_CASE("TCI Element Access") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Element set and get should match exactly") {
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::zeros(ctx, shape, tensor);
 
     // Set element at (0,0) to (2.5, 1.5)
-    tci::elem_coors_t<cytnx::Tensor> coord = {0, 0};
+    tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord = {0, 0};
     cytnx::cytnx_complex128 expected_value(2.5, 1.5);
     tci::set_elem(ctx, tensor, coord, expected_value);
 
@@ -30,11 +30,11 @@ TEST_CASE("TCI Element Access") {
 }
 
 TEST_CASE("TCI Copy Operations") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Deep copy preserves data - in-place version") {
-    cytnx::Tensor a, b;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b;
     tci::zeros(ctx, {2, 3}, a);
 
     // Set known values
@@ -60,7 +60,7 @@ TEST_CASE("TCI Copy Operations") {
 
   SUBCASE("Deep copy preserves data - out-of-place version (documentation example)") {
     // Test based on documentation example
-    cytnx::Tensor a;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a;
     tci::zeros(ctx, {3, 4, 2}, a);
 
     // Populate tensor with known data
@@ -87,7 +87,7 @@ TEST_CASE("TCI Copy Operations") {
   }
 
   SUBCASE("Copy is independent (modifications don't affect original)") {
-    cytnx::Tensor a, b;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b;
     tci::zeros(ctx, {2, 2}, a);
     tci::set_elem(ctx, a, {0, 0}, cytnx::cytnx_complex128(100.0, 0.0));
 
@@ -107,7 +107,7 @@ TEST_CASE("TCI Copy Operations") {
   }
 
   SUBCASE("Copy empty tensor") {
-    cytnx::Tensor a, b;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b;
     // Don't initialize a (should be empty)
 
     // Copy should work without errors
@@ -119,7 +119,7 @@ TEST_CASE("TCI Copy Operations") {
   }
 
   SUBCASE("Copy single element tensor") {
-    cytnx::Tensor a;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a;
     tci::zeros(ctx, {1}, a);
     tci::set_elem(ctx, a, {0}, cytnx::cytnx_complex128(3.14, 2.71));
 
@@ -131,7 +131,7 @@ TEST_CASE("TCI Copy Operations") {
   }
 
   SUBCASE("Copy large tensor") {
-    cytnx::Tensor a;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a;
     tci::zeros(ctx, {10, 10, 10}, a);
 
     // Set corner elements
@@ -157,7 +157,7 @@ TEST_CASE("TCI Copy Operations") {
 }
 
 TEST_CASE("TCI Size Bytes Calculation") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   // SKIPPED: Cytnx empty tensor returns 16 bytes (internal minimum allocation)
@@ -165,15 +165,15 @@ TEST_CASE("TCI Size Bytes Calculation") {
   // Uncomment when Cytnx behavior is clarified
   /*
   SUBCASE("Empty tensor should have zero size in bytes") {
-    cytnx::Tensor empty_tensor;
+    tci::CytnxTensor<cytnx::cytnx_complex128> empty_tensor;
     auto size = tci::size_bytes(ctx, empty_tensor);
     CHECK(size == 0);
   }
   */
 
   SUBCASE("2x2 complex tensor size should match expected") {
-    tci::shape_t<cytnx::Tensor> shape = {2, 2};
-    cytnx::Tensor tensor;
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
     tci::zeros(ctx, shape, tensor);
 
     auto size = tci::size_bytes(ctx, tensor);
@@ -185,15 +185,15 @@ TEST_CASE("TCI Size Bytes Calculation") {
 }
 
 TEST_CASE("TCI Tensor Equality") {
-  tci::context_handle_t<cytnx::Tensor> ctx;
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Identity tensors should be equal") {
-    cytnx::Tensor tensor1, tensor2;
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor1, tensor2;
     tci::eye(ctx, 2, tensor1);
     tci::eye(ctx, 2, tensor2);
 
-    tci::elem_t<cytnx::Tensor> epsilon = 1e-10;
+    tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>> epsilon = 1e-10;
     bool are_equal = tci::eq(ctx, tensor1, tensor2, epsilon);
 
     // This will FAIL if eq is a placeholder that only compares shapes
@@ -201,11 +201,11 @@ TEST_CASE("TCI Tensor Equality") {
   }
 
   SUBCASE("Different tensors should not be equal") {
-    cytnx::Tensor tensor1, tensor2;
+    tci::CytnxTensor<cytnx::cytnx_complex128> tensor1, tensor2;
     tci::eye(ctx, 2, tensor1);
     tci::zeros(ctx, {2, 2}, tensor2);
 
-    tci::elem_t<cytnx::Tensor> epsilon = 1e-10;
+    tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>> epsilon = 1e-10;
     bool are_equal = tci::eq(ctx, tensor1, tensor2, epsilon);
 
     // This should be false - identity != zeros
