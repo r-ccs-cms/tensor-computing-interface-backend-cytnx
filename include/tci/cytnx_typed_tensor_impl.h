@@ -400,9 +400,14 @@ namespace tci {
   void to_cplx(context_handle_t<CytnxTensor<ElemT>>& ctx,
                const CytnxTensor<ElemT>& in,
                cplx_ten_t<CytnxTensor<ElemT>>& out) {
-    cytnx::Tensor out_backend;
-    tci::to_cplx(ctx, in.backend, out_backend);
-    out.backend = out_backend;
+    if (in.backend.dtype() == cytnx::Type.ComplexDouble ||
+        in.backend.dtype() == cytnx::Type.ComplexFloat) {
+      // Already complex, just copy
+      out.backend = in.backend.clone();
+    } else {
+      // Convert real to complex
+      out.backend = in.backend.astype(cytnx::Type.ComplexDouble);
+    }
   }
 
   // Norm calculation
