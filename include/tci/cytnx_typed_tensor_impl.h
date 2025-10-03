@@ -1782,4 +1782,13 @@ namespace tci {
     move(ctx, from, result);
     return result;
   }
+
+  // to_cplx - convert to complex tensor (out-of-place)
+  template <typename ElemT>
+  cplx_ten_t<CytnxTensor<ElemT>> to_cplx(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                         const CytnxTensor<ElemT>& in) {
+    cplx_ten_t<CytnxTensor<ElemT>> result;
+    to_cplx(ctx, in, result);
+    return result;
+  }
 }  // namespace tci
