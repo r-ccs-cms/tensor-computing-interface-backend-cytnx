@@ -1999,4 +1999,15 @@ namespace tci {
     return result;
   }
 
+  // Context management for CytnxTensor<ElemT>
+  template <typename ElemT>
+  void create_context(context_handle_t<CytnxTensor<ElemT>>& ctx) {
+    ctx = cytnx::Device.cpu;
+  }
+
+  template <typename ElemT>
+  void destroy_context(context_handle_t<CytnxTensor<ElemT>>& ctx) {
+    // No-op for Cytnx
+  }
+
 }  // namespace tci

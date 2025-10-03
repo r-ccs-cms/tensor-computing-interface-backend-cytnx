@@ -6,13 +6,11 @@ namespace tci {
 
   // Context management for CytnxContextHandle
   template <> void create_context(CytnxContextHandle& ctx) {
-    // Initialize Cytnx device context (device ID)
-    ctx.set_value(cytnx::Device.cpu);  // Default to CPU (-1)
+    ctx.set_value(cytnx::Device.cpu);
   }
 
   template <> void destroy_context(CytnxContextHandle& ctx) {
-    // No specific cleanup needed for Cytnx device context
-    // Cytnx handles this automatically
+    // No specific cleanup needed
   }
 
   // All cytnx::Tensor specializations removed
