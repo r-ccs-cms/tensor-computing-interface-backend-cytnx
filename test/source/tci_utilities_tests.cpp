@@ -17,9 +17,9 @@ TEST_CASE("Miscellaneous Functions") {
     // Create a 2x3 tensor with known values
     Ten a = zeros<Ten>(ctx, {2, 3});
 
-    // Set some values
-    // Note: We need to set values using Cytnx API directly for this test
-    a = cytnx::arange(0, 6, 1).reshape({2, 3}).astype(cytnx::Type.ComplexDouble);
+    for_each_with_coors(ctx, a, [](elem_t<Ten>& elem, const elem_coors_t<Ten>& coors) {
+      elem = elem_t<Ten>(coors[0] * 3 + coors[1], 0.0);
+    });
 
     // Create container to store results
     std::vector<std::complex<double>> container(6);
