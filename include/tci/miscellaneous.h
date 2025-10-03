@@ -2,7 +2,6 @@
 
 #include "tci/tensor_traits.h"
 #include "tci/read_only_getters.h"
-#include <variant>
 #include <cytnx.hpp>
 #include "tci/cytnx_tensor_traits.h"
 
@@ -50,10 +49,8 @@ namespace tci {
       // Use lambda to convert coordinates to container index
       auto container_idx = std::invoke(coors2idx, coors);
 
-      // Store element in container using std::visit for variant handling
-      std::visit([&](auto&& val) {
-        *(first + container_idx) = static_cast<typename std::iterator_traits<RandomIt>::value_type>(val);
-      }, elem);
+      // Store element in container (elem_t is no longer a variant)
+      *(first + container_idx) = static_cast<typename std::iterator_traits<RandomIt>::value_type>(elem);
 
       // Advance to next coordinate (row-major order)
       for (int dim = static_cast<int>(coors.size()) - 1; dim >= 0; --dim) {

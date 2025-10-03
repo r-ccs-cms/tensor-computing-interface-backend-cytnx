@@ -61,16 +61,9 @@ TEST_CASE("Template Function const Type Issues") {
     // This creates elem_coors_t for const tensor implicitly
     elem_coors_t<Ten> coords = {0};
 
-    // Should work with const tensor (using std::visit for variant)
+    // Should work with const tensor
     auto elem = get_elem(ctx, const_a, coords);
-    std::visit([](auto&& v) {
-      using T = std::decay_t<decltype(v)>;
-      if constexpr (std::is_arithmetic_v<T>) {
-        CHECK(std::abs(v - 1.0) < 1e-10);
-      } else {
-        CHECK(std::abs(v.real() - 1.0) < 1e-10);
-      }
-    }, elem);
+    CHECK(std::abs(elem - 1.0) < 1e-10);
   }
 
   destroy_context(ctx);

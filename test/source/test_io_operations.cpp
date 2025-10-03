@@ -123,12 +123,8 @@ TEST_CASE("tci::save API compliance test") {
     auto loaded_shape = tci::shape(ctx, loaded_tensor);
     CHECK(loaded_shape == shape);
 
-    // Verify values (using the variant-returning version of get_elem)
-    auto val00_variant = tci::get_elem(ctx, loaded_tensor, coord00);
-    auto val11_variant = tci::get_elem(ctx, loaded_tensor, coord11);
-
-    auto val00 = std::get<cytnx::cytnx_complex128>(val00_variant);
-    auto val11 = std::get<cytnx::cytnx_complex128>(val11_variant);
+    auto val00 = tci::get_elem(ctx, loaded_tensor, coord00);
+    auto val11 = tci::get_elem(ctx, loaded_tensor, coord11);
 
     CHECK(val00.real() == doctest::Approx(1.0));
     CHECK(val00.imag() == doctest::Approx(0.0));

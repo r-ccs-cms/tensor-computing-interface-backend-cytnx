@@ -118,28 +118,14 @@ TEST_CASE("Miscellaneous Functions") {
     // Convert
     convert(ctx, a, ctx2, b);
 
-    // Verify specific elements preserved (using std::visit for variant)
+    // Verify specific elements preserved
     auto val1 = get_elem(ctx, b, {0, 0});
-    std::visit([](auto&& v) {
-      using T = std::decay_t<decltype(v)>;
-      if constexpr (std::is_arithmetic_v<T>) {
-        CHECK(std::abs(v - 1.23) < 1e-14);
-      } else {
-        CHECK(std::abs(v.real() - 1.23) < 1e-14);
-        CHECK(std::abs(v.imag() - 4.56) < 1e-14);
-      }
-    }, val1);
+    CHECK(std::abs(val1.real() - 1.23) < 1e-14);
+    CHECK(std::abs(val1.imag() - 4.56) < 1e-14);
 
     auto val2 = get_elem(ctx, b, {1, 2});
-    std::visit([](auto&& v) {
-      using T = std::decay_t<decltype(v)>;
-      if constexpr (std::is_arithmetic_v<T>) {
-        CHECK(std::abs(v - (-7.89)) < 1e-14);
-      } else {
-        CHECK(std::abs(v.real() - (-7.89)) < 1e-14);
-        CHECK(std::abs(v.imag() - 0.12) < 1e-14);
-      }
-    }, val2);
+    CHECK(std::abs(val2.real() - (-7.89)) < 1e-14);
+    CHECK(std::abs(val2.imag() - 0.12) < 1e-14);
 
     destroy_context(ctx2);
   }
@@ -171,28 +157,14 @@ TEST_CASE("Miscellaneous Functions") {
     create_context(ctx2);
     convert(ctx, a, ctx2, b);
 
-    // Verify corner elements preserved (using std::visit for variant)
+    // Verify corner elements preserved
     auto corner1 = get_elem(ctx, b, {0, 0, 0});
-    std::visit([](auto&& v) {
-      using T = std::decay_t<decltype(v)>;
-      if constexpr (std::is_arithmetic_v<T>) {
-        CHECK(std::abs(v - 1.0) < 1e-14);
-      } else {
-        CHECK(std::abs(v.real() - 1.0) < 1e-14);
-        CHECK(std::abs(v.imag() - 0.0) < 1e-14);
-      }
-    }, corner1);
+    CHECK(std::abs(corner1.real() - 1.0) < 1e-14);
+    CHECK(std::abs(corner1.imag() - 0.0) < 1e-14);
 
     auto corner2 = get_elem(ctx, b, {9, 9, 4});
-    std::visit([](auto&& v) {
-      using T = std::decay_t<decltype(v)>;
-      if constexpr (std::is_arithmetic_v<T>) {
-        CHECK(std::abs(v) < 1e-14);
-      } else {
-        CHECK(std::abs(v.real() - 0.0) < 1e-14);
-        CHECK(std::abs(v.imag() - 1.0) < 1e-14);
-      }
-    }, corner2);
+    CHECK(std::abs(corner2.real() - 0.0) < 1e-14);
+    CHECK(std::abs(corner2.imag() - 1.0) < 1e-14);
 
     destroy_context(ctx2);
   }

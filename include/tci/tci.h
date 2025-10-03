@@ -9,7 +9,6 @@
 #include "tci/tensor_linear_algebra.h"
 #include "tci/tensor_manipulation.h"
 #include "tci/tensor_traits.h"
-#include "tci/variant_helpers.h"  // Temporary: will be removed after full migration
 #include "tci/cytnx_typed_tensor_impl.h"
 
 /**

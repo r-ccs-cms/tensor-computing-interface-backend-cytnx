@@ -4,8 +4,49 @@
 #include <cytnx.hpp>
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/read_only_getters.h"
+#include <complex>
+#include <type_traits>
 
 namespace tci {
+
+  // Helper functions for elem_t (scalar values) - for backward compatibility
+  // These work with elem_t which is no longer a variant
+
+  // real() for complex types
+  template <typename T, std::enable_if_t<std::is_same_v<T, std::complex<double>> ||
+                                          std::is_same_v<T, std::complex<float>> ||
+                                          std::is_same_v<T, cytnx::cytnx_complex128> ||
+                                          std::is_same_v<T, cytnx::cytnx_complex64>, int> = 0>
+  inline auto real(const T& val) {
+    return std::real(val);
+  }
+
+  // real() for real types
+  template <typename T, std::enable_if_t<std::is_floating_point_v<T> ||
+                                          std::is_same_v<T, cytnx::cytnx_double> ||
+                                          std::is_same_v<T, cytnx::cytnx_float>, int> = 0>
+  inline T real(const T& val) {
+    return val;
+  }
+
+  // imag() for complex types
+  template <typename T, std::enable_if_t<std::is_same_v<T, std::complex<double>> ||
+                                          std::is_same_v<T, std::complex<float>> ||
+                                          std::is_same_v<T, cytnx::cytnx_complex128> ||
+                                          std::is_same_v<T, cytnx::cytnx_complex64>, int> = 0>
+  inline auto imag(const T& val) {
+    return std::imag(val);
+  }
+
+  // imag() for real types
+  template <typename T, std::enable_if_t<std::is_floating_point_v<T> ||
+                                          std::is_same_v<T, cytnx::cytnx_double> ||
+                                          std::is_same_v<T, cytnx::cytnx_float>, int> = 0>
+  inline T imag(const T& val) {
+    return T(0);
+  }
+
+
 
   /**
    * @brief Set the value of a specific element
