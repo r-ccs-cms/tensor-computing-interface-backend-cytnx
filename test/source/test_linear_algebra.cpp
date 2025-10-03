@@ -78,7 +78,7 @@ TEST_CASE("TCI Matrix Decomposition - Truncated SVD") {
     }
 
     tci::CytnxTensor<cytnx::cytnx_complex128> u, v_dag;
-    tci::CytnxTensor<cytnx::cytnx_complex128> s_diag;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> s_diag;
     double trunc_err;
 
     // Test truncated SVD implementation
@@ -133,7 +133,7 @@ TEST_CASE("TCI Eigenvalue Problems") {
     tci::set_elem(ctx, symmetric, {1, 0}, cytnx::cytnx_complex128(2.0, 0.0));
     tci::set_elem(ctx, symmetric, {1, 1}, cytnx::cytnx_complex128(3.0, 0.0));
 
-    tci::CytnxTensor<cytnx::cytnx_complex128> eigenvals;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> eigenvals;
     // This should fail with invalid argument (matrix must be square)
     CHECK_THROWS_AS(tci::eigvalsh(ctx, symmetric, 2, eigenvals), std::invalid_argument);
   }
@@ -161,13 +161,14 @@ TEST_CASE("TCI Eigenvalue Problems") {
     tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
     tci::eye(ctx, 2, matrix);
 
-    tci::CytnxTensor<cytnx::cytnx_complex128> eigenvals, eigenvecs;
+    tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>> eigenvals;
+    tci::CytnxTensor<cytnx::cytnx_complex128> eigenvecs;
     tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs);
 
     CHECK(tci::rank(ctx, eigenvals) == 1);
     CHECK(tci::size(ctx, eigenvals) == 2);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvals, {0})) - 1.0) < 1e-10);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvals, {1})) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {0}) - 1.0) < 1e-10);
+    CHECK(std::abs(tci::get_elem(ctx, eigenvals, {1}) - 1.0) < 1e-10);
 
     CHECK(tci::rank(ctx, eigenvecs) == 2);
     CHECK(tci::shape(ctx, eigenvecs)[0] == 2);

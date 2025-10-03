@@ -55,7 +55,7 @@ TEST_CASE("Template Function const Type Issues") {
     shape_t<Ten> shape = {3};
 
     Ten a;
-    fill(ctx, shape, std::complex<double>(1.0, 0.0), a);
+    fill(ctx, shape, 1.0, a);
     const Ten& const_a = a;
 
     // This creates elem_coors_t for const tensor implicitly
