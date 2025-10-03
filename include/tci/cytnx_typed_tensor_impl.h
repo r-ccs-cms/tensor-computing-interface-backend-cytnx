@@ -3,6 +3,7 @@
 #include "tci/cytnx_typed_tensor.h"
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/tensor_traits.h"
+#include "tci/tensor_linear_algebra.h"
 #include <cytnx.hpp>
 #include <vector>
 
@@ -558,6 +559,7 @@ namespace tci {
   }
 
   // Contract - tensor contraction following Einstein summation
+  // Restored from b7ecb2a9^ (correct implementation using cytnx::linalg::Tensordot)
   template <typename ElemT>
   void contract(context_handle_t<CytnxTensor<ElemT>>& ctx,
                 const CytnxTensor<ElemT>& a,
@@ -567,35 +569,180 @@ namespace tci {
                 CytnxTensor<ElemT>& c,
                 const std::vector<bond_label_t<CytnxTensor<ElemT>>>& bd_labs_c) {
     (void)ctx;
-    // Convert to string labels for Cytnx Contract
-    std::string str_a, str_b, str_c;
 
-    // Map integer labels to characters
-    std::map<bond_label_t<CytnxTensor<ElemT>>, char> label_map;
-    char current_char = 'a';
+    const auto rank_a = a.backend.shape().size();
+    const auto rank_b = b.backend.shape().size();
 
-    for (auto label : bd_labs_a) {
-      if (label_map.find(label) == label_map.end()) {
-        label_map[label] = current_char++;
+    bool treat_as_label_mode
+        = (bd_labs_a.size() == rank_a) && (bd_labs_b.size() == rank_b);
+
+    const auto in_range = [](size_t rank, const std::vector<bond_label_t<CytnxTensor<ElemT>>>& axes_list) {
+      for (auto axis : axes_list) {
+        if (axis < 0 || static_cast<size_t>(axis) >= rank) {
+          return false;
+        }
       }
-      str_a += label_map[label];
+      return true;
+    };
+
+    if (!in_range(rank_a, bd_labs_a) || !in_range(rank_b, bd_labs_b)) {
+      treat_as_label_mode = true;
     }
 
-    for (auto label : bd_labs_b) {
-      if (label_map.find(label) == label_map.end()) {
-        label_map[label] = current_char++;
-      }
-      str_b += label_map[label];
+    if (bd_labs_a.size() > rank_a || bd_labs_b.size() > rank_b) {
+      treat_as_label_mode = true;
     }
 
-    for (auto label : bd_labs_c) {
-      if (label_map.find(label) == label_map.end()) {
-        label_map[label] = current_char++;
+    if (treat_as_label_mode) {
+      detail::NCONAnalysis<CytnxTensor<ElemT>> analysis(bd_labs_a, bd_labs_b, bd_labs_c);
+
+      if (analysis.contract_axes_a.empty() && analysis.contract_axes_b.empty()) {
+        // Outer product case
+        auto flatten = [](const cytnx::Tensor& tensor, bool row_vector) {
+          cytnx::Tensor flat = tensor.clone();
+          cytnx::cytnx_uint64 total
+              = std::accumulate(tensor.shape().begin(), tensor.shape().end(),
+                                static_cast<cytnx::cytnx_uint64>(1),
+                                std::multiplies<cytnx::cytnx_uint64>());
+          if (row_vector) {
+            flat.reshape_({1, static_cast<cytnx::cytnx_int64>(total)});
+          } else {
+            flat.reshape_({static_cast<cytnx::cytnx_int64>(total), 1});
+          }
+          return flat;
+        };
+
+        auto a_flat = flatten(a.backend, false);
+        auto b_flat = flatten(b.backend, true);
+        cytnx::Tensor outer_matrix = cytnx::linalg::Matmul(a_flat, b_flat);
+
+        std::vector<cytnx::cytnx_uint64> target_shape;
+        auto a_shape = a.backend.shape();
+        auto b_shape = b.backend.shape();
+        target_shape.insert(target_shape.end(), a_shape.begin(), a_shape.end());
+        target_shape.insert(target_shape.end(), b_shape.begin(), b_shape.end());
+
+        cytnx::Tensor result = outer_matrix.reshape(target_shape);
+        if (!analysis.output_permutation.empty()) {
+          std::vector<cytnx::cytnx_uint64> valid_perm;
+          for (auto idx : analysis.output_permutation) {
+            if (idx < static_cast<cytnx::cytnx_uint64>(result.shape().size())) {
+              valid_perm.push_back(idx);
+            }
+          }
+          if (valid_perm.size() == result.shape().size()) {
+            result = result.permute(valid_perm);
+          }
+        }
+        c.backend = std::move(result);
+        return;
       }
-      str_c += label_map[label];
+
+      if (analysis.contract_axes_a.empty() || analysis.contract_axes_b.empty()) {
+        throw std::invalid_argument("contract: no valid contraction axes found");
+      }
+
+      try {
+        cytnx::Tensor result = cytnx::linalg::Tensordot(a.backend, b.backend,
+                                                        analysis.contract_axes_a,
+                                                        analysis.contract_axes_b);
+        if (!analysis.output_permutation.empty()) {
+          std::vector<cytnx::cytnx_uint64> valid_perm;
+          for (auto idx : analysis.output_permutation) {
+            if (idx < static_cast<cytnx::cytnx_uint64>(result.shape().size())) {
+              valid_perm.push_back(idx);
+            }
+          }
+          if (valid_perm.size() == result.shape().size()) {
+            result = result.permute(valid_perm);
+          }
+        }
+        c.backend = std::move(result);
+      } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("contract: Tensordot failed - ") + e.what());
+      }
+      return;
     }
 
-    c.backend = cytnx::Contract(a.backend, b.backend, str_a, str_b, str_c);
+    // Axis mode
+    auto convert_axes = [](size_t rank,
+                           const std::vector<bond_label_t<CytnxTensor<ElemT>>>& axes_list,
+                           const char* which) {
+      std::vector<cytnx::cytnx_uint64> axes;
+      axes.reserve(axes_list.size());
+      std::vector<bool> seen(rank, false);
+      for (auto axis : axes_list) {
+        if (axis < 0 || static_cast<size_t>(axis) >= rank) {
+          std::ostringstream oss;
+          oss << "contract: axis index out of range for " << which << " (rank=" << rank
+              << ", requested=" << axis << ")";
+          oss << " | axes list=";
+          for (auto v : axes_list) oss << v << ' ';
+          throw std::out_of_range(oss.str());
+        }
+        auto idx = static_cast<size_t>(axis);
+        if (seen[idx]) {
+          throw std::invalid_argument("contract: duplicate axis index detected");
+        }
+        seen[idx] = true;
+        axes.push_back(static_cast<cytnx::cytnx_uint64>(idx));
+      }
+      return axes;
+    };
+
+    auto contract_axes_a = convert_axes(rank_a, bd_labs_a, "first tensor");
+    auto contract_axes_b = convert_axes(rank_b, bd_labs_b, "second tensor");
+
+    if (contract_axes_a.size() != contract_axes_b.size()) {
+      throw std::invalid_argument("contract: axis lists must have equal length");
+    }
+
+    auto collect_free_axes = [](size_t rank,
+                                const std::vector<cytnx::cytnx_uint64>& contracted) {
+      std::vector<bool> used(rank, false);
+      for (auto idx : contracted) used[idx] = true;
+      std::vector<cytnx::cytnx_uint64> free_axes;
+      free_axes.reserve(rank - contracted.size());
+      for (size_t i = 0; i < rank; ++i) {
+        if (!used[i]) free_axes.push_back(static_cast<cytnx::cytnx_uint64>(i));
+      }
+      return free_axes;
+    };
+
+    const auto free_axes_a = collect_free_axes(rank_a, contract_axes_a);
+    const auto free_axes_b = collect_free_axes(rank_b, contract_axes_b);
+    const size_t total_free = free_axes_a.size() + free_axes_b.size();
+
+    std::vector<cytnx::cytnx_uint64> permute_order;
+
+    if (!bd_labs_c.empty()) {
+      if (bd_labs_c.size() != total_free) {
+        throw std::invalid_argument("contract: output axis specification mismatch");
+      }
+
+      std::vector<bool> seen(total_free, false);
+      permute_order.reserve(total_free);
+      for (auto axis : bd_labs_c) {
+        if (axis < 0 || static_cast<size_t>(axis) >= total_free || seen[axis]) {
+          throw std::invalid_argument("contract: invalid output axis permutation");
+        }
+        seen[axis] = true;
+        permute_order.push_back(static_cast<cytnx::cytnx_uint64>(axis));
+      }
+    }
+
+    try {
+      cytnx::Tensor result
+          = cytnx::linalg::Tensordot(a.backend, b.backend, contract_axes_a, contract_axes_b);
+
+      if (!permute_order.empty()) {
+        result = result.permute(permute_order);
+      }
+
+      c.backend = std::move(result);
+    } catch (const std::exception& e) {
+      throw std::runtime_error(std::string("contract: Tensordot failed - ") + e.what());
+    }
   }
 
   // Linear combination
