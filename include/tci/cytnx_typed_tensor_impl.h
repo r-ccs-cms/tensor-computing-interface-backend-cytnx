@@ -1850,4 +1850,41 @@ namespace tci {
     zeros(ctx, shape, result);
     return result;
   }
+
+  // Explicit specializations for eye (out-of-place) for all supported element types
+  template <>
+  inline CytnxTensor<cytnx::cytnx_double> eye<CytnxTensor<cytnx::cytnx_double>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
+      const bond_dim_t<CytnxTensor<cytnx::cytnx_double>> N) {
+    CytnxTensor<cytnx::cytnx_double> result;
+    eye(ctx, N, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_float> eye<CytnxTensor<cytnx::cytnx_float>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
+      const bond_dim_t<CytnxTensor<cytnx::cytnx_float>> N) {
+    CytnxTensor<cytnx::cytnx_float> result;
+    eye(ctx, N, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex128> eye<CytnxTensor<cytnx::cytnx_complex128>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
+      const bond_dim_t<CytnxTensor<cytnx::cytnx_complex128>> N) {
+    CytnxTensor<cytnx::cytnx_complex128> result;
+    eye(ctx, N, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex64> eye<CytnxTensor<cytnx::cytnx_complex64>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
+      const bond_dim_t<CytnxTensor<cytnx::cytnx_complex64>> N) {
+    CytnxTensor<cytnx::cytnx_complex64> result;
+    eye(ctx, N, result);
+    return result;
+  }
 }  // namespace tci
