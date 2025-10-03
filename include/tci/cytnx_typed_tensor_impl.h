@@ -1887,4 +1887,41 @@ namespace tci {
     eye(ctx, N, result);
     return result;
   }
+
+  // Explicit specializations for allocate (out-of-place) for all supported element types
+  template <>
+  inline CytnxTensor<cytnx::cytnx_double> allocate<CytnxTensor<cytnx::cytnx_double>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape) {
+    CytnxTensor<cytnx::cytnx_double> result;
+    allocate(ctx, shape, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_float> allocate<CytnxTensor<cytnx::cytnx_float>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape) {
+    CytnxTensor<cytnx::cytnx_float> result;
+    allocate(ctx, shape, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex128> allocate<CytnxTensor<cytnx::cytnx_complex128>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape) {
+    CytnxTensor<cytnx::cytnx_complex128> result;
+    allocate(ctx, shape, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex64> allocate<CytnxTensor<cytnx::cytnx_complex64>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape) {
+    CytnxTensor<cytnx::cytnx_complex64> result;
+    allocate(ctx, shape, result);
+    return result;
+  }
 }  // namespace tci
