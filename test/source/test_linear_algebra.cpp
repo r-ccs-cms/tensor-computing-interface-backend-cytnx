@@ -390,8 +390,8 @@ TEST_CASE("TCI QR Decomposition") {
     tci::qr(ctx, matrix, 1, q, r);
 
     // Q should be orthogonal, R should be upper triangular
-    CHECK(q.shape().size() == 2);  // 3x3 matrix -> 2D tensors
-    CHECK(r.shape().size() == 2);  // 3x3 matrix -> 2D tensors
+    CHECK(tci::shape(ctx, q).size() == 2);  // 3x3 matrix -> 2D tensors
+    CHECK(tci::shape(ctx, r).size() == 2);  // 3x3 matrix -> 2D tensors
   }
 
   tci::destroy_context(ctx);
@@ -424,8 +424,8 @@ TEST_CASE("TCI LQ Decomposition") {
     tci::lq(ctx, matrix, 1, l, q);
 
     // L should be lower triangular, Q should be orthogonal
-    CHECK(l.shape().size() == 2);  // 3x3 matrix -> 2D tensors
-    CHECK(q.shape().size() == 2);  // 3x3 matrix -> 2D tensors
+    CHECK(tci::shape(ctx, l).size() == 2);  // 3x3 matrix -> 2D tensors
+    CHECK(tci::shape(ctx, q).size() == 2);  // 3x3 matrix -> 2D tensors
   }
 
   tci::destroy_context(ctx);
@@ -453,7 +453,7 @@ TEST_CASE("TCI Eigenvalue Functions") {
     tci::eigvals(ctx, matrix, 1, eigenvalues);
 
     // Should have 2 eigenvalues
-    CHECK(eigenvalues.shape()[0] == 2);
+    CHECK(tci::shape(ctx, eigenvalues)[0] == 2);
   }
 
   SUBCASE("Symmetric matrix eigenvalues") {
@@ -474,7 +474,11 @@ TEST_CASE("TCI Eigenvalue Functions") {
     tci::eigvalsh(ctx, matrix, 1, eigenvalues);
 
     // Should have 2 real eigenvalues
-    CHECK(eigenvalues.shape()[0] == 2);
+    // Note: eigenvalues is real_ten_t, but we can use tci::shape with a temporary context
+    tci::context_handle_t<tci::real_ten_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> real_ctx;
+    tci::create_context(real_ctx);
+    CHECK(tci::shape(real_ctx, eigenvalues)[0] == 2);
+    tci::destroy_context(real_ctx);
   }
 
   tci::destroy_context(ctx);

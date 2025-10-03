@@ -653,9 +653,10 @@ TEST_CASE("TCI Tensor Contraction") {
     tci::contract(ctx, a, bd_labs_a, b, bd_labs_b, c, bd_labs_c);
 
     // Verify contraction occurred (shape should be 2x2)
-    CHECK(c.shape().size() == 2);
-    CHECK(c.shape()[0] == 2);
-    CHECK(c.shape()[1] == 2);
+    auto c_shape = tci::shape(ctx, c);
+    CHECK(c_shape.size() == 2);
+    CHECK(c_shape[0] == 2);
+    CHECK(c_shape[1] == 2);
   }
 
   SUBCASE("Vector dot product via contraction: i,i->") {
@@ -678,8 +679,9 @@ TEST_CASE("TCI Tensor Contraction") {
     tci::contract(ctx, a, "i", b, "i", c, "");
 
     // Result should be scalar-like with value 32 (Cytnx returns [1] shape)
-    CHECK(c.shape().size() == 1);  // Cytnx scalar result is [1] shape
-    CHECK(c.shape()[0] == 1);      // Single element
+    auto c_shape = tci::shape(ctx, c);
+    CHECK(c_shape.size() == 1);  // Cytnx scalar result is [1] shape
+    CHECK(c_shape[0] == 1);      // Single element
     auto dot_result = tci::get_elem(ctx, c, {0});  // Access single element
     CHECK(std::abs(tci::real(dot_result) - 32.0) < 1e-10);
   }
@@ -704,9 +706,10 @@ TEST_CASE("TCI Tensor Contraction") {
     tci::contract(ctx, a, "i", b, "j", c, "ij");
 
     // Result should be 2x3 matrix
-    CHECK(c.shape().size() == 2);
-    CHECK(c.shape()[0] == 2);
-    CHECK(c.shape()[1] == 3);
+    auto c_shape = tci::shape(ctx, c);
+    CHECK(c_shape.size() == 2);
+    CHECK(c_shape[0] == 2);
+    CHECK(c_shape[1] == 3);
 
     // Check specific values: c[0,0] = 1*3 = 3, c[1,2] = 2*5 = 10
     auto c00 = tci::get_elem(ctx, c, {0, 0});
