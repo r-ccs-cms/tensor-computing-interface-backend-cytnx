@@ -3,6 +3,7 @@
 #include "tci/cytnx_typed_tensor.h"
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/tensor_traits.h"
+#include "tci/construction_destruction.h"
 #include "tci/tensor_linear_algebra.h"
 #include <cytnx.hpp>
 #include <vector>
@@ -1765,4 +1766,20 @@ namespace tci {
     detail::for_each_recursive_const_typed(in, std::forward<Func>(f), 0, coords, shape);
   }
 
+  // move - move tensor contents (in-place)
+  template <typename ElemT>
+  void move(context_handle_t<CytnxTensor<ElemT>>& ctx,
+            CytnxTensor<ElemT>& from,
+            CytnxTensor<ElemT>& to) {
+    to.backend = std::move(from.backend);
+  }
+
+  // move - move tensor contents (out-of-place)
+  template <typename ElemT>
+  CytnxTensor<ElemT> move(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                          CytnxTensor<ElemT>& from) {
+    CytnxTensor<ElemT> result;
+    move(ctx, from, result);
+    return result;
+  }
 }  // namespace tci
