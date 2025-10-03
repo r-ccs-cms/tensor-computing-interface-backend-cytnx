@@ -1571,18 +1571,68 @@ namespace tci {
   }
 
   // concatenate
-  // Reference implementation: git show b7ecb2a9^:source/tensor_manipulation.cpp
-  // Search for "template <> void concatenate" to find cytnx::Tensor specialization
+  // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
   template <typename ElemT>
   void concatenate(context_handle_t<CytnxTensor<ElemT>>& ctx,
                    const List<CytnxTensor<ElemT>>& ins,
                    const bond_idx_t<CytnxTensor<ElemT>> axis,
                    CytnxTensor<ElemT>& out) {
-    (void)ctx;
-    (void)ins;
-    (void)axis;
-    (void)out;
-    throw std::runtime_error("concatenate not implemented yet - see git show b7ecb2a9^:source/tensor_manipulation.cpp");
+    if (ins.empty()) {
+      throw std::invalid_argument("Cannot concatenate empty list of tensors");
+    }
+
+    const auto& first = ins[0].backend;
+    auto first_shape = first.shape();
+
+    if (axis >= first_shape.size()) {
+      throw std::invalid_argument("axis exceeds tensor rank");
+    }
+
+    // Check all tensors have compatible shapes
+    size_t total_concat_dim = 0;
+    for (size_t i = 0; i < ins.size(); ++i) {
+      const auto& tensor = ins[i].backend;
+      auto shape = tensor.shape();
+
+      if (shape.size() != first_shape.size()) {
+        throw std::invalid_argument("All tensors must have the same rank");
+      }
+
+      for (size_t j = 0; j < shape.size(); ++j) {
+        if (j != axis && shape[j] != first_shape[j]) {
+          throw std::invalid_argument("All tensors must have the same shape except along concat dimension");
+        }
+      }
+
+      total_concat_dim += shape[axis];
+    }
+
+    // Calculate output shape
+    auto out_shape = first_shape;
+    out_shape[axis] = total_concat_dim;
+
+    // Create output tensor
+    out.backend = cytnx::zeros(out_shape, first.dtype(), first.device());
+
+    // Copy data from each input tensor to appropriate slice of output
+    size_t offset = 0;
+    for (const auto& tensor : ins) {
+      auto tensor_shape = tensor.backend.shape();
+
+      // Create coordinate vectors for slicing
+      std::vector<cytnx::Accessor> accessors(out_shape.size());
+      for (size_t i = 0; i < out_shape.size(); ++i) {
+        if (i == axis) {
+          accessors[i] = cytnx::Accessor::range(offset, offset + tensor_shape[i]);
+        } else {
+          accessors[i] = cytnx::Accessor::all();
+        }
+      }
+
+      // Assign the tensor to the appropriate slice
+      out.backend.set(accessors, tensor.backend);
+      offset += tensor_shape[axis];
+    }
   }
 
   // stack
