@@ -206,7 +206,18 @@ namespace tci {
   template <typename ElemT>
   ten_size_t<CytnxTensor<ElemT>> size_bytes(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                              const CytnxTensor<ElemT>& a) {
-    return tci::size_bytes(ctx, a.backend);
+    // Calculate total bytes using dtype element size
+    auto dtype = a.backend.dtype();
+    std::size_t elem_size = 0;
+    if (dtype == cytnx::Type.Float) elem_size = sizeof(float);
+    else if (dtype == cytnx::Type.Double) elem_size = sizeof(double);
+    else if (dtype == cytnx::Type.ComplexFloat) elem_size = sizeof(cytnx::cytnx_complex64);
+    else if (dtype == cytnx::Type.ComplexDouble) elem_size = sizeof(cytnx::cytnx_complex128);
+    else if (dtype == cytnx::Type.Int64) elem_size = sizeof(cytnx::cytnx_int64);
+    else if (dtype == cytnx::Type.Uint64) elem_size = sizeof(cytnx::cytnx_uint64);
+    else if (dtype == cytnx::Type.Int32) elem_size = sizeof(cytnx::cytnx_int32);
+    else if (dtype == cytnx::Type.Uint32) elem_size = sizeof(cytnx::cytnx_uint32);
+    return a.backend.storage().size() * elem_size;
   }
 
   template <typename ElemT, typename RandNumGen>
