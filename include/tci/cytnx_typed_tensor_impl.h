@@ -1961,4 +1961,42 @@ namespace tci {
     copy(ctx, orig, result);
     return result;
   }
+
+  // Explicit specializations for move (out-of-place) for all supported element types
+  template <>
+  inline CytnxTensor<cytnx::cytnx_double> move<CytnxTensor<cytnx::cytnx_double>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
+      CytnxTensor<cytnx::cytnx_double>& from) {
+    CytnxTensor<cytnx::cytnx_double> result;
+    move(ctx, from, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_float> move<CytnxTensor<cytnx::cytnx_float>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
+      CytnxTensor<cytnx::cytnx_float>& from) {
+    CytnxTensor<cytnx::cytnx_float> result;
+    move(ctx, from, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex128> move<CytnxTensor<cytnx::cytnx_complex128>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
+      CytnxTensor<cytnx::cytnx_complex128>& from) {
+    CytnxTensor<cytnx::cytnx_complex128> result;
+    move(ctx, from, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex64> move<CytnxTensor<cytnx::cytnx_complex64>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
+      CytnxTensor<cytnx::cytnx_complex64>& from) {
+    CytnxTensor<cytnx::cytnx_complex64> result;
+    move(ctx, from, result);
+    return result;
+  }
+
 }  // namespace tci
