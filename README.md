@@ -56,10 +56,6 @@ This design ensures maximum compatibility while leveraging Cytnx's optimized imp
 
 - **CUDA**: For GPU acceleration (via Cytnx)
 
-## API Limitation
-
-- Currently, tci::inverse is not implemented due to Cytnx limitations.
-
 ## Quick Start
 
 ### 1. Clone with Submodules

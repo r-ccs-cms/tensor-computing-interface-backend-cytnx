@@ -2003,6 +2003,91 @@ namespace tci {
   // Linear Algebra Operations
   // ===================================================================
 
+  // inverse - matrix inverse (in-place)
+  template <typename ElemT>
+  void inverse(context_handle_t<CytnxTensor<ElemT>>& ctx,
+               CytnxTensor<ElemT>& inout,
+               const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
+    auto a_shape = shape(ctx, inout);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim || row_dim == 0) {
+      throw std::invalid_argument("inverse: matrix must be square");
+    }
+
+    cytnx::Tensor reshaped
+        = inout.backend.reshape({static_cast<cytnx::cytnx_int64>(row_dim),
+                                 static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    cytnx::Tensor result;
+    try {
+      result = cytnx::linalg::InvM(reshaped);
+    } catch (const std::exception& e) {
+      throw std::runtime_error(std::string("inverse: failed to compute matrix inverse - ")
+                               + e.what());
+    }
+
+    std::vector<cytnx::cytnx_int64> original_shape;
+    original_shape.reserve(a_shape.size());
+    for (auto dim : a_shape) {
+      original_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+
+    inout.backend = result.reshape(original_shape);
+  }
+
+  // inverse - matrix inverse (out-of-place)
+  template <typename ElemT>
+  void inverse(context_handle_t<CytnxTensor<ElemT>>& ctx,
+               const CytnxTensor<ElemT>& in,
+               const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+               CytnxTensor<ElemT>& out) {
+    auto a_shape = shape(ctx, in);
+
+    cytnx::cytnx_uint64 row_dim = 1;
+    cytnx::cytnx_uint64 col_dim = 1;
+
+    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+      row_dim *= a_shape[i];
+    }
+    for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
+      col_dim *= a_shape[i];
+    }
+
+    if (row_dim != col_dim || row_dim == 0) {
+      throw std::invalid_argument("inverse: matrix must be square");
+    }
+
+    cytnx::Tensor reshaped
+        = in.backend.reshape({static_cast<cytnx::cytnx_int64>(row_dim),
+                              static_cast<cytnx::cytnx_int64>(col_dim)});
+
+    cytnx::Tensor result;
+    try {
+      result = cytnx::linalg::InvM(reshaped);
+    } catch (const std::exception& e) {
+      throw std::runtime_error(std::string("inverse: failed to compute matrix inverse - ")
+                               + e.what());
+    }
+
+    std::vector<cytnx::cytnx_int64> original_shape;
+    original_shape.reserve(a_shape.size());
+    for (auto dim : a_shape) {
+      original_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
+    }
+
+    out.backend = result.reshape(original_shape);
+  }
+
   // exp - matrix exponential (in-place)
   template <typename ElemT>
   void exp(context_handle_t<CytnxTensor<ElemT>>& ctx,

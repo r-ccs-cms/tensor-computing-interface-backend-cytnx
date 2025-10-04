@@ -307,19 +307,48 @@ TEST_CASE("TCI Advanced Linear Algebra") {
     CHECK_THROWS_AS(tci::exp(ctx, square, 3, result), std::invalid_argument);
   }
 
-  SUBCASE("Matrix inverse") {
-    // Create an invertible 2x2 matrix
-    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
+  SUBCASE("Matrix inverse - basic functionality") {
+    // 2x2 matrix with known inverse
     tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
-    tci::zeros(ctx, shape, matrix);
+    tci::zeros(ctx, {2, 2}, matrix);
 
-    tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
-    tci::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(1.0, 0.0));
-    tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(1.0, 0.0));
-    tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(4.0, 0.0));
+    tci::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(7.0, 0.0));
+    tci::set_elem(ctx, matrix, {1, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(6.0, 0.0));
 
-    // TODO: Uncomment when inverse is implemented
-    // CHECK_THROWS_AS(tci::inverse(ctx, matrix, 1), std::runtime_error);
+    tci::CytnxTensor<cytnx::cytnx_complex128> inverse_out;
+    CHECK_NOTHROW(tci::inverse(ctx, matrix, 1, inverse_out));
+
+    const double tol = 1e-10;
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, inverse_out, {0, 0})) - 0.6) < tol);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, inverse_out, {0, 1})) + 0.7) < tol);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, inverse_out, {1, 0})) + 0.2) < tol);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, inverse_out, {1, 1})) - 0.4) < tol);
+
+    auto matrix_inplace = matrix;
+    CHECK_NOTHROW(tci::inverse(ctx, matrix_inplace, 1));
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, matrix_inplace, {0, 0})) - 0.6) < tol);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, matrix_inplace, {0, 1})) + 0.7) < tol);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, matrix_inplace, {1, 0})) + 0.2) < tol);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, matrix_inplace, {1, 1})) - 0.4) < tol);
+  }
+
+  SUBCASE("Matrix inverse - error handling") {
+    tci::CytnxTensor<cytnx::cytnx_complex128> non_square;
+    tci::zeros(ctx, {2, 3}, non_square);
+
+    tci::CytnxTensor<cytnx::cytnx_complex128> tmp;
+    CHECK_THROWS_AS(tci::inverse(ctx, non_square, 1, tmp), std::invalid_argument);
+
+    tci::CytnxTensor<cytnx::cytnx_complex128> singular;
+    tci::zeros(ctx, {2, 2}, singular);
+    tci::set_elem(ctx, singular, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, singular, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, singular, {1, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tci::set_elem(ctx, singular, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
+
+    CHECK_THROWS_AS(tci::inverse(ctx, singular, 1, tmp), std::runtime_error);
   }
 
   tci::destroy_context(ctx);
