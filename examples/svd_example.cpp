@@ -33,7 +33,7 @@ int main() {
     // Perform SVD: treat first 2 bonds as rows, last bond as columns
     std::cout << "\nPerforming SVD (first 2 bonds as rows)...\n";
     tci::CytnxTensor<cytnx::cytnx_complex128> U, V_dag;
-    tci::CytnxTensor<cytnx::cytnx_complex128> S_diag;
+    tci::CytnxTensor<cytnx::cytnx_double> S_diag;  // Singular values are real
 
     tci::svd(ctx, A, 2, U, S_diag, V_dag);
 
@@ -66,11 +66,8 @@ int main() {
     // Show some singular values
     std::cout << "\nFirst few singular values:\n";
     for (int i = 0; i < std::min(5, static_cast<int>(S_shape[0])); ++i) {
-      auto sv = tci::get_elem(ctx, S_diag, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i)});
-      // Note: elem_t for tci::CytnxTensor<cytnx::cytnx_complex128> is std::variant, so we use std::visit
-      std::visit([i](auto&& val) {
-        std::cout << "S[" << i << "] = " << std::real(val) << "\n";
-      }, sv);
+      auto sv = tci::get_elem(ctx, S_diag, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_double>>>(i)});
+      std::cout << "S[" << i << "] = " << sv << "\n";
     }
 
     // Calculate norms for verification

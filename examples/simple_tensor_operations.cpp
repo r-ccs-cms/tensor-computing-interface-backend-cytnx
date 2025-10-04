@@ -51,17 +51,12 @@ void basic_tensor_operations() {
     // Demonstrate element access
     std::cout << "\nElement access:" << std::endl;
     auto eye_elem = get_elem(ctx, eye_tensor, {1, 1});
-    // Note: elem_t for tci::CytnxTensor<cytnx::cytnx_complex128> is std::variant
-    std::visit([](auto&& val) {
-      std::cout << "  eye[1,1] = " << std::real(val) << " + " << std::imag(val) << "i" << std::endl;
-    }, eye_elem);
+    std::cout << "  eye[1,1] = " << std::real(eye_elem) << " + " << std::imag(eye_elem) << "i" << std::endl;
 
     // Set an element
     set_elem(ctx, zeros_tensor, {1, 2}, std::complex<double>(3.14, 0));
     auto set_elem_val = get_elem(ctx, zeros_tensor, {1, 2});
-    std::visit([](auto&& val) {
-      std::cout << "  After setting zeros[1,2] = π: " << std::real(val) << std::endl;
-    }, set_elem_val);
+    std::cout << "  After setting zeros[1,2] = π: " << std::real(set_elem_val) << std::endl;
 
     // Cleanup
     destroy_context(ctx);
@@ -95,7 +90,8 @@ void linear_algebra_operations() {
     std::cout << "  Frobenius norm: " << matrix_norm << std::endl;
 
     // SVD decomposition
-    Ten U, S, V_dag;
+    Ten U, V_dag;
+    real_ten_t<Ten> S;  // Singular values are real
     svd(ctx, A, 1, U, S, V_dag);  // Treat first index as row
 
     std::cout << "  SVD completed" << std::endl;
@@ -106,23 +102,20 @@ void linear_algebra_operations() {
     // Print singular values
     std::cout << "  Singular values: ";
     for (size_t i = 0; i < shape(ctx, S)[0]; ++i) {
-        auto sv = get_elem(ctx, S, {static_cast<elem_coor_t<Ten>>(i)});
-        std::visit([](auto&& val) {
-            std::cout << std::setprecision(3) << std::real(val) << " ";
-        }, sv);
+        auto sv = get_elem(ctx, S, {static_cast<elem_coor_t<real_ten_t<Ten>>>(i)});
+        std::cout << std::setprecision(3) << sv << " ";
     }
     std::cout << std::endl;
 
     // Eigenvalue decomposition (for symmetric matrix)
-    Ten eigenvals, eigenvecs;
+    real_ten_t<Ten> eigenvals;  // Eigenvalues are real
+    Ten eigenvecs;
     eigh(ctx, A, 1, eigenvals, eigenvecs);
 
     std::cout << "  Eigenvalues: ";
     for (size_t i = 0; i < shape(ctx, eigenvals)[0]; ++i) {
-        auto ev = get_elem(ctx, eigenvals, {static_cast<elem_coor_t<Ten>>(i)});
-        std::visit([](auto&& val) {
-            std::cout << std::setprecision(3) << std::real(val) << " ";
-        }, ev);
+        auto ev = get_elem(ctx, eigenvals, {static_cast<elem_coor_t<real_ten_t<Ten>>>(i)});
+        std::cout << std::setprecision(3) << ev << " ";
     }
     std::cout << std::endl;
 

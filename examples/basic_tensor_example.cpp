@@ -33,10 +33,7 @@ int main() {
 
     // Get element back
     auto elem = tci::get_elem(ctx, a, {1, 2});
-    // Note: elem_t for tci::CytnxTensor<cytnx::cytnx_complex128> is std::variant, so we use std::visit to print it
-    std::visit([](auto&& val) {
-      std::cout << "Element at (1,2): " << val << "\n";
-    }, elem);
+    std::cout << "Element at (1,2): " << elem << "\n";
 
     // Create identity matrix
     std::cout << "\nCreating 3x3 identity matrix...\n";

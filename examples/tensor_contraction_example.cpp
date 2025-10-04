@@ -39,10 +39,8 @@ int main() {
     std::cout << "Frobenius norm of result tensor: " << norm_C << "\n";
 
     // Show a small part of the result
-    std::cout << "\nElement C(0,0): ";
-    std::visit([](auto&& val) { std::cout << val << "\n"; }, tci::get_elem(ctx, C, {0, 0}));
-    std::cout << "Element C(1,1): ";
-    std::visit([](auto&& val) { std::cout << val << "\n"; }, tci::get_elem(ctx, C, {1, 1}));
+    std::cout << "\nElement C(0,0): " << tci::get_elem(ctx, C, {0, 0}) << "\n";
+    std::cout << "Element C(1,1): " << tci::get_elem(ctx, C, {1, 1}) << "\n";
 
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << std::endl;
