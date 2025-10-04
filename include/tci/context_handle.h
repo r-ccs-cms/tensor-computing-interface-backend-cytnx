@@ -2,8 +2,10 @@
 
 namespace tci {
 
-  // Forward declaration
+  // Forward declarations
   template <typename ContextHandleT> void create_context(ContextHandleT& ctx);
+  class CytnxContextHandle;
+  void create_context(CytnxContextHandle& ctx, int gpu_id);
 
   /**
    * @brief Context handle for Cytnx backend
@@ -19,8 +21,9 @@ namespace tci {
     // Only create_context can call this
     void set_value(int v) { value_ = v; }
 
-    // Friend declaration to allow create_context access
+    // Friend declarations to allow create_context access
     template <typename T> friend void create_context(T& ctx);
+    friend void create_context(CytnxContextHandle& ctx, int gpu_id);
 
   public:
     // Default constructor (uninitialized state marker)

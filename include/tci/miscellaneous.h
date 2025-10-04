@@ -17,6 +17,14 @@ namespace tci {
   template <typename ContextHandleT> void create_context(ContextHandleT& ctx);
 
   /**
+   * @brief Create context handle with GPU device (in-place version)
+   *
+   * @param ctx Context handle to initialize
+   * @param gpu_id GPU device ID (0-based)
+   */
+  void create_context(CytnxContextHandle& ctx, int gpu_id);
+
+  /**
    * @brief Destroy context handle
    *
    * @tparam ContextHandleT Context handle type
