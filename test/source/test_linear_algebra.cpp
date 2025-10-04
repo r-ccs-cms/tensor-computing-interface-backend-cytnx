@@ -352,6 +352,8 @@ TEST_CASE("TCI Advanced Linear Algebra") {
     tci::set_elem(ctx, singular, {1, 0}, cytnx::cytnx_complex128(2.0, 0.0));
     tci::set_elem(ctx, singular, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
 
+    std::cout << "\n[Expected Cytnx Error] Testing singular matrix - Cytnx will output LAPACK "
+                 "error (zgetrf INFO=2). This is expected behavior.\n" << std::endl;
     CHECK_THROWS_AS(tci::inverse(ctx, singular, 1, tmp), std::runtime_error);
   }
 
