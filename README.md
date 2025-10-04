@@ -110,65 +110,61 @@ cmake --build build --parallel 8
 
 ## Usage Example
 
-### Basic Usage with cytnx::Tensor
-
-```cpp
-#include "tci/tci.h"
-#include <cytnx.hpp>
-
-int main() {
-    // Create TCI context
-    auto ctx = tci::create_context<tci::context_handle_t<cytnx::Tensor>>();
-
-    // Create tensors using TCI API
-    cytnx::Tensor a = tci::zeros<cytnx::Tensor>(ctx, {3, 4});
-    cytnx::Tensor b = tci::eye<cytnx::Tensor>(ctx, 3);
-
-    // Perform operations
-    cytnx::Tensor c;
-    tci::copy(ctx, a, c);
-    auto norm_val = tci::norm(ctx, b);
-
-    // Display results
-    tci::show(ctx, b);
-
-    // Cleanup
-    tci::destroy_context(ctx);
-    return 0;
-}
-```
-
-### Advanced Usage with CytnxTensor (Type-Safe Arithmetic)
-
-For element-wise arithmetic operations, use `CytnxTensor<ElemT>`:
+### Basic Usage with CytnxTensor
 
 ```cpp
 #include "tci/tci.h"
 
 int main() {
     using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-    using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
-    tco::context_handle_t<Tensor> ctx;
-    create_context(ctx)
 
-    // Create and initialize tensor
-    Tensor tensor;
-    tci::allocate(ctx, {100, 100}, tensor);
+    tci::context_handle_t<Tensor> ctx;
+    tci::create_context(ctx);
 
-    // Element-wise operations with direct arithmetic!
-    tci::for_each(ctx, tensor, [](Elem& elem) {
-        elem = std::sqrt(elem) * 2.0;  // Direct arithmetic works!
-        elem = elem / std::abs(elem);  // Normalization
-    });
+    Tensor a = tci::zeros<Tensor>(ctx, {3, 4});
+    Tensor b = tci::eye<Tensor>(ctx, 3);
 
+    Tensor c;
+    tci::copy(ctx, a, c);
+    auto norm_val = tci::norm(ctx, b);
+
+    tci::show(ctx, b);
+
+    tci::destroy_context(ctx);
     return 0;
 }
 ```
 
-**Key Difference:**
+### Element-wise Arithmetic with Fixed Element Types
 
-- `cytnx::Tensor`: Runtime-typed, `elem_t` is `std::variant` (requires `std::visit`)
-- `CytnxTensor<ElemT>`: Compile-time typed, `elem_t` is `ElemT` (direct arithmetic)
+```cpp
+#include "tci/tci.h"
+
+int main() {
+    using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+    using Elem = tci::elem_t<Tensor>;  // std::complex<double>
+
+    tci::context_handle_t<Tensor> ctx;
+    tci::create_context(ctx);
+
+    Tensor tensor;
+    tci::allocate(ctx, {100, 100}, tensor);
+
+    tci::for_each(ctx, tensor, [](Elem& elem) {
+        elem = std::sqrt(elem) * 2.0;
+        elem = elem / std::abs(elem);
+    });
+
+    tci::destroy_context(ctx);
+    return 0;
+}
+```
+
+**Key Points:**
+
+- `CytnxTensor<ElemT>` fixes the element type at compile time, so `tci::elem_t<Tensor>` resolves to `ElemT` and supports direct arithmetic.
+- The wrapper exposes the underlying Cytnx tensor via `Tensor::backend` when lower-level Cytnx APIs are required.
+- Legacy usage that relied on `cytnx::Tensor` has been removed; new code should always pick an explicit `ElemT`.
 
 ### Compiling User Code (C++17)
 

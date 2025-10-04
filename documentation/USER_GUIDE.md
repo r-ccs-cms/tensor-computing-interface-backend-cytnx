@@ -36,7 +36,7 @@ using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
 
 int main() {
     // Create context (CPU only in current implementation)
-    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::context_handle_t<Tensor> ctx;
     tci::create_context(ctx);
 
     // Your tensor operations here
@@ -66,7 +66,8 @@ TCI operations require a context handle. In the Cytnx backend implementation, th
 
 ```cpp
 // Create CPU context (specify backend tensor type)
-tci::context_handle_t<cytnx::Tensor> ctx;
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+tci::context_handle_t<Tensor> ctx;
 tci::create_context(ctx);
 
 // Use ctx for all operations
@@ -81,9 +82,10 @@ TCI uses a trait-based type system that automatically extracts type information:
 
 ```cpp
 // These types are automatically deduced from your tensor type
-using elem_t = tci::elem_t<Ten>;           // Element type (complex<double>)
-using shape_t = tci::shape_t<Ten>;         // Shape type (vector<size_t>)
-using context_handle_t = tci::context_handle_t<Ten>; // Context type
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using elem_t = tci::elem_t<Tensor>;                  // Element type (complex<double>)
+using shape_t = tci::shape_t<Tensor>;                // Shape type (vector<size_t>)
+using context_handle_t = tci::context_handle_t<Tensor>;  // Context type
 ```
 
 ### CytnxTensor: Type-Safe Tensor Wrapper
@@ -102,7 +104,7 @@ TCI provides `CytnxTensor<ElemT>`, a type-safe wrapper around Cytnx tensors that
 using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
 
-tci::context_handle_t<cytnx::Tensor> ctx;
+tci::context_handle_t<Tensor> ctx;
 tci::create_context(ctx);
 
 // Create and allocate tensor
@@ -157,11 +159,13 @@ using Tensor = tci::CytnxTensor<cytnx::cytnx_float>;       // float
 TCI provides both in-place and out-of-place versions of most operations:
 
 ```cpp
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+
 // Out-of-place (creates new tensor)
-Ten result = zeros<Ten>(ctx, {3, 4});
+Tensor result = zeros<Tensor>(ctx, {3, 4});
 
 // In-place (modifies existing tensor)
-Ten tensor = eye<Ten>(ctx, 3);
+Tensor tensor = eye<Tensor>(ctx, 3);
 normalize(ctx, tensor); // Modifies tensor in-place
 ```
 
@@ -171,7 +175,7 @@ normalize(ctx, tensor); // Modifies tensor in-place
 
 ```cpp
 using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-tci::context_handle_t<cytnx::Tensor> ctx;
+tci::context_handle_t<Tensor> ctx;
 tci::create_context(ctx);
 
 // Allocate tensor with shape
@@ -180,14 +184,6 @@ tci::allocate(ctx, {3, 4, 5}, tensor);
 
 // Or use the return-value version
 auto tensor2 = tci::allocate<Tensor>(ctx, {2, 3});
-```
-
-**Note**: For `cytnx::Tensor` (advanced users), use the template-based creation:
-```cpp
-using Ten = cytnx::Tensor;
-tci::context_handle_t<Ten> ctx;
-tci::create_context(ctx);
-Ten zeros_tensor = tci::zeros<Ten>(ctx, {3, 4, 5});
 ```
 
 ### Information and Access
@@ -211,20 +207,24 @@ tensor.backend.at<Elem>({1, 2, 0}) = Elem{3.14, 0.0};
 ### Linear Algebra
 
 ```cpp
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+
 // Basic operations
 auto tensor_norm = norm(ctx, tensor);
 auto normalized = normalize(ctx, tensor);
 auto scaled = scale(ctx, tensor, 2.0);
 
 // Matrix decompositions
-Ten U, S, V_dag;
+Tensor U, V_dag;
+real_ten_t<Tensor> S;
 svd(ctx, matrix, 1, U, S, V_dag);  // Singular value decomposition
 
-Ten eigenvals, eigenvecs;
+Tensor eigenvecs;
+real_ten_t<Tensor> eigenvals;
 eigh(ctx, symmetric_matrix, 1, eigenvals, eigenvecs);  // Eigendecomposition
 
 // Tensor contractions
-Ten result;
+Tensor result;
 contract(ctx, A, {2}, B, {0}, result, {0, 1, 2, 3});  // Contract specified indices
 contract(ctx, A, "ij", B, "jk", result, "ik");        // Einstein notation
 ```
@@ -232,26 +232,32 @@ contract(ctx, A, "ij", B, "jk", result, "ik");        // Einstein notation
 ### Tensor Manipulation
 
 ```cpp
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+
 // Shape operations
-Ten reshaped = reshape(ctx, tensor, {6, 4});
-Ten transposed = transpose(ctx, tensor, {1, 0, 2});
+Tensor reshaped = reshape(ctx, tensor, {6, 4});
+Tensor transposed = transpose(ctx, tensor, {1, 0, 2});
 
 // Advanced operations
-Ten expanded = expand(ctx, tensor, {{1, 2}});  // Expand dimension 1 by 2
-Ten sub_tensor = extract_sub(ctx, tensor, {{0, 2}, {1, 3}});  // Extract subtensor
+Tensor expanded = expand(ctx, tensor, {{1, 2}});  // Expand dimension 1 by 2
+Tensor sub_tensor = extract_sub(ctx, tensor, {{0, 2}, {1, 3}});  // Extract subtensor
 ```
 
 ### I/O Operations
 
 ```cpp
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+
 // Save and load tensors
 save(ctx, tensor, "data/tensor.dat");
-Ten loaded = load<Ten>(ctx, "data/tensor.dat");
+Tensor loaded = load<Tensor>(ctx, "data/tensor.dat");
 ```
 
 ### Utility Functions
 
 ```cpp
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+
 // Display tensor
 show(ctx, tensor);  // Print to stdout
 
@@ -263,58 +269,26 @@ std::vector<std::complex<double>> container(total_elements);
 to_container(ctx, tensor, container.begin(), coordinate_mapping_function);
 
 // Convert between contexts (e.g., CPU ↔ GPU)
-Ten gpu_tensor;
+Tensor gpu_tensor;
 convert(ctx_cpu, cpu_tensor, ctx_gpu, gpu_tensor);
 ```
 
 ## Advanced Usage
-
-### Using cytnx::Tensor (Dynamic Typing)
-
-For advanced users who need runtime type flexibility or full Cytnx API compatibility, `cytnx::Tensor` is available:
-
-```cpp
-#include <tci/tci.h>
-
-using Ten = cytnx::Tensor;
-tci::context_handle_t<Ten> ctx;
-tci::create_context(ctx);
-
-// Create tensors with template-based API
-Ten zeros_tensor = tci::zeros<Ten>(ctx, {3, 4});
-Ten eye_tensor = tci::eye<Ten>(ctx, 3);
-
-// Element access returns std::variant
-auto elem = tci::get_elem(ctx, zeros_tensor, {0, 0});
-// elem is std::variant<double, float, complex<double>, complex<float>>
-
-// Must use std::visit for arithmetic operations
-std::visit([](auto&& val) {
-    std::cout << "Element: " << val << std::endl;
-}, elem);
-
-tci::destroy_context(ctx);
-```
-
-**When to use cytnx::Tensor:**
-- You need runtime type flexibility
-- You're integrating with existing Cytnx code
-- You need advanced Cytnx features not yet supported by CytnxTensor
-
-**Limitation:** When using `cytnx::Tensor`, `elem_t` is `std::variant`. You cannot use arithmetic operators directly on the variant - you must use `std::visit` to access the underlying value.
 
 ### Custom Coordinate Mappings
 
 When using `to_container` or `assign_from_container`, you need to provide a coordinate mapping function:
 
 ```cpp
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+
 // Row-major mapping for 3D tensor with shape [A, B, C]
-auto row_major = [B, C](const elem_coors_t<Ten>& coors) -> std::ptrdiff_t {
+auto row_major = [B, C](const elem_coors_t<Tensor>& coors) -> std::ptrdiff_t {
     return coors[0] * B * C + coors[1] * C + coors[2];
 };
 
 // Column-major mapping
-auto col_major = [A, B](const elem_coors_t<Ten>& coors) -> std::ptrdiff_t {
+auto col_major = [A, B](const elem_coors_t<Tensor>& coors) -> std::ptrdiff_t {
     return coors[2] * A * B + coors[1] * A + coors[0];
 };
 ```
@@ -324,7 +298,7 @@ auto col_major = [A, B](const elem_coors_t<Ten>& coors) -> std::ptrdiff_t {
 ```cpp
 using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using Elem = tci::elem_t<Tensor>;
-tci::context_handle_t<cytnx::Tensor> ctx;
+tci::context_handle_t<Tensor> ctx;
 tci::create_context(ctx);
 
 // Create complex tensor
@@ -334,18 +308,14 @@ tci::allocate(ctx, {2, 2}, complex_tensor);
 // Set complex values using Elem type alias (recommended)
 complex_tensor.backend.at<Elem>({0, 0}) = Elem{1.0, 2.0};
 
-// For cytnx::Tensor (dynamic typing):
-using Ten = cytnx::Tensor;
-Ten ten_complex = tci::zeros<Ten>(ctx, {2, 2});
-tci::set_elem(ctx, ten_complex, {0, 0}, std::complex<double>(1.0, 2.0));
-
 // Extract real/imaginary parts
-Ten real_part = tci::real(ctx, ten_complex);
-Ten imag_part = tci::imag(ctx, ten_complex);
+auto real_part = tci::real(ctx, complex_tensor);
+auto imag_part = tci::imag(ctx, complex_tensor);
 
 // Convert real to complex
-Ten real_tensor = tci::ones<Ten>(ctx, {2, 2});
-Ten as_complex = tci::to_cplx(ctx, real_tensor);
+using RealTensor = tci::real_ten_t<Tensor>;
+RealTensor real_tensor = tci::ones<RealTensor>(ctx, {2, 2});
+Tensor as_complex = tci::to_cplx(ctx, real_tensor);
 ```
 
 ### Error Handling
@@ -368,9 +338,12 @@ try {
 For tensor network algorithms, managing bond dimensions is crucial:
 
 ```cpp
+using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+
 // Use truncated SVD to control bond dimensions
-Ten U, S, V_dag;
-real_t<Ten> trunc_error = 0.0;
+Tensor U, V_dag;
+real_ten_t<Tensor> S;
+real_t<Tensor> trunc_error = 0.0;
 size_t chi_min = 1, chi_max = 64;
 double error_threshold = 1e-12;
 
@@ -472,7 +445,7 @@ using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using Elem = tci::elem_t<Tensor>;
 
 int main() {
-    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::context_handle_t<Tensor> ctx;
     tci::create_context(ctx);
 
     // Create tensor
@@ -524,7 +497,7 @@ using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 using Elem = tci::elem_t<Tensor>;
 
 int main() {
-    tci::context_handle_t<cytnx::Tensor> ctx;
+    tci::context_handle_t<Tensor> ctx;
     tci::create_context(ctx);
 
     // Create and initialize tensor
@@ -606,3 +579,4 @@ TCI_VERBOSE=2 ./build/examples/simple_tensor_operations
 4. Use `tci::show()` to inspect tensor contents
 
 For more examples and advanced usage patterns, see the `test/` directory in the source code, particularly the iTEBD integration test which demonstrates a complete real-world application.
+
