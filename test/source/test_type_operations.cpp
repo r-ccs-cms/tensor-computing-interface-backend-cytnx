@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 #include <tci/tci.h>
+
 #include <cmath>
 #include <cytnx.hpp>
 
@@ -121,8 +122,9 @@ TEST_CASE("tci::shrink API functionality") {
     // Fill with distinct values for verification
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord = {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i),
-                                                   static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(j)};
+        tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>> coord
+            = {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i),
+               static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(j)};
         double value = i * 3 + j + 1;  // Values 1-9
         tci::set_elem(ctx, tensor, coord, cytnx::cytnx_complex128(value, 0.0));
       }
@@ -383,9 +385,9 @@ TEST_CASE("tci::cplx_conj complex conjugate functionality") {
     CHECK(std::abs(tci::real(elem01) - (-3.0)) < 1e-10);
     CHECK(std::abs(tci::imag(elem01) - (-4.0)) < 1e-10);  // 4.0 -> -4.0
     CHECK(std::abs(tci::real(elem10) - 5.0) < 1e-10);
-    CHECK(std::abs(tci::imag(elem10) - 6.0) < 1e-10);     // -6.0 -> 6.0
+    CHECK(std::abs(tci::imag(elem10) - 6.0) < 1e-10);  // -6.0 -> 6.0
     CHECK(std::abs(tci::real(elem11) - (-7.0)) < 1e-10);
-    CHECK(std::abs(tci::imag(elem11) - 8.0) < 1e-10);     // -8.0 -> 8.0
+    CHECK(std::abs(tci::imag(elem11) - 8.0) < 1e-10);  // -8.0 -> 8.0
   }
 
   SUBCASE("Complex conjugate (out-of-place version)") {
@@ -418,10 +420,10 @@ TEST_CASE("tci::cplx_conj complex conjugate functionality") {
     auto output_elem11 = tci::get_elem(ctx, output_tensor, coord11);
 
     // This will FAIL if cplx_conj out-of-place version is not properly implemented
-    CHECK(std::abs(tci::real(output_elem00) - 3.14) < 1e-10);    // Real unchanged
-    CHECK(std::abs(tci::imag(output_elem00) - (-2.71)) < 1e-10); // Imag negated
-    CHECK(std::abs(tci::real(output_elem11) - (-1.41)) < 1e-10); // Real unchanged
-    CHECK(std::abs(tci::imag(output_elem11) - 1.73) < 1e-10);    // Imag negated
+    CHECK(std::abs(tci::real(output_elem00) - 3.14) < 1e-10);     // Real unchanged
+    CHECK(std::abs(tci::imag(output_elem00) - (-2.71)) < 1e-10);  // Imag negated
+    CHECK(std::abs(tci::real(output_elem11) - (-1.41)) < 1e-10);  // Real unchanged
+    CHECK(std::abs(tci::imag(output_elem11) - 1.73) < 1e-10);     // Imag negated
   }
 
   tci::destroy_context(ctx);

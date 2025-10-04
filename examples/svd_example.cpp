@@ -66,7 +66,8 @@ int main() {
     // Show some singular values
     std::cout << "\nFirst few singular values:\n";
     for (int i = 0; i < std::min(5, static_cast<int>(S_shape[0])); ++i) {
-      auto sv = tci::get_elem(ctx, S_diag, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_double>>>(i)});
+      auto sv = tci::get_elem(
+          ctx, S_diag, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_double>>>(i)});
       std::cout << "S[" << i << "] = " << sv << "\n";
     }
 

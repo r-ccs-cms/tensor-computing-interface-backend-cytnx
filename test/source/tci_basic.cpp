@@ -181,10 +181,12 @@ TEST_CASE("TCI assign_from_container") {
            cytnx::cytnx_complex128(3.0, 0.0), cytnx::cytnx_complex128(4.0, 0.0),
            cytnx::cytnx_complex128(5.0, 0.0), cytnx::cytnx_complex128(6.0, 0.0)};
 
-    std::function<std::ptrdiff_t(const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&)> coors2idx
-        = [](const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& coors) -> std::ptrdiff_t {
-            return coors[0] * 3 + coors[1];  // row-major for 2x3 matrix
-          };
+    std::function<std::ptrdiff_t(
+        const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&)>
+        coors2idx = [](const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& coors)
+        -> std::ptrdiff_t {
+      return coors[0] * 3 + coors[1];  // row-major for 2x3 matrix
+    };
 
     tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 3};
     tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
@@ -219,10 +221,12 @@ TEST_CASE("TCI assign_from_container") {
         cytnx::cytnx_complex128(2.0, 0.0), cytnx::cytnx_complex128(4.0, 0.0)   // column 1
     };
 
-    std::function<std::ptrdiff_t(const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&)> coors2idx
-        = [](const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& coors) -> std::ptrdiff_t {
-            return coors[1] * 2 + coors[0];  // column-major for 2x2 matrix
-          };
+    std::function<std::ptrdiff_t(
+        const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&)>
+        coors2idx = [](const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& coors)
+        -> std::ptrdiff_t {
+      return coors[1] * 2 + coors[0];  // column-major for 2x2 matrix
+    };
 
     tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 2};
     tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
@@ -249,10 +253,12 @@ TEST_CASE("TCI assign_from_container") {
         = {cytnx::cytnx_complex128(7.0, 0.0), cytnx::cytnx_complex128(8.0, 0.0),
            cytnx::cytnx_complex128(9.0, 0.0)};
 
-    std::function<std::ptrdiff_t(const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&)> coors2idx
-        = [](const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& coors) -> std::ptrdiff_t {
-            return coors[0];  // simple linear indexing for 1D tensor
-          };
+    std::function<std::ptrdiff_t(
+        const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&)>
+        coors2idx = [](const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& coors)
+        -> std::ptrdiff_t {
+      return coors[0];  // simple linear indexing for 1D tensor
+    };
 
     tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3};
 
@@ -297,7 +303,8 @@ TEST_CASE("TCI Tensor Manipulation") {
     tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), tensor);
 
     // Test out-of-place transpose
-    tci::List<tci::bond_idx_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> new_order = {2, 0, 1};  // 4,2,3
+    tci::List<tci::bond_idx_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> new_order
+        = {2, 0, 1};  // 4,2,3
     CHECK_NOTHROW(tci::transpose(ctx, tensor, new_order, transposed));
 
     auto result_shape = tci::shape(ctx, transposed);
@@ -407,9 +414,11 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
 
     // Test incompatible shapes
     tci::CytnxTensor<cytnx::cytnx_complex128> tensor_incompatible;
-    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> incompatible_shape = {3, 3, 4};  // Different first dimension
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> incompatible_shape
+        = {3, 3, 4};  // Different first dimension
     tci::fill(ctx, incompatible_shape, cytnx::cytnx_complex128(1.0, 0.0), tensor_incompatible);
-    std::vector<tci::CytnxTensor<cytnx::cytnx_complex128>> incompatible_tensors = {tensor_3d, tensor_incompatible};
+    std::vector<tci::CytnxTensor<cytnx::cytnx_complex128>> incompatible_tensors
+        = {tensor_3d, tensor_incompatible};
     CHECK_THROWS_AS(tci::concatenate(ctx, incompatible_tensors, 1, result), std::invalid_argument);
   }
 
@@ -424,8 +433,9 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     tci::set_elem(ctx, tensor, {2, 3}, cytnx::cytnx_complex128(7.0, 0.0));
 
     // Extract sub-tensor [1:3, 2:5)
-    tci::List<tci::Pair<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>> coor_pairs
-        = {{1, 3}, {2, 5}};
+    tci::List<tci::Pair<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>,
+                        tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>>
+        coor_pairs = {{1, 3}, {2, 5}};
     CHECK_NOTHROW(tci::extract_sub(ctx, tensor, coor_pairs, sub_result));
 
     auto sub_shape = tci::shape(ctx, sub_result);
@@ -468,8 +478,9 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     tci::fill(ctx, original_shape, cytnx::cytnx_complex128(1.0, 0.0), tensor);
 
     // Expand bond 0 by 1, bond 1 by 2
-    tci::Map<tci::bond_idx_t<tci::CytnxTensor<cytnx::cytnx_complex128>>, tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> increment_map
-        = {{0, 1}, {1, 2}};
+    tci::Map<tci::bond_idx_t<tci::CytnxTensor<cytnx::cytnx_complex128>>,
+             tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>
+        increment_map = {{0, 1}, {1, 2}};
     CHECK_NOTHROW(tci::expand(ctx, tensor, increment_map, expanded));
 
     auto expanded_shape = tci::shape(ctx, expanded);
@@ -491,8 +502,11 @@ TEST_CASE("TCI Advanced Tensor Manipulation") {
     tci::zeros(ctx, shape, tensor);
 
     // Set values based on coordinates using for_each_with_coors
-    std::function<void(tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&, const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&)> set_coords
-        = [](tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& elem, const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& coords) {
+    std::function<void(tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&,
+                       const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>&)>
+        set_coords
+        = [](tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& elem,
+             const tci::elem_coors_t<tci::CytnxTensor<cytnx::cytnx_complex128>>& coords) {
             elem = cytnx::cytnx_complex128(coords[0] * 10 + coords[1], 0.0);
           };
 

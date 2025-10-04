@@ -20,8 +20,7 @@ namespace tci {
     void set_value(int v) { value_ = v; }
 
     // Friend declaration to allow create_context access
-    template <typename T>
-    friend void create_context(T& ctx);
+    template <typename T> friend void create_context(T& ctx);
 
   public:
     // Default constructor (uninitialized state marker)

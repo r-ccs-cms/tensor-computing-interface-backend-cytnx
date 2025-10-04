@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 #include <tci/tci.h>
+
 #include <cmath>
 #include <cytnx.hpp>
 
@@ -144,8 +145,7 @@ TEST_CASE("tci::load API compliance test") {
     tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
 
     // Load should throw when file doesn't exist
-    CHECK_THROWS_WITH(tci::load(ctx, filepath, tensor),
-                      doctest::Contains("could not find file"));
+    CHECK_THROWS_WITH(tci::load(ctx, filepath, tensor), doctest::Contains("could not find file"));
   }
 
   SUBCASE("Out-of-place load from file path") {
@@ -199,7 +199,7 @@ TEST_CASE("tci::clear API compliance test") {
     // After clearing, tensor should be in an empty state
     // The exact behavior depends on implementation
     // This test will need to be updated based on actual clear behavior
-    CHECK_NOTHROW(tci::clear(ctx, tensor)); // Should not throw
+    CHECK_NOTHROW(tci::clear(ctx, tensor));  // Should not throw
   }
 
   SUBCASE("Clear already empty tensor") {

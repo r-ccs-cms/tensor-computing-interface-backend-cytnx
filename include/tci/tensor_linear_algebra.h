@@ -1,15 +1,15 @@
 #pragma once
 
-#include <string_view>
+#include <algorithm>
 #include <cytnx.hpp>
 #include <map>
+#include <numeric>
 #include <set>
 #include <sstream>
-#include <numeric>
-#include <algorithm>
+#include <string_view>
 
-#include "tci/tensor_traits.h"
 #include "tci/cytnx_tensor_traits.h"
+#include "tci/tensor_traits.h"
 
 namespace tci {
 
@@ -289,8 +289,8 @@ namespace tci {
    * @param inout Input/output tensor (square matrix)
    * @param num_of_bds_as_row Number of bonds to treat as rows
    */
-  template <typename TenT> void exp(context_handle_t<TenT>& ctx, TenT& inout,
-                                    const rank_t<TenT> num_of_bds_as_row);
+  template <typename TenT>
+  void exp(context_handle_t<TenT>& ctx, TenT& inout, const rank_t<TenT> num_of_bds_as_row);
 
   /**
    * @brief Matrix exponential (general matrix) - out-of-place version
@@ -307,8 +307,7 @@ namespace tci {
   // Implementation details for contract (moved from .cpp for template visibility)
   namespace detail {
     // NCON analysis: determine contraction and permutation from labels
-    template <typename TenT>
-    struct NCONAnalysis {
+    template <typename TenT> struct NCONAnalysis {
       std::vector<cytnx::cytnx_uint64> contract_axes_a, contract_axes_b;
       std::vector<cytnx::cytnx_uint64> free_axes_a, free_axes_b;
       std::vector<cytnx::cytnx_uint64> output_permutation;
@@ -347,7 +346,8 @@ namespace tci {
         }
 
         // Process tensor b: find free axes (not contracted)
-        std::set<cytnx::cytnx_uint64> contracted_b_set(contract_axes_b.begin(), contract_axes_b.end());
+        std::set<cytnx::cytnx_uint64> contracted_b_set(contract_axes_b.begin(),
+                                                       contract_axes_b.end());
         for (size_t i = 0; i < bd_labs_b.size(); ++i) {
           if (contracted_b_set.count(i) == 0) {
             auto label = bd_labs_b[i];
@@ -367,7 +367,7 @@ namespace tci {
         output_permutation.clear();
 
         if (bd_labs_c.empty()) {
-          return; // No output reordering needed
+          return;  // No output reordering needed
         }
 
         // Build list of free axes in natural order (tensor a first, then tensor b)
@@ -376,7 +376,8 @@ namespace tci {
         // Add free axes from tensor a
         for (size_t i = 0; i < bd_labs_a.size(); ++i) {
           auto label = bd_labs_a[i];
-          if (std::find(contract_axes_a.begin(), contract_axes_a.end(), i) == contract_axes_a.end()) {
+          if (std::find(contract_axes_a.begin(), contract_axes_a.end(), i)
+              == contract_axes_a.end()) {
             natural_order.push_back(label);
           }
         }
@@ -384,7 +385,8 @@ namespace tci {
         // Add free axes from tensor b
         for (size_t i = 0; i < bd_labs_b.size(); ++i) {
           auto label = bd_labs_b[i];
-          if (std::find(contract_axes_b.begin(), contract_axes_b.end(), i) == contract_axes_b.end()) {
+          if (std::find(contract_axes_b.begin(), contract_axes_b.end(), i)
+              == contract_axes_b.end()) {
             natural_order.push_back(label);
           }
         }
@@ -404,6 +406,5 @@ namespace tci {
       }
     };
   }  // namespace detail
-
 
 }  // namespace tci

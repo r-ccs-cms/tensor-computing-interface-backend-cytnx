@@ -1,8 +1,9 @@
 #pragma once
 
-#include "tci/tensor_traits.h"
 #include <cytnx.hpp>
+
 #include "tci/cytnx_tensor_traits.h"
+#include "tci/tensor_traits.h"
 
 namespace tci {
 
@@ -69,6 +70,5 @@ namespace tci {
    */
   template <typename TenT> elem_t<TenT> get_elem(context_handle_t<TenT>& ctx, const TenT& a,
                                                  const elem_coors_t<TenT>& coors);
-
 
 }  // namespace tci

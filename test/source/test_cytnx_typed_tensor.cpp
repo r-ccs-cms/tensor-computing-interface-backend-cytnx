@@ -1,15 +1,15 @@
 #include <doctest/doctest.h>
 
 #include <complex>
-#include <filesystem>
 #include <cytnx.hpp>
+#include <filesystem>
 
-#include "tci/cytnx_typed_tensor.h"
 #include "tci/cytnx_tensor_traits.h"
+#include "tci/cytnx_typed_tensor.h"
 #include "tci/cytnx_typed_tensor_impl.h"
+#include "tci/io_operations.h"
 #include "tci/miscellaneous.h"
 #include "tci/tensor_linear_algebra.h"
-#include "tci/io_operations.h"
 
 TEST_CASE("CytnxTensor - Type Traits") {
   SUBCASE("Double precision real tensor") {
@@ -190,10 +190,8 @@ TEST_CASE("CytnxTensor - Construction") {
     tci::create_context(ctx);
 
     // Create a 2x3 tensor from std::vector
-    std::vector<std::complex<double>> container = {
-        {1.0, 0.0}, {2.0, 0.0}, {3.0, 0.0},
-        {4.0, 0.0}, {5.0, 0.0}, {6.0, 0.0}
-    };
+    std::vector<std::complex<double>> container
+        = {{1.0, 0.0}, {2.0, 0.0}, {3.0, 0.0}, {4.0, 0.0}, {5.0, 0.0}, {6.0, 0.0}};
 
     auto coors2idx = [](const tci::elem_coors_t<Tensor>& coors) -> std::size_t {
       return coors[0] * 3 + coors[1];  // row-major for 2x3 matrix
@@ -327,21 +325,21 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     // Fill with constant values
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        tensor.backend.at<Elem>({static_cast<cytnx::cytnx_uint64>(i),
-                                  static_cast<cytnx::cytnx_uint64>(j)}) = Elem{4.0, 0.0};
+        tensor.backend.at<Elem>(
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)})
+            = Elem{4.0, 0.0};
       }
     }
 
     // Apply sqrt to each element
-    tci::for_each(ctx, tensor, [](Elem& elem) {
-      elem = std::sqrt(elem);
-    });
+    tci::for_each(ctx, tensor, [](Elem& elem) { elem = std::sqrt(elem); });
 
     // Verify all elements are now 2.0
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        Elem result = tci::get_elem(ctx, tensor, {static_cast<cytnx::cytnx_uint64>(i),
-                                                    static_cast<cytnx::cytnx_uint64>(j)});
+        Elem result = tci::get_elem(
+            ctx, tensor,
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)});
         CHECK(result.real() == doctest::Approx(2.0));
         CHECK(result.imag() == doctest::Approx(0.0));
       }
@@ -355,22 +353,22 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     // Fill with constant values
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 2; ++j) {
-        tensor.backend.at<Elem>({static_cast<cytnx::cytnx_uint64>(i),
-                                  static_cast<cytnx::cytnx_uint64>(j)}) = Elem{1.0, 2.0};
+        tensor.backend.at<Elem>(
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)})
+            = Elem{1.0, 2.0};
       }
     }
 
     // Add constant to each element
     Elem addend{3.0, 4.0};
-    tci::for_each(ctx, tensor, [addend](Elem& elem) {
-      elem = elem + addend;
-    });
+    tci::for_each(ctx, tensor, [addend](Elem& elem) { elem = elem + addend; });
 
     // Verify all elements are now (4.0, 6.0)
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 2; ++j) {
-        Elem result = tci::get_elem(ctx, tensor, {static_cast<cytnx::cytnx_uint64>(i),
-                                                    static_cast<cytnx::cytnx_uint64>(j)});
+        Elem result = tci::get_elem(
+            ctx, tensor,
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)});
         CHECK(result.real() == doctest::Approx(4.0));
         CHECK(result.imag() == doctest::Approx(6.0));
       }
@@ -384,8 +382,9 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     // Fill with constant values
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 3; ++j) {
-        tensor.backend.at<Elem>({static_cast<cytnx::cytnx_uint64>(i),
-                                  static_cast<cytnx::cytnx_uint64>(j)}) = Elem{8.0, 0.0};
+        tensor.backend.at<Elem>(
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)})
+            = Elem{8.0, 0.0};
       }
     }
 
@@ -398,8 +397,9 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     // Verify all elements are now 4.0
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 3; ++j) {
-        Elem result = tci::get_elem(ctx, tensor, {static_cast<cytnx::cytnx_uint64>(i),
-                                                    static_cast<cytnx::cytnx_uint64>(j)});
+        Elem result = tci::get_elem(
+            ctx, tensor,
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)});
         CHECK(result.real() == doctest::Approx(4.0));
         CHECK(result.imag() == doctest::Approx(0.0));
       }
@@ -415,8 +415,9 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
         double val = (counter % 2 == 0) ? 1.0 : -1.0;
-        tensor.backend.at<Elem>({static_cast<cytnx::cytnx_uint64>(i),
-                                  static_cast<cytnx::cytnx_uint64>(j)}) = Elem{val, val};
+        tensor.backend.at<Elem>(
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)})
+            = Elem{val, val};
         counter++;
       }
     }
@@ -432,8 +433,9 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     // Verify all elements have magnitude 1
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        Elem result = tci::get_elem(ctx, tensor, {static_cast<cytnx::cytnx_uint64>(i),
-                                                    static_cast<cytnx::cytnx_uint64>(j)});
+        Elem result = tci::get_elem(
+            ctx, tensor,
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)});
         double magnitude = std::abs(result);
         CHECK(magnitude == doctest::Approx(1.0));
       }
@@ -447,21 +449,21 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     // Fill with non-zero values
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 2; ++j) {
-        tensor.backend.at<Elem>({static_cast<cytnx::cytnx_uint64>(i),
-                                  static_cast<cytnx::cytnx_uint64>(j)}) = Elem{2.0, 0.0};
+        tensor.backend.at<Elem>(
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)})
+            = Elem{2.0, 0.0};
       }
     }
 
     // Invert each element: elem = 1/elem
-    tci::for_each(ctx, tensor, [](Elem& elem) {
-      elem = Elem{1.0, 0.0} / elem;
-    });
+    tci::for_each(ctx, tensor, [](Elem& elem) { elem = Elem{1.0, 0.0} / elem; });
 
     // Verify all elements are now 0.5
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 2; ++j) {
-        Elem result = tci::get_elem(ctx, tensor, {static_cast<cytnx::cytnx_uint64>(i),
-                                                    static_cast<cytnx::cytnx_uint64>(j)});
+        Elem result = tci::get_elem(
+            ctx, tensor,
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)});
         CHECK(result.real() == doctest::Approx(0.5));
         CHECK(result.imag() == doctest::Approx(0.0));
       }
@@ -475,17 +477,16 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     // Fill with constant values
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        tensor.backend.at<Elem>({static_cast<cytnx::cytnx_uint64>(i),
-                                  static_cast<cytnx::cytnx_uint64>(j)}) = Elem{1.5, 2.5};
+        tensor.backend.at<Elem>(
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)})
+            = Elem{1.5, 2.5};
       }
     }
 
     // Accumulate sum using const for_each
     Elem sum{0.0, 0.0};
     tci::for_each(ctx, static_cast<const Tensor&>(tensor),
-                  [&sum](const Elem& elem) {
-      sum = sum + elem;
-    });
+                  [&sum](const Elem& elem) { sum = sum + elem; });
 
     // Verify sum (9 elements * (1.5 + 2.5i) = (13.5 + 22.5i))
     CHECK(sum.real() == doctest::Approx(13.5));
@@ -499,8 +500,9 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     // Fill with constant values
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 2; ++j) {
-        tensor.backend.at<Elem>({static_cast<cytnx::cytnx_uint64>(i),
-                                  static_cast<cytnx::cytnx_uint64>(j)}) = Elem{1.0, 0.0};
+        tensor.backend.at<Elem>(
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)})
+            = Elem{1.0, 0.0};
       }
     }
 
@@ -513,8 +515,9 @@ TEST_CASE("CytnxTensor - for_each with arithmetic operations") {
     // Verify all elements are back to 1.0
     for (int i = 0; i < 2; ++i) {
       for (int j = 0; j < 2; ++j) {
-        Elem result = tci::get_elem(ctx, tensor, {static_cast<cytnx::cytnx_uint64>(i),
-                                                    static_cast<cytnx::cytnx_uint64>(j)});
+        Elem result = tci::get_elem(
+            ctx, tensor,
+            {static_cast<cytnx::cytnx_uint64>(i), static_cast<cytnx::cytnx_uint64>(j)});
         CHECK(result.real() == doctest::Approx(1.0).epsilon(1e-10));
         CHECK(result.imag() == doctest::Approx(0.0).epsilon(1e-10));
       }
@@ -578,9 +581,7 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
     tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, 3, 1e-10);
 
     // Apply sqrt to singular values
-    CHECK_NOTHROW(tci::for_each(ctx, s_diag, [](Real& elem) {
-      elem = std::sqrt(elem);
-    }));
+    CHECK_NOTHROW(tci::for_each(ctx, s_diag, [](Real& elem) { elem = std::sqrt(elem); }));
 
     // Verify all elements are non-negative after sqrt
     auto size = tci::size(ctx, s_diag);

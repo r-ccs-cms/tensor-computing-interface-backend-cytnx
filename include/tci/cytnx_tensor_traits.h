@@ -3,9 +3,9 @@
 #include <complex>
 #include <cytnx.hpp>
 
-#include "tci/tensor_traits.h"
-#include "tci/cytnx_typed_tensor.h"
 #include "tci/context_handle.h"
+#include "tci/cytnx_typed_tensor.h"
+#include "tci/tensor_traits.h"
 
 namespace tci {
 
@@ -18,8 +18,7 @@ namespace tci {
    *
    * @tparam ElemT Element type (cytnx::cytnx_double, cytnx::cytnx_complex128, etc.)
    */
-  template <typename ElemT>
-  struct tensor_traits<CytnxTensor<ElemT>> {
+  template <typename ElemT> struct tensor_traits<CytnxTensor<ElemT>> {
     using ten_t = CytnxTensor<ElemT>;
     using rank_t = cytnx::cytnx_uint64;
     using shape_t = List<cytnx::cytnx_uint64>;
@@ -35,17 +34,16 @@ namespace tci {
     using elem_coors_t = List<cytnx::cytnx_uint64>;
 
     // Derive real_t from elem_t
-    using real_t = std::conditional_t<
-        std::is_same_v<ElemT, cytnx::cytnx_complex128>, cytnx::cytnx_double,
-        std::conditional_t<std::is_same_v<ElemT, cytnx::cytnx_complex64>, cytnx::cytnx_float,
-        ElemT>>;
+    using real_t
+        = std::conditional_t<std::is_same_v<ElemT, cytnx::cytnx_complex128>, cytnx::cytnx_double,
+                             std::conditional_t<std::is_same_v<ElemT, cytnx::cytnx_complex64>,
+                                                cytnx::cytnx_float, ElemT>>;
 
     using real_ten_t = CytnxTensor<real_t>;
 
     // Derive cplx_t from real_t
-    using cplx_t = std::conditional_t<
-        std::is_same_v<real_t, cytnx::cytnx_double>, cytnx::cytnx_complex128,
-        cytnx::cytnx_complex64>;
+    using cplx_t = std::conditional_t<std::is_same_v<real_t, cytnx::cytnx_double>,
+                                      cytnx::cytnx_complex128, cytnx::cytnx_complex64>;
 
     using cplx_ten_t = CytnxTensor<cplx_t>;
 
@@ -60,8 +58,7 @@ namespace tci {
    *
    * @tparam ElemT Element type (cytnx::cytnx_double, cytnx::cytnx_complex128, etc.)
    */
-  template <typename ElemT>
-  struct tensor_traits<const CytnxTensor<ElemT>> {
+  template <typename ElemT> struct tensor_traits<const CytnxTensor<ElemT>> {
     using ten_t = const CytnxTensor<ElemT>;
     using rank_t = cytnx::cytnx_uint64;
     using shape_t = List<cytnx::cytnx_uint64>;
@@ -77,17 +74,16 @@ namespace tci {
     using elem_coors_t = List<cytnx::cytnx_uint64>;
 
     // Derive real_t from elem_t
-    using real_t = std::conditional_t<
-        std::is_same_v<ElemT, cytnx::cytnx_complex128>, cytnx::cytnx_double,
-        std::conditional_t<std::is_same_v<ElemT, cytnx::cytnx_complex64>, cytnx::cytnx_float,
-        ElemT>>;
+    using real_t
+        = std::conditional_t<std::is_same_v<ElemT, cytnx::cytnx_complex128>, cytnx::cytnx_double,
+                             std::conditional_t<std::is_same_v<ElemT, cytnx::cytnx_complex64>,
+                                                cytnx::cytnx_float, ElemT>>;
 
     using real_ten_t = const CytnxTensor<real_t>;
 
     // Derive cplx_t from real_t
-    using cplx_t = std::conditional_t<
-        std::is_same_v<real_t, cytnx::cytnx_double>, cytnx::cytnx_complex128,
-        cytnx::cytnx_complex64>;
+    using cplx_t = std::conditional_t<std::is_same_v<real_t, cytnx::cytnx_double>,
+                                      cytnx::cytnx_complex128, cytnx::cytnx_complex64>;
 
     using cplx_ten_t = const CytnxTensor<cplx_t>;
 

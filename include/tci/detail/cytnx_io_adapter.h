@@ -157,24 +157,23 @@ namespace tci::detail {
   template <typename ElemT, typename Storage>
   struct storage_adapter<CytnxTensor<ElemT>, Storage,
                          std::enable_if_t<is_path_storage_v<Storage>>> {
-    template <typename StorageLike>
-    static void load(context_handle_t<CytnxTensor<ElemT>>& ctx, StorageLike&& strg,
-                     CytnxTensor<ElemT>& a) {
+    template <typename StorageLike> static void load(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                                     StorageLike&& strg, CytnxTensor<ElemT>& a) {
       (void)ctx;
       load_from_path(to_path(std::forward<StorageLike>(strg)), a.backend);
     }
 
     template <typename StorageLike>
     static CytnxTensor<ElemT> load_out(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                        StorageLike&& strg) {
+                                       StorageLike&& strg) {
       CytnxTensor<ElemT> result;
       load(ctx, std::forward<StorageLike>(strg), result);
       return result;
     }
 
-    template <typename StorageLike>
-    static void save(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-                     StorageLike& strg) {
+    template <typename StorageLike> static void save(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                                     const CytnxTensor<ElemT>& a,
+                                                     StorageLike& strg) {
       (void)ctx;
       save_to_path(a.backend, to_path(strg));
     }
@@ -184,9 +183,8 @@ namespace tci::detail {
   template <typename ElemT, typename Storage>
   struct storage_adapter<CytnxTensor<ElemT>, Storage,
                          std::enable_if_t<is_input_stream_v<Storage>>> {
-    template <typename StorageLike>
-    static void load(context_handle_t<CytnxTensor<ElemT>>& ctx, StorageLike&& strg,
-                     CytnxTensor<ElemT>& a) {
+    template <typename StorageLike> static void load(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                                     StorageLike&& strg, CytnxTensor<ElemT>& a) {
       (void)ctx;
       auto tmp_path = make_temp_cytn_file();
       copy_stream_to_file(strg, tmp_path);
@@ -201,15 +199,14 @@ namespace tci::detail {
 
     template <typename StorageLike>
     static CytnxTensor<ElemT> load_out(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                        StorageLike&& strg) {
+                                       StorageLike&& strg) {
       CytnxTensor<ElemT> result;
       load(ctx, std::forward<StorageLike>(strg), result);
       return result;
     }
 
-    template <typename StorageLike>
-    static void save(context_handle_t<CytnxTensor<ElemT>>&, const CytnxTensor<ElemT>&,
-                     StorageLike&) {
+    template <typename StorageLike> static void save(context_handle_t<CytnxTensor<ElemT>>&,
+                                                     const CytnxTensor<ElemT>&, StorageLike&) {
       static_assert(dependent_false_v<StorageLike>,
                     "tci::save does not support input stream storage types");
     }
@@ -231,9 +228,9 @@ namespace tci::detail {
                     "tci::load does not support output stream storage types");
     }
 
-    template <typename StorageLike>
-    static void save(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-                     StorageLike& strg) {
+    template <typename StorageLike> static void save(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                                     const CytnxTensor<ElemT>& a,
+                                                     StorageLike& strg) {
       (void)ctx;
       auto tmp_path = make_temp_cytn_file();
       save_to_path(a.backend, tmp_path);

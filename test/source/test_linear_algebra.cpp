@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 #include <tci/tci.h>
+
 #include <cmath>
 #include <cytnx.hpp>
 
@@ -74,7 +75,10 @@ TEST_CASE("TCI Matrix Decomposition - Truncated SVD") {
 
     // Create a matrix with known singular values
     for (int i = 0; i < 4; ++i) {
-      tci::set_elem(ctx, matrix, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i), static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i)}, cytnx::cytnx_complex128(4.0 - i, 0.0));  // [4,3,2,1]
+      tci::set_elem(ctx, matrix,
+                    {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i),
+                     static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_complex128>>>(i)},
+                    cytnx::cytnx_complex128(4.0 - i, 0.0));  // [4,3,2,1]
     }
 
     tci::CytnxTensor<cytnx::cytnx_complex128> u, v_dag;
@@ -382,8 +386,8 @@ TEST_CASE("TCI Truncated SVD") {
     CHECK(s_shape.size() == 1);
     CHECK(s_shape[0] <= 2);
 
-    // With s_min=0.5, values 0.1 should be truncated, so we expect 2 singular values (3.0, 2.0, 1.0 >= 0.5)
-    // But limited by chi_max=2, so we should get 2 values
+    // With s_min=0.5, values 0.1 should be truncated, so we expect 2 singular values (3.0, 2.0, 1.0
+    // >= 0.5) But limited by chi_max=2, so we should get 2 values
     CHECK(s_shape[0] <= 2);
 
     // Verify that truncation error represents information lost
@@ -657,7 +661,7 @@ TEST_CASE("TCI SVD Type Investigation") {
 
       CHECK(std::abs(imag_val2) < 1e-15);
       CHECK(real_val2 > 0.0);
-      CHECK(real_val >= real_val2); // Descending order
+      CHECK(real_val >= real_val2);  // Descending order
     }
   }
 

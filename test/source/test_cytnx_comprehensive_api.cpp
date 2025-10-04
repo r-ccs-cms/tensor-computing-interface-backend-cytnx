@@ -2,8 +2,10 @@
 // This file tests the newly implemented functions for CytnxTensor
 
 #include <doctest/doctest.h>
-#include "tci/tci.h"
+
 #include <random>
+
+#include "tci/tci.h"
 
 TEST_CASE("CytnxTensor - Basic manipulation functions") {
   using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
@@ -149,7 +151,7 @@ TEST_CASE("CytnxTensor - Linear algebra functions") {
     tci::linear_combine(ctx, ins, coefs, c);
 
     auto elem = tci::get_elem(ctx, c, {0, 0});
-    CHECK(std::real(elem) == doctest::Approx(8.0)); // 2*1 + 3*2 = 8
+    CHECK(std::real(elem) == doctest::Approx(8.0));  // 2*1 + 3*2 = 8
   }
 
   SUBCASE("svd full") {
@@ -165,7 +167,7 @@ TEST_CASE("CytnxTensor - Linear algebra functions") {
     auto v_shape = tci::shape(ctx, v_dag);
 
     CHECK(u_shape[0] == 4);
-    CHECK(s_shape[0] == 4); // min(4,6) = 4
+    CHECK(s_shape[0] == 4);  // min(4,6) = 4
     CHECK(v_shape[1] == 6);
     CHECK(s_shape[0] == u_shape[1]);
     CHECK(s_shape[0] == v_shape[0]);

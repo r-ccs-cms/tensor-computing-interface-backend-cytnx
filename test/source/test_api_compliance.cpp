@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 #include <tci/tci.h>
+
 #include <cmath>
 #include <cytnx.hpp>
 
@@ -25,9 +26,7 @@ TEST_CASE("tci::for_each API compliance test - CytnxTensor") {
     tci::set_elem(ctx, tensor, {1, 2}, Elem(6.0, 0.0));
 
     // Double each element
-    tci::for_each(ctx, tensor, [](Elem& elem) {
-        elem = elem * 2.0;
-    });
+    tci::for_each(ctx, tensor, [](Elem& elem) { elem = elem * 2.0; });
 
     // Verify all elements were doubled: [2, 4, 6, 8, 10, 12]
     CHECK(std::abs(tci::get_elem(ctx, tensor, {0, 0}) - Elem(2.0, 0.0)) < 1e-10);
@@ -130,10 +129,8 @@ TEST_CASE("tci::linear_combine API compliance test") {
 
     // Test weighted linear combination: 0.5 * tensor_a + 2.0 * tensor_b
     tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {tensor_a, tensor_b};
-    tci::List<tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> coefficients = {
-        cytnx::cytnx_complex128(0.5, 0.0),
-        cytnx::cytnx_complex128(2.0, 0.0)
-    };
+    tci::List<tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> coefficients
+        = {cytnx::cytnx_complex128(0.5, 0.0), cytnx::cytnx_complex128(2.0, 0.0)};
 
     CHECK_NOTHROW(tci::linear_combine(ctx, tensors, coefficients, result));
 
@@ -156,7 +153,8 @@ TEST_CASE("tci::linear_combine API compliance test") {
     CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 0})) - 5.0) < 1e-10);
 
     // Test single tensor with coefficient
-    tci::List<tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> single_coef = {cytnx::cytnx_complex128(3.0, 0.0)};
+    tci::List<tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> single_coef
+        = {cytnx::cytnx_complex128(3.0, 0.0)};
     CHECK_NOTHROW(tci::linear_combine(ctx, single_list, single_coef, result));
     CHECK(std::abs(tci::real(tci::get_elem(ctx, result, {0, 0})) - 15.0) < 1e-10);
   }
@@ -221,9 +219,9 @@ TEST_CASE("tci::normalize API compliance test") {
     CHECK(std::abs(tci::real(tci::get_elem(ctx, original, {2, 0})) - 1.0) < 1e-10);
 
     // Verify normalized tensor: [[2/3], [2/3], [1/3]]
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, normalized, {0, 0})) - (2.0/3.0)) < 1e-10);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, normalized, {1, 0})) - (2.0/3.0)) < 1e-10);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, normalized, {2, 0})) - (1.0/3.0)) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, normalized, {0, 0})) - (2.0 / 3.0)) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, normalized, {1, 0})) - (2.0 / 3.0)) < 1e-10);
+    CHECK(std::abs(tci::real(tci::get_elem(ctx, normalized, {2, 0})) - (1.0 / 3.0)) < 1e-10);
 
     // Verify normalized tensor has norm 1
     auto new_norm = tci::norm(ctx, normalized);

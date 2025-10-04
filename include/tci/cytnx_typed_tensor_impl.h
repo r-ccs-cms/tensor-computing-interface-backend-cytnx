@@ -1,19 +1,19 @@
 #pragma once
 
-#include "tci/cytnx_typed_tensor.h"
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/tensor_traits.h"
-#include "tci/construction_destruction.h"
-#include "tci/tensor_linear_algebra.h"
 #include <cytnx.hpp>
 #include <vector>
+
+#include "tci/construction_destruction.h"
+#include "tci/cytnx_tensor_traits.h"
+#include "tci/cytnx_typed_tensor.h"
+#include "tci/tensor_linear_algebra.h"
+#include "tci/tensor_traits.h"
 
 namespace tci {
 
   // Helper: Convert ElemT to cytnx::Type
   namespace detail {
-    template <typename ElemT>
-    constexpr unsigned int elem_to_cytnx_type() {
+    template <typename ElemT> constexpr unsigned int elem_to_cytnx_type() {
       if constexpr (std::is_same_v<ElemT, cytnx::cytnx_double>) {
         return cytnx::Type.Double;
       } else if constexpr (std::is_same_v<ElemT, cytnx::cytnx_float>) {
@@ -32,44 +32,35 @@ namespace tci {
   // These are separate from the main TCI header declarations to avoid conflicts
 
   // Construction/Destruction functions for CytnxTensor<ElemT>
-  template <typename ElemT>
-  void allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                const shape_t<CytnxTensor<ElemT>>& shape,
-                CytnxTensor<ElemT>& a);
+  template <typename ElemT> void allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                          const shape_t<CytnxTensor<ElemT>>& shape,
+                                          CytnxTensor<ElemT>& a);
 
-  template <typename ElemT>
-  CytnxTensor<ElemT> allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                               const shape_t<CytnxTensor<ElemT>>& shape);
+  template <typename ElemT> CytnxTensor<ElemT> allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                                        const shape_t<CytnxTensor<ElemT>>& shape);
 
   // Read-only getter functions for CytnxTensor<ElemT>
   template <typename ElemT>
-  void get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                const CytnxTensor<ElemT>& a,
-                const elem_coors_t<CytnxTensor<ElemT>>& coors,
-                elem_t<CytnxTensor<ElemT>>& elem);
+  void get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                const elem_coors_t<CytnxTensor<ElemT>>& coors, elem_t<CytnxTensor<ElemT>>& elem);
 
   template <typename ElemT>
   elem_t<CytnxTensor<ElemT>> get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                       const CytnxTensor<ElemT>& a,
-                                       const elem_coors_t<CytnxTensor<ElemT>>& coors);
+                                      const CytnxTensor<ElemT>& a,
+                                      const elem_coors_t<CytnxTensor<ElemT>>& coors);
 
   // Tensor manipulation functions for CytnxTensor<ElemT>
   template <typename ElemT, typename Func>
-  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                CytnxTensor<ElemT>& inout,
-                Func&& f);
+  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout, Func&& f);
 
   template <typename ElemT, typename Func>
-  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                const CytnxTensor<ElemT>& in,
-                Func&& f);
+  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in, Func&& f);
 
   // Template implementations
 
-  template <typename ElemT>
-  void allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                const shape_t<CytnxTensor<ElemT>>& shape,
-                CytnxTensor<ElemT>& a) {
+  template <typename ElemT> void allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                          const shape_t<CytnxTensor<ElemT>>& shape,
+                                          CytnxTensor<ElemT>& a) {
     std::vector<cytnx::cytnx_uint64> cytnx_shape;
     cytnx_shape.reserve(shape.size());
     for (const auto& dim : shape) {
@@ -78,19 +69,16 @@ namespace tci {
     a.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<ElemT>(), ctx);
   }
 
-  template <typename ElemT>
-  CytnxTensor<ElemT> allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                               const shape_t<CytnxTensor<ElemT>>& shape) {
+  template <typename ElemT> CytnxTensor<ElemT> allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                                        const shape_t<CytnxTensor<ElemT>>& shape) {
     CytnxTensor<ElemT> result;
     allocate(ctx, shape, result);
     return result;
   }
 
   template <typename ElemT>
-  void get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                const CytnxTensor<ElemT>& a,
-                const elem_coors_t<CytnxTensor<ElemT>>& coors,
-                elem_t<CytnxTensor<ElemT>>& elem) {
+  void get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                const elem_coors_t<CytnxTensor<ElemT>>& coors, elem_t<CytnxTensor<ElemT>>& elem) {
     std::vector<cytnx::cytnx_uint64> cytnx_coors;
     cytnx_coors.reserve(coors.size());
     for (const auto& coord : coors) {
@@ -101,8 +89,8 @@ namespace tci {
 
   template <typename ElemT>
   elem_t<CytnxTensor<ElemT>> get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                       const CytnxTensor<ElemT>& a,
-                                       const elem_coors_t<CytnxTensor<ElemT>>& coors) {
+                                      const CytnxTensor<ElemT>& a,
+                                      const elem_coors_t<CytnxTensor<ElemT>>& coors) {
     elem_t<CytnxTensor<ElemT>> elem;
     get_elem(ctx, a, coors, elem);
     return elem;
@@ -110,9 +98,7 @@ namespace tci {
 
   // for_each implementation for CytnxTensor<ElemT> (mutable version)
   template <typename ElemT, typename Func>
-  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                CytnxTensor<ElemT>& inout,
-                Func&& f) {
+  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout, Func&& f) {
     auto total_size = static_cast<cytnx::cytnx_uint64>(inout.backend.storage().size());
 
     // Direct access to underlying storage for performance
@@ -125,9 +111,7 @@ namespace tci {
 
   // for_each implementation for CytnxTensor<ElemT> (const version)
   template <typename ElemT, typename Func>
-  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                const CytnxTensor<ElemT>& in,
-                Func&& f) {
+  void for_each(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in, Func&& f) {
     auto total_size = static_cast<cytnx::cytnx_uint64>(in.backend.storage().size());
 
     // Direct access to underlying storage for performance
@@ -140,26 +124,21 @@ namespace tci {
 
   // Additional functions for CytnxTensor<ElemT>
 
-  template <typename ElemT>
-  void zeros(context_handle_t<CytnxTensor<ElemT>>& ctx,
-             const shape_t<CytnxTensor<ElemT>>& shape,
-             CytnxTensor<ElemT>& a) {
+  template <typename ElemT> void zeros(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                       const shape_t<CytnxTensor<ElemT>>& shape,
+                                       CytnxTensor<ElemT>& a) {
     allocate(ctx, shape, a);
     a.backend.storage().set_zeros();
   }
 
-  template <typename ElemT>
-  void eye(context_handle_t<CytnxTensor<ElemT>>& ctx,
-           bond_dim_t<CytnxTensor<ElemT>> dim,
-           CytnxTensor<ElemT>& a) {
+  template <typename ElemT> void eye(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                     bond_dim_t<CytnxTensor<ElemT>> dim, CytnxTensor<ElemT>& a) {
     a.backend = cytnx::eye(dim, detail::elem_to_cytnx_type<ElemT>(), ctx);
   }
 
-  template <typename ElemT>
-  void fill(context_handle_t<CytnxTensor<ElemT>>& ctx,
-            const shape_t<CytnxTensor<ElemT>>& shape,
-            elem_t<CytnxTensor<ElemT>> value,
-            CytnxTensor<ElemT>& a) {
+  template <typename ElemT> void fill(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                      const shape_t<CytnxTensor<ElemT>>& shape,
+                                      elem_t<CytnxTensor<ElemT>> value, CytnxTensor<ElemT>& a) {
     allocate(ctx, shape, a);
     auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
     auto* data = a.backend.storage().template data<ElemT>();
@@ -169,10 +148,8 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void set_elem(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                CytnxTensor<ElemT>& a,
-                const elem_coors_t<CytnxTensor<ElemT>>& coors,
-                elem_t<CytnxTensor<ElemT>> elem) {
+  void set_elem(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& a,
+                const elem_coors_t<CytnxTensor<ElemT>>& coors, elem_t<CytnxTensor<ElemT>> elem) {
     std::vector<cytnx::cytnx_uint64> cytnx_coors;
     cytnx_coors.reserve(coors.size());
     for (const auto& coord : coors) {
@@ -183,7 +160,7 @@ namespace tci {
 
   template <typename ElemT>
   shape_t<CytnxTensor<ElemT>> shape(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                     const CytnxTensor<ElemT>& a) {
+                                    const CytnxTensor<ElemT>& a) {
     auto cytnx_shape = a.backend.shape();
     shape_t<CytnxTensor<ElemT>> result;
     result.reserve(cytnx_shape.size());
@@ -195,38 +172,44 @@ namespace tci {
 
   template <typename ElemT>
   rank_t<CytnxTensor<ElemT>> rank(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                   const CytnxTensor<ElemT>& a) {
+                                  const CytnxTensor<ElemT>& a) {
     return static_cast<rank_t<CytnxTensor<ElemT>>>(a.backend.shape().size());
   }
 
   template <typename ElemT>
   ten_size_t<CytnxTensor<ElemT>> size(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                       const CytnxTensor<ElemT>& a) {
+                                      const CytnxTensor<ElemT>& a) {
     return static_cast<ten_size_t<CytnxTensor<ElemT>>>(a.backend.storage().size());
   }
 
   template <typename ElemT>
   ten_size_t<CytnxTensor<ElemT>> size_bytes(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                             const CytnxTensor<ElemT>& a) {
+                                            const CytnxTensor<ElemT>& a) {
     // Calculate total bytes using dtype element size
     auto dtype = a.backend.dtype();
     std::size_t elem_size = 0;
-    if (dtype == cytnx::Type.Float) elem_size = sizeof(float);
-    else if (dtype == cytnx::Type.Double) elem_size = sizeof(double);
-    else if (dtype == cytnx::Type.ComplexFloat) elem_size = sizeof(cytnx::cytnx_complex64);
-    else if (dtype == cytnx::Type.ComplexDouble) elem_size = sizeof(cytnx::cytnx_complex128);
-    else if (dtype == cytnx::Type.Int64) elem_size = sizeof(cytnx::cytnx_int64);
-    else if (dtype == cytnx::Type.Uint64) elem_size = sizeof(cytnx::cytnx_uint64);
-    else if (dtype == cytnx::Type.Int32) elem_size = sizeof(cytnx::cytnx_int32);
-    else if (dtype == cytnx::Type.Uint32) elem_size = sizeof(cytnx::cytnx_uint32);
+    if (dtype == cytnx::Type.Float)
+      elem_size = sizeof(float);
+    else if (dtype == cytnx::Type.Double)
+      elem_size = sizeof(double);
+    else if (dtype == cytnx::Type.ComplexFloat)
+      elem_size = sizeof(cytnx::cytnx_complex64);
+    else if (dtype == cytnx::Type.ComplexDouble)
+      elem_size = sizeof(cytnx::cytnx_complex128);
+    else if (dtype == cytnx::Type.Int64)
+      elem_size = sizeof(cytnx::cytnx_int64);
+    else if (dtype == cytnx::Type.Uint64)
+      elem_size = sizeof(cytnx::cytnx_uint64);
+    else if (dtype == cytnx::Type.Int32)
+      elem_size = sizeof(cytnx::cytnx_int32);
+    else if (dtype == cytnx::Type.Uint32)
+      elem_size = sizeof(cytnx::cytnx_uint32);
     return a.backend.storage().size() * elem_size;
   }
 
   template <typename ElemT, typename RandNumGen>
-  void random(context_handle_t<CytnxTensor<ElemT>>& ctx,
-              const shape_t<CytnxTensor<ElemT>>& shape,
-              RandNumGen&& gen,
-              CytnxTensor<ElemT>& a) {
+  void random(context_handle_t<CytnxTensor<ElemT>>& ctx, const shape_t<CytnxTensor<ElemT>>& shape,
+              RandNumGen&& gen, CytnxTensor<ElemT>& a) {
     allocate(ctx, shape, a);
     auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
     auto* data = a.backend.storage().template data<ElemT>();
@@ -240,22 +223,18 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void show(context_handle_t<CytnxTensor<ElemT>>& ctx,
-            const CytnxTensor<ElemT>& a) {
+  void show(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a) {
     std::cout << a.backend << std::endl;
   }
 
   // Copy operation
-  template <typename ElemT>
-  void copy(context_handle_t<CytnxTensor<ElemT>>& ctx,
-            const CytnxTensor<ElemT>& orig,
-            CytnxTensor<ElemT>& dist) {
+  template <typename ElemT> void copy(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                      const CytnxTensor<ElemT>& orig, CytnxTensor<ElemT>& dist) {
     dist.backend = orig.backend.clone();
   }
 
-  template <typename ElemT>
-  CytnxTensor<ElemT> copy(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                          const CytnxTensor<ElemT>& orig) {
+  template <typename ElemT> CytnxTensor<ElemT> copy(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                                    const CytnxTensor<ElemT>& orig) {
     CytnxTensor<ElemT> result;
     copy(ctx, orig, result);
     return result;
@@ -263,17 +242,15 @@ namespace tci {
 
   // Clear operation
   template <typename ElemT>
-  void clear(context_handle_t<CytnxTensor<ElemT>>& ctx,
-             CytnxTensor<ElemT>& a) {
+  void clear(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& a) {
     // Create empty tensor
     a.backend = cytnx::Tensor();
   }
 
   // Reshape operation
-  template <typename ElemT>
-  void reshape(context_handle_t<CytnxTensor<ElemT>>& ctx,
-               CytnxTensor<ElemT>& inout,
-               const shape_t<CytnxTensor<ElemT>>& new_shape) {
+  template <typename ElemT> void reshape(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                         CytnxTensor<ElemT>& inout,
+                                         const shape_t<CytnxTensor<ElemT>>& new_shape) {
     std::vector<cytnx::cytnx_int64> cytnx_shape;
     cytnx_shape.reserve(new_shape.size());
     for (const auto& dim : new_shape) {
@@ -283,10 +260,8 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void reshape(context_handle_t<CytnxTensor<ElemT>>& ctx,
-               const CytnxTensor<ElemT>& in,
-               const shape_t<CytnxTensor<ElemT>>& new_shape,
-               CytnxTensor<ElemT>& out) {
+  void reshape(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
+               const shape_t<CytnxTensor<ElemT>>& new_shape, CytnxTensor<ElemT>& out) {
     std::vector<cytnx::cytnx_int64> cytnx_shape;
     cytnx_shape.reserve(new_shape.size());
     for (const auto& dim : new_shape) {
@@ -297,8 +272,7 @@ namespace tci {
 
   // Transpose operation
   template <typename ElemT>
-  void transpose(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                 CytnxTensor<ElemT>& inout,
+  void transpose(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout,
                  const std::vector<bond_idx_t<CytnxTensor<ElemT>>>& new_order) {
     std::vector<cytnx::cytnx_uint64> cytnx_order;
     cytnx_order.reserve(new_order.size());
@@ -309,8 +283,7 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void transpose(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                 const CytnxTensor<ElemT>& in,
+  void transpose(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
                  const std::vector<bond_idx_t<CytnxTensor<ElemT>>>& new_order,
                  CytnxTensor<ElemT>& out) {
     std::vector<cytnx::cytnx_uint64> cytnx_order;
@@ -323,21 +296,18 @@ namespace tci {
 
   // Complex conjugate
   template <typename ElemT>
-  void cplx_conj(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                 CytnxTensor<ElemT>& inout) {
-    if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
-                  std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
+  void cplx_conj(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout) {
+    if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128>
+                  || std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
       inout.backend = inout.backend.Conj();
     }
     // For real types, do nothing
   }
 
-  template <typename ElemT>
-  void cplx_conj(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                 const CytnxTensor<ElemT>& in,
-                 CytnxTensor<ElemT>& out) {
-    if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
-                  std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
+  template <typename ElemT> void cplx_conj(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                           const CytnxTensor<ElemT>& in, CytnxTensor<ElemT>& out) {
+    if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128>
+                  || std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
       out.backend = in.backend.Conj();
     } else {
       out.backend = in.backend.clone();
@@ -345,12 +315,11 @@ namespace tci {
   }
 
   // Real part extraction
-  template <typename ElemT>
-  void real(context_handle_t<CytnxTensor<ElemT>>& ctx,
-            const CytnxTensor<ElemT>& in,
-            real_ten_t<CytnxTensor<ElemT>>& out) {
-    if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
-                  std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
+  template <typename ElemT> void real(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                      const CytnxTensor<ElemT>& in,
+                                      real_ten_t<CytnxTensor<ElemT>>& out) {
+    if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128>
+                  || std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
       // Clone first since real() is not const
       auto temp = in.backend.clone();
       out.backend = temp.real();
@@ -369,12 +338,11 @@ namespace tci {
   }
 
   // Imaginary part extraction
-  template <typename ElemT>
-  void imag(context_handle_t<CytnxTensor<ElemT>>& ctx,
-            const CytnxTensor<ElemT>& in,
-            real_ten_t<CytnxTensor<ElemT>>& out) {
-    if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
-                  std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
+  template <typename ElemT> void imag(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                      const CytnxTensor<ElemT>& in,
+                                      real_ten_t<CytnxTensor<ElemT>>& out) {
+    if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128>
+                  || std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
       // Clone first since imag() is not const
       auto temp = in.backend.clone();
       out.backend = temp.imag();
@@ -394,12 +362,11 @@ namespace tci {
   }
 
   // Convert real tensor to complex tensor
-  template <typename ElemT>
-  void to_cplx(context_handle_t<CytnxTensor<ElemT>>& ctx,
-               const CytnxTensor<ElemT>& in,
-               cplx_ten_t<CytnxTensor<ElemT>>& out) {
-    if (in.backend.dtype() == cytnx::Type.ComplexDouble ||
-        in.backend.dtype() == cytnx::Type.ComplexFloat) {
+  template <typename ElemT> void to_cplx(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                         const CytnxTensor<ElemT>& in,
+                                         cplx_ten_t<CytnxTensor<ElemT>>& out) {
+    if (in.backend.dtype() == cytnx::Type.ComplexDouble
+        || in.backend.dtype() == cytnx::Type.ComplexFloat) {
       // Already complex, just copy
       out.backend = in.backend.clone();
     } else {
@@ -428,8 +395,7 @@ namespace tci {
 
   template <typename ElemT>
   real_t<CytnxTensor<ElemT>> normalize(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                       const CytnxTensor<ElemT>& in,
-                                       CytnxTensor<ElemT>& out) {
+                                       const CytnxTensor<ElemT>& in, CytnxTensor<ElemT>& out) {
     auto n = norm(ctx, in);
     if (n > 0) {
       out.backend = in.backend / n;
@@ -440,32 +406,26 @@ namespace tci {
   }
 
   // Scale
-  template <typename ElemT>
-  void scale(context_handle_t<CytnxTensor<ElemT>>& ctx,
-             CytnxTensor<ElemT>& inout,
-             const elem_t<CytnxTensor<ElemT>> s) {
+  template <typename ElemT> void scale(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                       CytnxTensor<ElemT>& inout,
+                                       const elem_t<CytnxTensor<ElemT>> s) {
     inout.backend = inout.backend * s;
   }
 
   template <typename ElemT>
-  void scale(context_handle_t<CytnxTensor<ElemT>>& ctx,
-             const CytnxTensor<ElemT>& in,
-             const elem_t<CytnxTensor<ElemT>> s,
-             CytnxTensor<ElemT>& out) {
+  void scale(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
+             const elem_t<CytnxTensor<ElemT>> s, CytnxTensor<ElemT>& out) {
     out.backend = in.backend * s;
   }
 
   // Diag - extract diagonal or create diagonal matrix
   template <typename ElemT>
-  void diag(context_handle_t<CytnxTensor<ElemT>>& ctx,
-            CytnxTensor<ElemT>& inout) {
+  void diag(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout) {
     auto r = inout.backend.shape().size();
     if (r == 1) {
       // Create diagonal matrix from vector
       auto dim = static_cast<cytnx::cytnx_uint64>(inout.backend.shape()[0]);
-      auto result = cytnx::zeros({dim, dim},
-                                  detail::elem_to_cytnx_type<ElemT>(),
-                                  ctx);
+      auto result = cytnx::zeros({dim, dim}, detail::elem_to_cytnx_type<ElemT>(), ctx);
 
       auto* data = inout.backend.storage().template data<ElemT>();
       auto* result_data = result.storage().template data<ElemT>();
@@ -479,9 +439,7 @@ namespace tci {
       // Extract diagonal from matrix
       auto dim = static_cast<cytnx::cytnx_uint64>(
           std::min(inout.backend.shape()[0], inout.backend.shape()[1]));
-      auto result = cytnx::zeros({dim},
-                                  detail::elem_to_cytnx_type<ElemT>(),
-                                  ctx);
+      auto result = cytnx::zeros({dim}, detail::elem_to_cytnx_type<ElemT>(), ctx);
 
       auto rows = inout.backend.shape()[0];
       auto* in_data = inout.backend.storage().template data<ElemT>();
@@ -495,19 +453,16 @@ namespace tci {
     }
   }
 
-  template <typename ElemT>
-  void diag(context_handle_t<CytnxTensor<ElemT>>& ctx,
-            const CytnxTensor<ElemT>& in,
-            CytnxTensor<ElemT>& out) {
+  template <typename ElemT> void diag(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                      const CytnxTensor<ElemT>& in, CytnxTensor<ElemT>& out) {
     out.backend = in.backend.clone();
     diag(ctx, out);
   }
 
   // Trace - partial trace over specified bond pairs
-  template <typename ElemT>
-  void trace(context_handle_t<CytnxTensor<ElemT>>& ctx,
-             CytnxTensor<ElemT>& inout,
-             const bond_idx_pairs_t<CytnxTensor<ElemT>>& bdidx_pairs) {
+  template <typename ElemT> void trace(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                       CytnxTensor<ElemT>& inout,
+                                       const bond_idx_pairs_t<CytnxTensor<ElemT>>& bdidx_pairs) {
     cytnx::Tensor result = inout.backend;
 
     // Create index mapping to track axis renumbering after each trace
@@ -516,10 +471,9 @@ namespace tci {
 
     // Sort pairs by maximum index in descending order
     auto sorted_pairs = bdidx_pairs;
-    std::sort(sorted_pairs.begin(), sorted_pairs.end(),
-              [](const auto& a, const auto& b) {
-                return std::max(a.first, a.second) > std::max(b.first, b.second);
-              });
+    std::sort(sorted_pairs.begin(), sorted_pairs.end(), [](const auto& a, const auto& b) {
+      return std::max(a.first, a.second) > std::max(b.first, b.second);
+    });
 
     for (const auto& [orig_idx1, orig_idx2] : sorted_pairs) {
       // Find current positions of these axes
@@ -535,8 +489,8 @@ namespace tci {
 
       // Debug output
       if (std::getenv("TCI_VERBOSE")) {
-        std::cerr << "trace: orig(" << orig_idx1 << "," << orig_idx2 << ") -> curr("
-                  << curr_idx1 << "," << curr_idx2 << ") rank=" << result.shape().size() << std::endl;
+        std::cerr << "trace: orig(" << orig_idx1 << "," << orig_idx2 << ") -> curr(" << curr_idx1
+                  << "," << curr_idx2 << ") rank=" << result.shape().size() << std::endl;
       }
 
       // Perform trace
@@ -551,10 +505,8 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void trace(context_handle_t<CytnxTensor<ElemT>>& ctx,
-             const CytnxTensor<ElemT>& in,
-             const bond_idx_pairs_t<CytnxTensor<ElemT>>& bdidx_pairs,
-             CytnxTensor<ElemT>& out) {
+  void trace(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
+             const bond_idx_pairs_t<CytnxTensor<ElemT>>& bdidx_pairs, CytnxTensor<ElemT>& out) {
     out.backend = in.backend.clone();
     trace(ctx, out, bdidx_pairs);
   }
@@ -562,8 +514,7 @@ namespace tci {
   // Contract - tensor contraction following Einstein summation
   // Restored from b7ecb2a9^ (correct implementation using cytnx::linalg::Tensordot)
   template <typename ElemT>
-  void contract(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                const CytnxTensor<ElemT>& a,
+  void contract(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
                 const std::vector<bond_label_t<CytnxTensor<ElemT>>>& bd_labs_a,
                 const CytnxTensor<ElemT>& b,
                 const std::vector<bond_label_t<CytnxTensor<ElemT>>>& bd_labs_b,
@@ -574,17 +525,17 @@ namespace tci {
     const auto rank_a = a.backend.shape().size();
     const auto rank_b = b.backend.shape().size();
 
-    bool treat_as_label_mode
-        = (bd_labs_a.size() == rank_a) && (bd_labs_b.size() == rank_b);
+    bool treat_as_label_mode = (bd_labs_a.size() == rank_a) && (bd_labs_b.size() == rank_b);
 
-    const auto in_range = [](size_t rank, const std::vector<bond_label_t<CytnxTensor<ElemT>>>& axes_list) {
-      for (auto axis : axes_list) {
-        if (axis < 0 || static_cast<size_t>(axis) >= rank) {
-          return false;
-        }
-      }
-      return true;
-    };
+    const auto in_range
+        = [](size_t rank, const std::vector<bond_label_t<CytnxTensor<ElemT>>>& axes_list) {
+            for (auto axis : axes_list) {
+              if (axis < 0 || static_cast<size_t>(axis) >= rank) {
+                return false;
+              }
+            }
+            return true;
+          };
 
     if (!in_range(rank_a, bd_labs_a) || !in_range(rank_b, bd_labs_b)) {
       treat_as_label_mode = true;
@@ -601,10 +552,9 @@ namespace tci {
         // Outer product case
         auto flatten = [](const cytnx::Tensor& tensor, bool row_vector) {
           cytnx::Tensor flat = tensor.clone();
-          cytnx::cytnx_uint64 total
-              = std::accumulate(tensor.shape().begin(), tensor.shape().end(),
-                                static_cast<cytnx::cytnx_uint64>(1),
-                                std::multiplies<cytnx::cytnx_uint64>());
+          cytnx::cytnx_uint64 total = std::accumulate(tensor.shape().begin(), tensor.shape().end(),
+                                                      static_cast<cytnx::cytnx_uint64>(1),
+                                                      std::multiplies<cytnx::cytnx_uint64>());
           if (row_vector) {
             flat.reshape_({1, static_cast<cytnx::cytnx_int64>(total)});
           } else {
@@ -644,9 +594,8 @@ namespace tci {
       }
 
       try {
-        cytnx::Tensor result = cytnx::linalg::Tensordot(a.backend, b.backend,
-                                                        analysis.contract_axes_a,
-                                                        analysis.contract_axes_b);
+        cytnx::Tensor result = cytnx::linalg::Tensordot(
+            a.backend, b.backend, analysis.contract_axes_a, analysis.contract_axes_b);
         if (!analysis.output_permutation.empty()) {
           std::vector<cytnx::cytnx_uint64> valid_perm;
           for (auto idx : analysis.output_permutation) {
@@ -666,30 +615,30 @@ namespace tci {
     }
 
     // Axis mode
-    auto convert_axes = [](size_t rank,
-                           const std::vector<bond_label_t<CytnxTensor<ElemT>>>& axes_list,
-                           const char* which) {
-      std::vector<cytnx::cytnx_uint64> axes;
-      axes.reserve(axes_list.size());
-      std::vector<bool> seen(rank, false);
-      for (auto axis : axes_list) {
-        if (axis < 0 || static_cast<size_t>(axis) >= rank) {
-          std::ostringstream oss;
-          oss << "contract: axis index out of range for " << which << " (rank=" << rank
-              << ", requested=" << axis << ")";
-          oss << " | axes list=";
-          for (auto v : axes_list) oss << v << ' ';
-          throw std::out_of_range(oss.str());
-        }
-        auto idx = static_cast<size_t>(axis);
-        if (seen[idx]) {
-          throw std::invalid_argument("contract: duplicate axis index detected");
-        }
-        seen[idx] = true;
-        axes.push_back(static_cast<cytnx::cytnx_uint64>(idx));
-      }
-      return axes;
-    };
+    auto convert_axes
+        = [](size_t rank, const std::vector<bond_label_t<CytnxTensor<ElemT>>>& axes_list,
+             const char* which) {
+            std::vector<cytnx::cytnx_uint64> axes;
+            axes.reserve(axes_list.size());
+            std::vector<bool> seen(rank, false);
+            for (auto axis : axes_list) {
+              if (axis < 0 || static_cast<size_t>(axis) >= rank) {
+                std::ostringstream oss;
+                oss << "contract: axis index out of range for " << which << " (rank=" << rank
+                    << ", requested=" << axis << ")";
+                oss << " | axes list=";
+                for (auto v : axes_list) oss << v << ' ';
+                throw std::out_of_range(oss.str());
+              }
+              auto idx = static_cast<size_t>(axis);
+              if (seen[idx]) {
+                throw std::invalid_argument("contract: duplicate axis index detected");
+              }
+              seen[idx] = true;
+              axes.push_back(static_cast<cytnx::cytnx_uint64>(idx));
+            }
+            return axes;
+          };
 
     auto contract_axes_a = convert_axes(rank_a, bd_labs_a, "first tensor");
     auto contract_axes_b = convert_axes(rank_b, bd_labs_b, "second tensor");
@@ -698,8 +647,7 @@ namespace tci {
       throw std::invalid_argument("contract: axis lists must have equal length");
     }
 
-    auto collect_free_axes = [](size_t rank,
-                                const std::vector<cytnx::cytnx_uint64>& contracted) {
+    auto collect_free_axes = [](size_t rank, const std::vector<cytnx::cytnx_uint64>& contracted) {
       std::vector<bool> used(rank, false);
       for (auto idx : contracted) used[idx] = true;
       std::vector<cytnx::cytnx_uint64> free_axes;
@@ -747,10 +695,9 @@ namespace tci {
   }
 
   // Linear combination
-  template <typename ElemT>
-  void linear_combine(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                      const std::vector<CytnxTensor<ElemT>>& ins,
-                      CytnxTensor<ElemT>& out) {
+  template <typename ElemT> void linear_combine(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                                const std::vector<CytnxTensor<ElemT>>& ins,
+                                                CytnxTensor<ElemT>& out) {
     if (ins.empty()) {
       return;
     }
@@ -778,12 +725,9 @@ namespace tci {
 
   // SVD (full)
   template <typename ElemT>
-  void svd(context_handle_t<CytnxTensor<ElemT>>& ctx,
-           const CytnxTensor<ElemT>& a,
-           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-           CytnxTensor<ElemT>& u,
-           real_ten_t<CytnxTensor<ElemT>>& s_diag,
-           CytnxTensor<ElemT>& v_dag) {
+  void svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+           real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag) {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
@@ -796,8 +740,8 @@ namespace tci {
     }
 
     // Reshape to matrix
-    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
-                                          static_cast<cytnx::cytnx_int64>(right_dim)});
+    auto a_reshaped = a.backend.reshape(
+        {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
 
     // Perform full SVD
     auto svd_result = cytnx::linalg::Svd(a_reshaped, true);  // Return U, S, Vt
@@ -845,12 +789,10 @@ namespace tci {
   }
 
   // QR decomposition
-  template <typename ElemT>
-  void qr(context_handle_t<CytnxTensor<ElemT>>& ctx,
-          const CytnxTensor<ElemT>& a,
-          const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-          CytnxTensor<ElemT>& q,
-          CytnxTensor<ElemT>& r) {
+  template <typename ElemT> void qr(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                    const CytnxTensor<ElemT>& a,
+                                    const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                                    CytnxTensor<ElemT>& q, CytnxTensor<ElemT>& r) {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
@@ -863,8 +805,8 @@ namespace tci {
     }
 
     // Reshape to matrix
-    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
-                                          static_cast<cytnx::cytnx_int64>(right_dim)});
+    auto a_reshaped = a.backend.reshape(
+        {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
 
     // Perform QR
     auto qr_result = cytnx::linalg::Qr(a_reshaped);
@@ -904,12 +846,10 @@ namespace tci {
   }
 
   // LQ decomposition
-  template <typename ElemT>
-  void lq(context_handle_t<CytnxTensor<ElemT>>& ctx,
-          const CytnxTensor<ElemT>& a,
-          const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-          CytnxTensor<ElemT>& l,
-          CytnxTensor<ElemT>& q) {
+  template <typename ElemT> void lq(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                    const CytnxTensor<ElemT>& a,
+                                    const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                                    CytnxTensor<ElemT>& l, CytnxTensor<ElemT>& q) {
     // LQ = (Q†L†)† where Q†L† is QR of A†
     // Transpose and do QR, then transpose results back
 
@@ -924,8 +864,8 @@ namespace tci {
     }
 
     // Reshape and transpose
-    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
-                                          static_cast<cytnx::cytnx_int64>(right_dim)});
+    auto a_reshaped = a.backend.reshape(
+        {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
     auto a_t = a_reshaped.permute({1, 0});
 
     // Perform QR on transposed
@@ -970,12 +910,9 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                 const CytnxTensor<ElemT>& a,
-                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-                 CytnxTensor<ElemT>& u,
-                 real_ten_t<CytnxTensor<ElemT>>& s_diag,
-                 CytnxTensor<ElemT>& v_dag,
+  void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
                  real_t<CytnxTensor<ElemT>>& trunc_err,
                  const bond_dim_t<CytnxTensor<ElemT>> chi_max,
                  const real_t<CytnxTensor<ElemT>> s_min) {
@@ -991,8 +928,8 @@ namespace tci {
     }
 
     // Reshape to matrix
-    auto a_reshaped = a.backend.reshape({static_cast<cytnx::cytnx_int64>(left_dim),
-                                          static_cast<cytnx::cytnx_int64>(right_dim)});
+    auto a_reshaped = a.backend.reshape(
+        {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
 
     // Perform SVD
     // Parameters: tensor, chi_max, s_min, is_UvT, return_err, mindim
@@ -1056,11 +993,10 @@ namespace tci {
   }
 
   // Eigenvalue decomposition - eigvals (general matrix eigenvalues)
-  template <typename ElemT>
-  void eigvals(context_handle_t<CytnxTensor<ElemT>>& ctx,
-               const CytnxTensor<ElemT>& a,
-               const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-               cplx_ten_t<CytnxTensor<ElemT>>& w_diag) {
+  template <typename ElemT> void eigvals(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                         const CytnxTensor<ElemT>& a,
+                                         const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                                         cplx_ten_t<CytnxTensor<ElemT>>& w_diag) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -1078,8 +1014,8 @@ namespace tci {
     }
 
     cytnx::Tensor matrix = a.backend.clone();
-    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
-                     static_cast<cytnx::cytnx_int64>(col_dim)});
+    matrix.reshape_(
+        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     auto eig_result = cytnx::linalg::Eig(matrix);
     w_diag.backend = eig_result[0];
@@ -1093,11 +1029,10 @@ namespace tci {
   }
 
   // Eigenvalue decomposition - eigvalsh (hermitian matrix eigenvalues)
-  template <typename ElemT>
-  void eigvalsh(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                const CytnxTensor<ElemT>& a,
-                const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-                real_ten_t<CytnxTensor<ElemT>>& w_diag) {
+  template <typename ElemT> void eigvalsh(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                          const CytnxTensor<ElemT>& a,
+                                          const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                                          real_ten_t<CytnxTensor<ElemT>>& w_diag) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -1115,8 +1050,8 @@ namespace tci {
     }
 
     cytnx::Tensor matrix = a.backend.clone();
-    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
-                     static_cast<cytnx::cytnx_int64>(col_dim)});
+    matrix.reshape_(
+        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     auto eigh_result = cytnx::linalg::Eigh(matrix);
     w_diag.backend = eigh_result[0];
@@ -1128,11 +1063,9 @@ namespace tci {
 
   // Eigenvalue decomposition - eig (general matrix eigenvalues and eigenvectors)
   template <typename ElemT>
-  void eig(context_handle_t<CytnxTensor<ElemT>>& ctx,
-           const CytnxTensor<ElemT>& a,
+  void eig(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
            const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-           cplx_ten_t<CytnxTensor<ElemT>>& w_diag,
-           cplx_ten_t<CytnxTensor<ElemT>>& v) {
+           cplx_ten_t<CytnxTensor<ElemT>>& w_diag, cplx_ten_t<CytnxTensor<ElemT>>& v) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -1150,8 +1083,8 @@ namespace tci {
     }
 
     cytnx::Tensor matrix = a.backend.clone();
-    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
-                     static_cast<cytnx::cytnx_int64>(col_dim)});
+    matrix.reshape_(
+        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     auto eig_result = cytnx::linalg::Eig(matrix);
     w_diag.backend = eig_result[0];
@@ -1165,8 +1098,8 @@ namespace tci {
     }
 
     if (v.backend.shape().size() != 2) {
-      v.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
-                          static_cast<cytnx::cytnx_int64>(row_dim)});
+      v.backend.reshape_(
+          {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(row_dim)});
     }
     if (v.backend.dtype() != cytnx::Type.ComplexDouble) {
       v.backend = v.backend.astype(cytnx::Type.ComplexDouble);
@@ -1175,11 +1108,9 @@ namespace tci {
 
   // Eigenvalue decomposition - eigh (hermitian matrix eigenvalues and eigenvectors)
   template <typename ElemT>
-  void eigh(context_handle_t<CytnxTensor<ElemT>>& ctx,
-            const CytnxTensor<ElemT>& a,
+  void eigh(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
             const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-            real_ten_t<CytnxTensor<ElemT>>& w_diag,
-            CytnxTensor<ElemT>& v) {
+            real_ten_t<CytnxTensor<ElemT>>& w_diag, CytnxTensor<ElemT>& v) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -1197,8 +1128,8 @@ namespace tci {
     }
 
     cytnx::Tensor matrix = a.backend.clone();
-    matrix.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
-                     static_cast<cytnx::cytnx_int64>(col_dim)});
+    matrix.reshape_(
+        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     auto eigh_result = cytnx::linalg::Eigh(matrix);
     w_diag.backend = eigh_result[0];
@@ -1209,17 +1140,15 @@ namespace tci {
     }
 
     if (v.backend.shape().size() != 2) {
-      v.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim),
-                          static_cast<cytnx::cytnx_int64>(row_dim)});
+      v.backend.reshape_(
+          {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(row_dim)});
     }
   }
 
   // Tensor equality check with epsilon tolerance
-  template <typename ElemT>
-  bool eq(context_handle_t<CytnxTensor<ElemT>>& ctx,
-          const CytnxTensor<ElemT>& a,
-          const CytnxTensor<ElemT>& b,
-          const elem_t<CytnxTensor<ElemT>> epsilon) {
+  template <typename ElemT> bool eq(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                    const CytnxTensor<ElemT>& a, const CytnxTensor<ElemT>& b,
+                                    const elem_t<CytnxTensor<ElemT>> epsilon) {
     (void)ctx;
     // Check shape first
     if (a.backend.shape() != b.backend.shape()) {
@@ -1251,10 +1180,8 @@ namespace tci {
   // assign_from_container - create tensor from container
   template <typename ElemT, typename RandomIt, typename Func>
   void assign_from_container(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                             const shape_t<CytnxTensor<ElemT>>& shape,
-                             RandomIt init_elems_begin,
-                             Func&& coors2idx,
-                             CytnxTensor<ElemT>& a) {
+                             const shape_t<CytnxTensor<ElemT>>& shape, RandomIt init_elems_begin,
+                             Func&& coors2idx, CytnxTensor<ElemT>& a) {
     // Allocate tensor with the specified shape
     allocate(ctx, shape, a);
 
@@ -1272,11 +1199,11 @@ namespace tci {
           elem_val = value;
         } else if constexpr (std::is_arithmetic_v<decltype(value)>) {
           elem_val = static_cast<ElemT>(value);
-        } else if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> &&
-                             std::is_same_v<decltype(value), std::complex<double>>) {
+        } else if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128>
+                             && std::is_same_v<decltype(value), std::complex<double>>) {
           elem_val = cytnx::cytnx_complex128(value.real(), value.imag());
-        } else if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex64> &&
-                             std::is_same_v<decltype(value), std::complex<float>>) {
+        } else if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex64>
+                             && std::is_same_v<decltype(value), std::complex<float>>) {
           elem_val = cytnx::cytnx_complex64(value.real(), value.imag());
         } else {
           elem_val = static_cast<ElemT>(value);
@@ -1298,10 +1225,8 @@ namespace tci {
 
   // to_container - copy tensor elements to container
   template <typename ElemT, typename RandomIt, typename Func>
-  void to_container(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                    const CytnxTensor<ElemT>& a,
-                    RandomIt first,
-                    Func&& coors2idx) {
+  void to_container(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                    RandomIt first, Func&& coors2idx) {
     const auto ten_shape = shape(ctx, a);
     const auto total_size = size(ctx, a);
 
@@ -1324,24 +1249,23 @@ namespace tci {
         *(first + container_idx) = elem;
       } else if constexpr (std::is_arithmetic_v<ContainerValueType>) {
         // Convert complex to real by taking real part
-        if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
-                      std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
+        if constexpr (std::is_same_v<ElemT, cytnx::cytnx_complex128>
+                      || std::is_same_v<ElemT, cytnx::cytnx_complex64>) {
           *(first + container_idx) = static_cast<ContainerValueType>(elem.real());
         } else {
           *(first + container_idx) = static_cast<ContainerValueType>(elem);
         }
-      } else if constexpr (std::is_same_v<ContainerValueType, std::complex<double>> &&
-                           (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
-                            std::is_same_v<ElemT, cytnx::cytnx_complex64>)) {
+      } else if constexpr (std::is_same_v<ContainerValueType, std::complex<double>>
+                           && (std::is_same_v<ElemT, cytnx::cytnx_complex128>
+                               || std::is_same_v<ElemT, cytnx::cytnx_complex64>)) {
         // Convert cytnx complex to std::complex
         *(first + container_idx) = std::complex<double>(elem.real(), elem.imag());
-      } else if constexpr (std::is_same_v<ContainerValueType, std::complex<float>> &&
-                           (std::is_same_v<ElemT, cytnx::cytnx_complex128> ||
-                            std::is_same_v<ElemT, cytnx::cytnx_complex64>)) {
+      } else if constexpr (std::is_same_v<ContainerValueType, std::complex<float>>
+                           && (std::is_same_v<ElemT, cytnx::cytnx_complex128>
+                               || std::is_same_v<ElemT, cytnx::cytnx_complex64>)) {
         // Convert cytnx complex to std::complex<float>
-        *(first + container_idx) = std::complex<float>(
-            static_cast<float>(elem.real()),
-            static_cast<float>(elem.imag()));
+        *(first + container_idx)
+            = std::complex<float>(static_cast<float>(elem.real()), static_cast<float>(elem.imag()));
       } else {
         // Fallback: static_cast
         *(first + container_idx) = static_cast<ContainerValueType>(elem);
@@ -1401,7 +1325,8 @@ namespace tci {
     }
 
     void replace_elements_recursive(cytnx::Tensor& main_tensor, const cytnx::Tensor& sub_tensor,
-                                    std::size_t dim, const std::vector<cytnx::cytnx_uint64>& begin_pt,
+                                    std::size_t dim,
+                                    const std::vector<cytnx::cytnx_uint64>& begin_pt,
                                     std::vector<cytnx::cytnx_uint64>& sub_coords,
                                     const std::vector<cytnx::cytnx_uint64>& sub_shape) {
       if (dim == sub_shape.size()) {
@@ -1424,9 +1349,9 @@ namespace tci {
   }  // anonymous namespace
 
   template <typename ElemT>
-  void expand(context_handle_t<CytnxTensor<ElemT>>& ctx,
-              CytnxTensor<ElemT>& inout,
-              const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>& bond_idx_increment_map) {
+  void expand(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout,
+              const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>&
+                  bond_idx_increment_map) {
     auto original_shape = inout.backend.shape();
     std::vector<cytnx::cytnx_uint64> new_shape(original_shape.begin(), original_shape.end());
 
@@ -1449,9 +1374,9 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void expand(context_handle_t<CytnxTensor<ElemT>>& ctx,
-              const CytnxTensor<ElemT>& in,
-              const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>& bond_idx_increment_map,
+  void expand(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
+              const Map<bond_idx_t<CytnxTensor<ElemT>>, bond_dim_t<CytnxTensor<ElemT>>>&
+                  bond_idx_increment_map,
               CytnxTensor<ElemT>& out) {
     out = in;
     expand(ctx, out, bond_idx_increment_map);
@@ -1460,8 +1385,7 @@ namespace tci {
   // shrink
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
   template <typename ElemT>
-  void shrink(context_handle_t<CytnxTensor<ElemT>>& ctx,
-              CytnxTensor<ElemT>& inout,
+  void shrink(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout,
               const bond_idx_elem_coor_pair_map<CytnxTensor<ElemT>>& bd_idx_el_coor_pair_map) {
     auto original_shape = inout.backend.shape();
 
@@ -1487,8 +1411,7 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void shrink(context_handle_t<CytnxTensor<ElemT>>& ctx,
-              const CytnxTensor<ElemT>& in,
+  void shrink(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
               const bond_idx_elem_coor_pair_map<CytnxTensor<ElemT>>& bd_idx_el_coor_pair_map,
               CytnxTensor<ElemT>& out) {
     out = in;
@@ -1497,10 +1420,10 @@ namespace tci {
 
   // extract_sub
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
-  template <typename ElemT>
-  void extract_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                   CytnxTensor<ElemT>& inout,
-                   const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>& coor_pairs) {
+  template <typename ElemT> void extract_sub(
+      context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout,
+      const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>&
+          coor_pairs) {
     auto original_shape = inout.backend.shape();
 
     if (coor_pairs.size() != original_shape.size()) {
@@ -1526,22 +1449,21 @@ namespace tci {
     inout.backend = std::move(result);
   }
 
-  template <typename ElemT>
-  void extract_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                   const CytnxTensor<ElemT>& in,
-                   const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>& coor_pairs,
-                   CytnxTensor<ElemT>& out) {
+  template <typename ElemT> void extract_sub(
+      context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
+      const List<Pair<elem_coor_t<CytnxTensor<ElemT>>, elem_coor_t<CytnxTensor<ElemT>>>>&
+          coor_pairs,
+      CytnxTensor<ElemT>& out) {
     out = in;
     extract_sub(ctx, out, coor_pairs);
   }
 
   // replace_sub
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
-  template <typename ElemT>
-  void replace_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                   CytnxTensor<ElemT>& inout,
-                   const CytnxTensor<ElemT>& sub,
-                   const elem_coors_t<CytnxTensor<ElemT>>& begin_pt) {
+  template <typename ElemT> void replace_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                             CytnxTensor<ElemT>& inout,
+                                             const CytnxTensor<ElemT>& sub,
+                                             const elem_coors_t<CytnxTensor<ElemT>>& begin_pt) {
     auto main_shape = inout.backend.shape();
     auto sub_shape = sub.backend.shape();
 
@@ -1562,10 +1484,8 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void replace_sub(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                   const CytnxTensor<ElemT>& in,
-                   const CytnxTensor<ElemT>& sub,
-                   const elem_coors_t<CytnxTensor<ElemT>>& begin_pt,
+  void replace_sub(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
+                   const CytnxTensor<ElemT>& sub, const elem_coors_t<CytnxTensor<ElemT>>& begin_pt,
                    CytnxTensor<ElemT>& out) {
     out.backend = in.backend.clone();
     replace_sub(ctx, out, sub, begin_pt);
@@ -1574,10 +1494,8 @@ namespace tci {
   // concatenate
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
   template <typename ElemT>
-  void concatenate(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                   const List<CytnxTensor<ElemT>>& ins,
-                   const bond_idx_t<CytnxTensor<ElemT>> axis,
-                   CytnxTensor<ElemT>& out) {
+  void concatenate(context_handle_t<CytnxTensor<ElemT>>& ctx, const List<CytnxTensor<ElemT>>& ins,
+                   const bond_idx_t<CytnxTensor<ElemT>> axis, CytnxTensor<ElemT>& out) {
     if (ins.empty()) {
       throw std::invalid_argument("Cannot concatenate empty list of tensors");
     }
@@ -1601,7 +1519,8 @@ namespace tci {
 
       for (size_t j = 0; j < shape.size(); ++j) {
         if (j != axis && shape[j] != first_shape[j]) {
-          throw std::invalid_argument("All tensors must have the same shape except along concat dimension");
+          throw std::invalid_argument(
+              "All tensors must have the same shape except along concat dimension");
         }
       }
 
@@ -1639,10 +1558,8 @@ namespace tci {
   // stack
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
   template <typename ElemT>
-  void stack(context_handle_t<CytnxTensor<ElemT>>& ctx,
-             const List<CytnxTensor<ElemT>>& ins,
-             const bond_idx_t<CytnxTensor<ElemT>> axis,
-             CytnxTensor<ElemT>& out) {
+  void stack(context_handle_t<CytnxTensor<ElemT>>& ctx, const List<CytnxTensor<ElemT>>& ins,
+             const bond_idx_t<CytnxTensor<ElemT>> axis, CytnxTensor<ElemT>& out) {
     if (ins.empty()) {
       throw std::invalid_argument("Cannot stack empty list of tensors");
     }
@@ -1748,7 +1665,8 @@ namespace tci {
 
   // for_each_with_coors for CytnxTensor<ElemT> (mutable version)
   template <typename ElemT, typename Func>
-  void for_each_with_coors(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout, Func&& f) {
+  void for_each_with_coors(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout,
+                           Func&& f) {
     auto shape = inout.backend.shape();
     std::vector<cytnx::cytnx_uint64> coords;
     coords.reserve(shape.size());
@@ -1758,7 +1676,8 @@ namespace tci {
 
   // for_each_with_coors for CytnxTensor<ElemT> (const version)
   template <typename ElemT, typename Func>
-  void for_each_with_coors(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in, Func&& f) {
+  void for_each_with_coors(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
+                           Func&& f) {
     auto shape = in.backend.shape();
     std::vector<cytnx::cytnx_uint64> coords;
     coords.reserve(shape.size());
@@ -1767,17 +1686,14 @@ namespace tci {
   }
 
   // move - move tensor contents (in-place)
-  template <typename ElemT>
-  void move(context_handle_t<CytnxTensor<ElemT>>& ctx,
-            CytnxTensor<ElemT>& from,
-            CytnxTensor<ElemT>& to) {
+  template <typename ElemT> void move(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                      CytnxTensor<ElemT>& from, CytnxTensor<ElemT>& to) {
     to.backend = std::move(from.backend);
   }
 
   // move - move tensor contents (out-of-place)
   template <typename ElemT>
-  CytnxTensor<ElemT> move(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                          CytnxTensor<ElemT>& from) {
+  CytnxTensor<ElemT> move(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& from) {
     CytnxTensor<ElemT> result;
     move(ctx, from, result);
     return result;
@@ -1794,12 +1710,9 @@ namespace tci {
 
   // contract - tensor contraction (string version)
   template <typename ElemT>
-  void contract(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                const CytnxTensor<ElemT>& a,
-                const std::string_view bd_labs_str_a,
-                const CytnxTensor<ElemT>& b,
-                const std::string_view bd_labs_str_b,
-                CytnxTensor<ElemT>& c,
+  void contract(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                const std::string_view bd_labs_str_a, const CytnxTensor<ElemT>& b,
+                const std::string_view bd_labs_str_b, CytnxTensor<ElemT>& c,
                 const std::string_view bd_labs_str_c) {
     List<bond_label_t<CytnxTensor<ElemT>>> bd_labs_a, bd_labs_b, bd_labs_c;
     for (char ch : bd_labs_str_a) {
@@ -1815,8 +1728,7 @@ namespace tci {
   }
 
   // Explicit specializations for zeros (out-of-place) for all supported element types
-  template <>
-  inline CytnxTensor<cytnx::cytnx_double> zeros<CytnxTensor<cytnx::cytnx_double>>(
+  template <> inline CytnxTensor<cytnx::cytnx_double> zeros<CytnxTensor<cytnx::cytnx_double>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape) {
     CytnxTensor<cytnx::cytnx_double> result;
@@ -1824,8 +1736,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_float> zeros<CytnxTensor<cytnx::cytnx_float>>(
+  template <> inline CytnxTensor<cytnx::cytnx_float> zeros<CytnxTensor<cytnx::cytnx_float>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape) {
     CytnxTensor<cytnx::cytnx_float> result;
@@ -1842,8 +1753,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_complex64> zeros<CytnxTensor<cytnx::cytnx_complex64>>(
+  template <> inline CytnxTensor<cytnx::cytnx_complex64> zeros<CytnxTensor<cytnx::cytnx_complex64>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape) {
     CytnxTensor<cytnx::cytnx_complex64> result;
@@ -1852,8 +1762,7 @@ namespace tci {
   }
 
   // Explicit specializations for fill (out-of-place) for all supported element types
-  template <>
-  inline CytnxTensor<cytnx::cytnx_double> fill<CytnxTensor<cytnx::cytnx_double>>(
+  template <> inline CytnxTensor<cytnx::cytnx_double> fill<CytnxTensor<cytnx::cytnx_double>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape,
       elem_t<CytnxTensor<cytnx::cytnx_double>> value) {
@@ -1862,8 +1771,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_float> fill<CytnxTensor<cytnx::cytnx_float>>(
+  template <> inline CytnxTensor<cytnx::cytnx_float> fill<CytnxTensor<cytnx::cytnx_float>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape,
       elem_t<CytnxTensor<cytnx::cytnx_float>> value) {
@@ -1882,8 +1790,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_complex64> fill<CytnxTensor<cytnx::cytnx_complex64>>(
+  template <> inline CytnxTensor<cytnx::cytnx_complex64> fill<CytnxTensor<cytnx::cytnx_complex64>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape,
       elem_t<CytnxTensor<cytnx::cytnx_complex64>> value) {
@@ -1893,8 +1800,7 @@ namespace tci {
   }
 
   // Explicit specializations for eye (out-of-place) for all supported element types
-  template <>
-  inline CytnxTensor<cytnx::cytnx_double> eye<CytnxTensor<cytnx::cytnx_double>>(
+  template <> inline CytnxTensor<cytnx::cytnx_double> eye<CytnxTensor<cytnx::cytnx_double>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const bond_dim_t<CytnxTensor<cytnx::cytnx_double>> N) {
     CytnxTensor<cytnx::cytnx_double> result;
@@ -1902,8 +1808,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_float> eye<CytnxTensor<cytnx::cytnx_float>>(
+  template <> inline CytnxTensor<cytnx::cytnx_float> eye<CytnxTensor<cytnx::cytnx_float>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       const bond_dim_t<CytnxTensor<cytnx::cytnx_float>> N) {
     CytnxTensor<cytnx::cytnx_float> result;
@@ -1911,8 +1816,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_complex128> eye<CytnxTensor<cytnx::cytnx_complex128>>(
+  template <> inline CytnxTensor<cytnx::cytnx_complex128> eye<CytnxTensor<cytnx::cytnx_complex128>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
       const bond_dim_t<CytnxTensor<cytnx::cytnx_complex128>> N) {
     CytnxTensor<cytnx::cytnx_complex128> result;
@@ -1920,8 +1824,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_complex64> eye<CytnxTensor<cytnx::cytnx_complex64>>(
+  template <> inline CytnxTensor<cytnx::cytnx_complex64> eye<CytnxTensor<cytnx::cytnx_complex64>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const bond_dim_t<CytnxTensor<cytnx::cytnx_complex64>> N) {
     CytnxTensor<cytnx::cytnx_complex64> result;
@@ -1930,8 +1833,7 @@ namespace tci {
   }
 
   // Explicit specializations for allocate (out-of-place) for all supported element types
-  template <>
-  inline CytnxTensor<cytnx::cytnx_double> allocate<CytnxTensor<cytnx::cytnx_double>>(
+  template <> inline CytnxTensor<cytnx::cytnx_double> allocate<CytnxTensor<cytnx::cytnx_double>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape) {
     CytnxTensor<cytnx::cytnx_double> result;
@@ -1939,8 +1841,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_float> allocate<CytnxTensor<cytnx::cytnx_float>>(
+  template <> inline CytnxTensor<cytnx::cytnx_float> allocate<CytnxTensor<cytnx::cytnx_float>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape) {
     CytnxTensor<cytnx::cytnx_float> result;
@@ -1967,8 +1868,7 @@ namespace tci {
   }
 
   // Explicit specializations for copy (out-of-place) for all supported element types
-  template <>
-  inline CytnxTensor<cytnx::cytnx_double> copy<CytnxTensor<cytnx::cytnx_double>>(
+  template <> inline CytnxTensor<cytnx::cytnx_double> copy<CytnxTensor<cytnx::cytnx_double>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const CytnxTensor<cytnx::cytnx_double>& orig) {
     CytnxTensor<cytnx::cytnx_double> result;
@@ -1976,8 +1876,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_float> copy<CytnxTensor<cytnx::cytnx_float>>(
+  template <> inline CytnxTensor<cytnx::cytnx_float> copy<CytnxTensor<cytnx::cytnx_float>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       const CytnxTensor<cytnx::cytnx_float>& orig) {
     CytnxTensor<cytnx::cytnx_float> result;
@@ -1994,8 +1893,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_complex64> copy<CytnxTensor<cytnx::cytnx_complex64>>(
+  template <> inline CytnxTensor<cytnx::cytnx_complex64> copy<CytnxTensor<cytnx::cytnx_complex64>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const CytnxTensor<cytnx::cytnx_complex64>& orig) {
     CytnxTensor<cytnx::cytnx_complex64> result;
@@ -2004,8 +1902,7 @@ namespace tci {
   }
 
   // Explicit specializations for move (out-of-place) for all supported element types
-  template <>
-  inline CytnxTensor<cytnx::cytnx_double> move<CytnxTensor<cytnx::cytnx_double>>(
+  template <> inline CytnxTensor<cytnx::cytnx_double> move<CytnxTensor<cytnx::cytnx_double>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       CytnxTensor<cytnx::cytnx_double>& from) {
     CytnxTensor<cytnx::cytnx_double> result;
@@ -2013,8 +1910,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_float> move<CytnxTensor<cytnx::cytnx_float>>(
+  template <> inline CytnxTensor<cytnx::cytnx_float> move<CytnxTensor<cytnx::cytnx_float>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       CytnxTensor<cytnx::cytnx_float>& from) {
     CytnxTensor<cytnx::cytnx_float> result;
@@ -2031,8 +1927,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_complex64> move<CytnxTensor<cytnx::cytnx_complex64>>(
+  template <> inline CytnxTensor<cytnx::cytnx_complex64> move<CytnxTensor<cytnx::cytnx_complex64>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       CytnxTensor<cytnx::cytnx_complex64>& from) {
     CytnxTensor<cytnx::cytnx_complex64> result;
@@ -2045,10 +1940,9 @@ namespace tci {
   // ===================================================================
 
   // inverse - matrix inverse (in-place)
-  template <typename ElemT>
-  void inverse(context_handle_t<CytnxTensor<ElemT>>& ctx,
-               CytnxTensor<ElemT>& inout,
-               const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
+  template <typename ElemT> void inverse(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                         CytnxTensor<ElemT>& inout,
+                                         const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
     auto a_shape = shape(ctx, inout);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -2065,9 +1959,8 @@ namespace tci {
       throw std::invalid_argument("inverse: matrix must be square");
     }
 
-    cytnx::Tensor reshaped
-        = inout.backend.reshape({static_cast<cytnx::cytnx_int64>(row_dim),
-                                 static_cast<cytnx::cytnx_int64>(col_dim)});
+    cytnx::Tensor reshaped = inout.backend.reshape(
+        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     cytnx::Tensor result;
     try {
@@ -2088,10 +1981,8 @@ namespace tci {
 
   // inverse - matrix inverse (out-of-place)
   template <typename ElemT>
-  void inverse(context_handle_t<CytnxTensor<ElemT>>& ctx,
-               const CytnxTensor<ElemT>& in,
-               const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-               CytnxTensor<ElemT>& out) {
+  void inverse(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
+               const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& out) {
     auto a_shape = shape(ctx, in);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -2108,9 +1999,8 @@ namespace tci {
       throw std::invalid_argument("inverse: matrix must be square");
     }
 
-    cytnx::Tensor reshaped
-        = in.backend.reshape({static_cast<cytnx::cytnx_int64>(row_dim),
-                              static_cast<cytnx::cytnx_int64>(col_dim)});
+    cytnx::Tensor reshaped = in.backend.reshape(
+        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     cytnx::Tensor result;
     try {
@@ -2130,10 +2020,9 @@ namespace tci {
   }
 
   // exp - matrix exponential (in-place)
-  template <typename ElemT>
-  void exp(context_handle_t<CytnxTensor<ElemT>>& ctx,
-           CytnxTensor<ElemT>& inout,
-           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
+  template <typename ElemT> void exp(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                     CytnxTensor<ElemT>& inout,
+                                     const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
     auto a_shape = shape(ctx, inout);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -2151,8 +2040,8 @@ namespace tci {
     }
 
     // Reshape to 2D matrix
-    cytnx::Tensor reshaped = inout.backend.reshape({static_cast<cytnx::cytnx_int64>(row_dim),
-                                                     static_cast<cytnx::cytnx_int64>(col_dim)});
+    cytnx::Tensor reshaped = inout.backend.reshape(
+        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     // Apply matrix exponential
     cytnx::Tensor result = cytnx::linalg::ExpM(reshaped);
@@ -2167,10 +2056,8 @@ namespace tci {
 
   // exp - matrix exponential (out-of-place)
   template <typename ElemT>
-  void exp(context_handle_t<CytnxTensor<ElemT>>& ctx,
-           const CytnxTensor<ElemT>& in,
-           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
-           CytnxTensor<ElemT>& out) {
+  void exp(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
+           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& out) {
     auto a_shape = shape(ctx, in);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -2188,8 +2075,8 @@ namespace tci {
     }
 
     // Reshape to 2D matrix
-    cytnx::Tensor reshaped = in.backend.reshape({static_cast<cytnx::cytnx_int64>(row_dim),
-                                                  static_cast<cytnx::cytnx_int64>(col_dim)});
+    cytnx::Tensor reshaped = in.backend.reshape(
+        {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     // Apply matrix exponential
     cytnx::Tensor result = cytnx::linalg::ExpM(reshaped);
@@ -2207,13 +2094,11 @@ namespace tci {
   // ===================================================================
 
   // Context management for CytnxTensor<ElemT>
-  template <typename ElemT>
-  void create_context(context_handle_t<CytnxTensor<ElemT>>& ctx) {
+  template <typename ElemT> void create_context(context_handle_t<CytnxTensor<ElemT>>& ctx) {
     ctx = cytnx::Device.cpu;
   }
 
-  template <typename ElemT>
-  void destroy_context(context_handle_t<CytnxTensor<ElemT>>& ctx) {
+  template <typename ElemT> void destroy_context(context_handle_t<CytnxTensor<ElemT>>& ctx) {
     // No-op for Cytnx
   }
 

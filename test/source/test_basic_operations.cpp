@@ -178,7 +178,7 @@ TEST_CASE("TCI Size Bytes Calculation") {
 
     auto size = tci::size_bytes(ctx, tensor);
     // Complex128: 16 bytes per element, 4 elements = 64 bytes
-    CHECK(size > 0); // At least verify it's not zero/placeholder
+    CHECK(size > 0);  // At least verify it's not zero/placeholder
   }
 
   tci::destroy_context(ctx);

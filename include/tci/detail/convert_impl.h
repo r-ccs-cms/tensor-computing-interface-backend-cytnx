@@ -2,16 +2,16 @@
 
 #include <cytnx.hpp>
 #include <sstream>
-#include "tci/cytnx_typed_tensor.h"
+
 #include "tci/cytnx_tensor_traits.h"
+#include "tci/cytnx_typed_tensor.h"
 #include "tci/debugging.h"
 
 namespace tci {
 
   namespace detail {
     // Helper function to get Cytnx type ID from C++ type
-    template <typename ElemT>
-    constexpr unsigned int get_cytnx_type_id() {
+    template <typename ElemT> constexpr unsigned int get_cytnx_type_id() {
       if constexpr (std::is_same_v<ElemT, cytnx::cytnx_double>) {
         return cytnx::Type.Double;
       } else if constexpr (std::is_same_v<ElemT, cytnx::cytnx_float>) {

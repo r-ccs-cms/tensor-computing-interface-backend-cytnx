@@ -1,13 +1,14 @@
 #pragma once
 
-#include "tci/tensor_traits.h"
+#include <complex>
+#include <functional>
+#include <type_traits>
+#include <utility>
+
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/read_only_getters.h"
 #include "tci/tensor_manipulation.h"
-#include <functional>
-#include <complex>
-#include <utility>
-#include <type_traits>
+#include "tci/tensor_traits.h"
 
 namespace tci {
 
@@ -179,7 +180,6 @@ namespace tci {
     random(ctx, shape, std::forward<RandNumGen>(gen), result);
     return result;
   }
-
 
   /**
    * @brief Create an identity matrix (in-place version)
