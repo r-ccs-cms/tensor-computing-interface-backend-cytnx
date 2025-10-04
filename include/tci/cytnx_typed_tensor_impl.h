@@ -1851,6 +1851,47 @@ namespace tci {
     return result;
   }
 
+  // Explicit specializations for fill (out-of-place) for all supported element types
+  template <>
+  inline CytnxTensor<cytnx::cytnx_double> fill<CytnxTensor<cytnx::cytnx_double>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape,
+      elem_t<CytnxTensor<cytnx::cytnx_double>> value) {
+    CytnxTensor<cytnx::cytnx_double> result;
+    fill(ctx, shape, value, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_float> fill<CytnxTensor<cytnx::cytnx_float>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape,
+      elem_t<CytnxTensor<cytnx::cytnx_float>> value) {
+    CytnxTensor<cytnx::cytnx_float> result;
+    fill(ctx, shape, value, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex128> fill<CytnxTensor<cytnx::cytnx_complex128>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape,
+      elem_t<CytnxTensor<cytnx::cytnx_complex128>> value) {
+    CytnxTensor<cytnx::cytnx_complex128> result;
+    fill(ctx, shape, value, result);
+    return result;
+  }
+
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex64> fill<CytnxTensor<cytnx::cytnx_complex64>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape,
+      elem_t<CytnxTensor<cytnx::cytnx_complex64>> value) {
+    CytnxTensor<cytnx::cytnx_complex64> result;
+    fill(ctx, shape, value, result);
+    return result;
+  }
+
   // Explicit specializations for eye (out-of-place) for all supported element types
   template <>
   inline CytnxTensor<cytnx::cytnx_double> eye<CytnxTensor<cytnx::cytnx_double>>(
