@@ -87,7 +87,7 @@ TEST_CASE("TCI Matrix Decomposition - Truncated SVD") {
 
     // Test truncated SVD implementation
     // For a 4x4 matrix, num_of_bds_as_row=1 means treat first dimension as row
-    CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, 2, 0.1));
+    CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, 2ULL, 0.1));
 
     // Verify dimensions (should be truncated to at most chi_max=2)
     auto u_shape = tci::shape(ctx, u);
@@ -381,7 +381,7 @@ TEST_CASE("TCI Truncated SVD") {
     tci::real_t<tci::CytnxTensor<cytnx::cytnx_complex128>> trunc_err;
 
     // Test truncated SVD with chi_max=2 and s_min=0.5
-    CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err, 2, 0.5));
+    CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err, 2ULL, 0.5));
 
     // Verify dimensions (should be truncated to at most chi_max=2)
     auto s_shape = tci::shape(ctx, s_diag);

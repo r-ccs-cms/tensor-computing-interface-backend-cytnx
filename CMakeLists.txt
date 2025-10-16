@@ -106,6 +106,15 @@ configure_asan_odr_detection(${PROJECT_NAME})
 # Link dependencies
 target_link_libraries(${PROJECT_NAME} PUBLIC cytnx)
 
+# Create a flag boundary: Remove Cytnx's -w flag from INTERFACE propagation
+# This allows TCI's tests and examples to show deprecation warnings
+# Note: Cytnx itself will still compile with -w, but it won't propagate to downstream targets
+get_target_property(CYTNX_INTERFACE_COMPILE_OPTIONS cytnx INTERFACE_COMPILE_OPTIONS)
+if(CYTNX_INTERFACE_COMPILE_OPTIONS)
+  list(REMOVE_ITEM CYTNX_INTERFACE_COMPILE_OPTIONS "-w")
+  set_target_properties(cytnx PROPERTIES INTERFACE_COMPILE_OPTIONS "${CYTNX_INTERFACE_COMPILE_OPTIONS}")
+endif()
+
 target_include_directories(
   ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                          $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>

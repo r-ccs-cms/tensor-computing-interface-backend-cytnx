@@ -189,11 +189,11 @@ void io_and_utilities() {
 
   // Test equality comparison
   Ten test_tensor2 = eye<Ten>(ctx, 3);
-  bool are_equal = eq(ctx, test_tensor, test_tensor2, std::complex<double>(1e-10, 0));
+  bool are_equal = close(ctx, test_tensor, test_tensor2, std::complex<double>(1e-10, 0));
   std::cout << "  Tensors are equal: " << (are_equal ? "true" : "false") << std::endl;
 
   // Convert to STL container functionality disabled due to template linkage issues
-  // to_container function suffers from same lambda linkage problem as random() previously did
+  // to_range function suffers from same lambda linkage problem as random() previously did
   // Requires similar header-only implementation to resolve template instantiation with lambdas
   /*
   std::vector<std::complex<double>> container(9);
@@ -201,7 +201,7 @@ void io_and_utilities() {
       return coors[0] * 3 + coors[1]; // 3×3 tensor, row-major mapping function
   };
 
-  to_container(ctx, test_tensor, container.begin(), row_major_map);
+  to_range(ctx, test_tensor, container.begin(), row_major_map);
   */
 
   // std::cout << "  Converted to std::vector: ";
@@ -234,9 +234,9 @@ void demonstrate_verbose_output() {
   Ten A = eye<Ten>(ctx, 2);
   Ten B = zeros<Ten>(ctx, {2, 2});
 
-  // This will trigger TCI_VERBOSE output for show, eq, and convert functions
+  // This will trigger TCI_VERBOSE output for show, close, and convert functions
   show(ctx, A);
-  bool equal = eq(ctx, A, B, std::complex<double>(1e-6, 0));
+  bool equal = close(ctx, A, B, std::complex<double>(1e-6, 0));
 
   Ten C;
   context_handle_t<Ten> ctx2;

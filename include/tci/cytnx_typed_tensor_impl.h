@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cytnx.hpp>
+#include <limits>
 #include <vector>
 
 #include "tci/construction_destruction.h"
@@ -77,23 +78,40 @@ namespace tci {
   }
 
   template <typename ElemT>
-  void get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-                const elem_coors_t<CytnxTensor<ElemT>>& coors, elem_t<CytnxTensor<ElemT>>& elem) {
+  elem_t<CytnxTensor<ElemT>> get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                      const CytnxTensor<ElemT>& a,
+                                      const elem_coors_t<CytnxTensor<ElemT>>& coors) {
     std::vector<cytnx::cytnx_uint64> cytnx_coors;
     cytnx_coors.reserve(coors.size());
     for (const auto& coord : coors) {
       cytnx_coors.push_back(static_cast<cytnx::cytnx_uint64>(coord));
     }
-    elem = a.backend.template at<ElemT>(cytnx_coors);
+    return a.backend.template at<ElemT>(cytnx_coors);
   }
 
+  // Void overload (reserved for future GPU support)
   template <typename ElemT>
-  elem_t<CytnxTensor<ElemT>> get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                      const CytnxTensor<ElemT>& a,
-                                      const elem_coors_t<CytnxTensor<ElemT>>& coors) {
-    elem_t<CytnxTensor<ElemT>> elem;
-    get_elem(ctx, a, coors, elem);
-    return elem;
+  void get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                const elem_coors_t<CytnxTensor<ElemT>>& coors, elem_t<CytnxTensor<ElemT>>& elem) {
+    // Runtime warning (emitted once per program execution)
+    static bool warned = false;
+    if (!warned) {
+      // Check suppression flag
+      const char* suppress = std::getenv("TCI_SUPPRESS_FUTURE_API_WARNING");
+
+      // Show warning by default, unless explicitly suppressed
+      if (!suppress || std::atoi(suppress) == 0) {
+        std::cerr
+            << "[TCI Warning] tci::get_elem void overload is reserved for future GPU support.\n"
+            << "  This call is currently forwarded to the return-value version.\n"
+            << "  Recommended migration: auto elem = tci::get_elem(ctx, a, coors);\n"
+            << "  To suppress this warning: export TCI_SUPPRESS_FUTURE_API_WARNING=1\n";
+      }
+      warned = true;
+    }
+
+    // Forward to current API
+    elem = get_elem(ctx, a, coors);
   }
 
   // for_each implementation for CytnxTensor<ElemT> (mutable version)
@@ -909,12 +927,46 @@ namespace tci {
     q.backend = q_backend_final.reshape(q_cytnx_shape);
   }
 
+  // Truncated SVD - overload (2): chi_max, s_min
   template <typename ElemT>
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
                  const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
                  real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
                  real_t<CytnxTensor<ElemT>>& trunc_err,
                  const bond_dim_t<CytnxTensor<ElemT>> chi_max,
+                 const real_t<CytnxTensor<ElemT>> s_min) {
+    // Call full version with chi_min=1, target_trunc_err=0
+    constexpr bond_dim_t<CytnxTensor<ElemT>> chi_min = 1;
+    constexpr real_t<CytnxTensor<ElemT>> target_trunc_err = 0.0;
+    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
+              target_trunc_err, s_min);
+  }
+
+  // Truncated SVD - overload (1): target_trunc_err, s_min
+  template <typename ElemT>
+  void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
+                 real_t<CytnxTensor<ElemT>>& trunc_err,
+                 const real_t<CytnxTensor<ElemT>> target_trunc_err,
+                 const real_t<CytnxTensor<ElemT>> s_min) {
+    // Call full version with chi_min=1, chi_max=∞ (represented by a very large value)
+    constexpr bond_dim_t<CytnxTensor<ElemT>> chi_min = 1;
+    constexpr bond_dim_t<CytnxTensor<ElemT>> chi_max
+        = std::numeric_limits<bond_dim_t<CytnxTensor<ElemT>>>::max();
+    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
+              target_trunc_err, s_min);
+  }
+
+  // Truncated SVD - overload (3): full control
+  template <typename ElemT>
+  void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
+                 real_t<CytnxTensor<ElemT>>& trunc_err,
+                 const bond_dim_t<CytnxTensor<ElemT>> chi_min,
+                 const bond_dim_t<CytnxTensor<ElemT>> chi_max,
+                 const real_t<CytnxTensor<ElemT>> target_trunc_err,
                  const real_t<CytnxTensor<ElemT>> s_min) {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
@@ -931,9 +983,9 @@ namespace tci {
     auto a_reshaped = a.backend.reshape(
         {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
 
-    // Perform SVD
-    // Parameters: tensor, chi_max, s_min, is_UvT, return_err, mindim
-    // Note: return_err=0 to avoid ASAN container-overflow in Cytnx's Svd_truncate
+    // Perform SVD with chi_max constraint
+    // Note: Cytnx's Svd_truncate doesn't support target_trunc_err or chi_min directly,
+    // so we apply chi_max first and then manually truncate based on target_trunc_err and chi_min
     auto svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
 
     if (svd_result.size() < 3) {
@@ -941,12 +993,53 @@ namespace tci {
     }
 
     // Extract S, U, Vt (order: S, U, V†)
-    auto& s_backend = svd_result[0];
-    auto& u_backend = svd_result[1];
-    auto& vt_backend = svd_result[2];
+    auto s_backend = svd_result[0];
+    auto u_backend = svd_result[1];
+    auto vt_backend = svd_result[2];
 
-    // Calculate truncation error manually from minimum singular value
+    // Apply target_trunc_err: find the largest index where s[i] > target_trunc_err
     bond_dim_t<CytnxTensor<ElemT>> bond_dim = s_backend.shape()[0];
+    bond_dim_t<CytnxTensor<ElemT>> new_bond_dim = bond_dim;
+
+    if (target_trunc_err > 0.0 && bond_dim > chi_min) {
+      // Find truncation point based on target_trunc_err
+      if (s_backend.dtype() == cytnx::Type.Double) {
+        auto* s_data = s_backend.template ptr_as<double>();
+        for (bond_dim_t<CytnxTensor<ElemT>> i = chi_min; i < bond_dim; ++i) {
+          if (s_data[i] <= target_trunc_err) {
+            new_bond_dim = i;
+            break;
+          }
+        }
+      } else if (s_backend.dtype() == cytnx::Type.Float) {
+        auto* s_data = s_backend.template ptr_as<float>();
+        for (bond_dim_t<CytnxTensor<ElemT>> i = chi_min; i < bond_dim; ++i) {
+          if (s_data[i] <= static_cast<float>(target_trunc_err)) {
+            new_bond_dim = i;
+            break;
+          }
+        }
+      }
+      // Ensure we keep at least chi_min dimensions
+      new_bond_dim = std::max(new_bond_dim, chi_min);
+    }
+
+    // Apply chi_min constraint
+    new_bond_dim = std::max(new_bond_dim, chi_min);
+
+    // Truncate tensors if needed
+    if (new_bond_dim < bond_dim) {
+      // Truncate S
+      s_backend = s_backend.get({cytnx::Accessor::range(0, new_bond_dim)});
+      // Truncate U
+      u_backend = u_backend.get({cytnx::Accessor::all(), cytnx::Accessor::range(0, new_bond_dim)});
+      // Truncate Vt
+      vt_backend
+          = vt_backend.get({cytnx::Accessor::range(0, new_bond_dim), cytnx::Accessor::all()});
+      bond_dim = new_bond_dim;
+    }
+
+    // Calculate truncation error
     if (bond_dim > 0) {
       if (s_backend.dtype() == cytnx::Type.Double) {
         auto* s_data = s_backend.template ptr_as<double>();
@@ -961,7 +1054,7 @@ namespace tci {
       trunc_err = 0.0;
     }
 
-    // Extract real singular values (SVD of complex tensors may return complex-typed tensor)
+    // Extract real singular values
     cytnx::Tensor s_real = s_backend.dtype() == cytnx::Type.Double ? s_backend : s_backend.real();
 
     // Reshape U
@@ -990,6 +1083,37 @@ namespace tci {
       v_cytnx_shape.push_back(static_cast<cytnx::cytnx_int64>(dim));
     }
     v_dag.backend = vt_backend.reshape(v_cytnx_shape);
+  }
+
+  // Deprecated: Old trunc_svd overload (1) - only s_min
+  template <typename ElemT> [[deprecated(
+      "Parameter order changed. Use trunc_svd(..., trunc_err, target_trunc_err, s_min). Will be "
+      "removed in the next major version")]]
+  void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
+                 real_t<CytnxTensor<ElemT>>& trunc_err, const real_t<CytnxTensor<ElemT>> s_min) {
+    // Forward to new API with target_trunc_err=0.0
+    constexpr real_t<CytnxTensor<ElemT>> target_trunc_err = 0.0;
+    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, target_trunc_err, s_min);
+  }
+
+  // Deprecated: Old trunc_svd overload (2) - chi_max, target_trunc_err, s_min
+  template <typename ElemT> [[deprecated(
+      "Parameter order changed. Use trunc_svd(..., trunc_err, chi_max, s_min) or trunc_svd(..., "
+      "trunc_err, chi_min, chi_max, target_trunc_err, s_min). Will be removed in the next major "
+      "version")]]
+  void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
+                 real_t<CytnxTensor<ElemT>>& trunc_err,
+                 const bond_dim_t<CytnxTensor<ElemT>> chi_max,
+                 const real_t<CytnxTensor<ElemT>> target_trunc_err,
+                 const real_t<CytnxTensor<ElemT>> s_min) {
+    // Forward to new API (full version with chi_min=1)
+    constexpr bond_dim_t<CytnxTensor<ElemT>> chi_min = 1;
+    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
+              target_trunc_err, s_min);
   }
 
   // Eigenvalue decomposition - eigvals (general matrix eigenvalues)
@@ -1145,10 +1269,10 @@ namespace tci {
     }
   }
 
-  // Tensor equality check with epsilon tolerance
-  template <typename ElemT> bool eq(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                    const CytnxTensor<ElemT>& a, const CytnxTensor<ElemT>& b,
-                                    const elem_t<CytnxTensor<ElemT>> epsilon) {
+  // Check if two tensors are close within tolerance
+  template <typename ElemT> bool close(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                       const CytnxTensor<ElemT>& a, const CytnxTensor<ElemT>& b,
+                                       const elem_t<CytnxTensor<ElemT>> epsilon) {
     (void)ctx;
     // Check shape first
     if (a.backend.shape() != b.backend.shape()) {
@@ -1175,6 +1299,14 @@ namespace tci {
     // Compare with epsilon tolerance
     double eps_magnitude = std::abs(epsilon);
     return diff_norm <= eps_magnitude;
+  }
+
+  // Deprecated: Tensor equality check with epsilon tolerance
+  template <typename ElemT>
+  [[deprecated("Use close instead. This API will be removed in the next major version")]]
+  bool eq(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
+          const CytnxTensor<ElemT>& b, const elem_t<CytnxTensor<ElemT>> epsilon) {
+    return close(ctx, a, b, epsilon);
   }
 
   // assign_from_container - create tensor from container

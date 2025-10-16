@@ -57,24 +57,25 @@ namespace tci {
   template <typename TenT> TenT zeros(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape);
 
   /**
-   * @brief Create a tensor from a container/range (in-place version)
+   * @brief Create a tensor from a range
    *
    * @tparam TenT Tensor type
    * @tparam RandomIt Random access iterator type
    * @tparam Func Function type for coordinate to index mapping
    * @param ctx Context handle for the tensor library
    * @param shape Shape of the tensor
-   * @param init_elems_begin Iterator to beginning of elements
+   * @param first Iterator to beginning of elements
    * @param coors2idx Function to convert coordinates to linear index
-   * @param a Output tensor
+   * @return TenT Created tensor
    */
   template <typename TenT, typename RandomIt, typename Func>
-  void assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
-                             RandomIt init_elems_begin, Func&& coors2idx, TenT& a);
+  TenT assign_from_range(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
+                         RandomIt first, Func&& coors2idx);
 
   /**
-   * @brief Create a tensor from a container/range (out-of-place version)
+   * @brief Create a tensor from a container/range (deprecated - use assign_from_range)
    *
+   * @deprecated Use assign_from_range instead. This API will be removed in the next major version
    * @tparam TenT Tensor type
    * @tparam RandomIt Random access iterator type
    * @tparam Func Function type for coordinate to index mapping
@@ -85,15 +86,17 @@ namespace tci {
    * @return TenT Created tensor
    */
   template <typename TenT, typename RandomIt, typename Func>
+  [[deprecated("Use assign_from_range instead. This API will be removed in the next major version")]]
   TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
                              RandomIt init_elems_begin, Func&& coors2idx);
 
-  // Template function implementations for assign_from_container
+  // Template function implementations for assign_from_range
   // Generic implementation that works with any tensor type
 
   template <typename TenT, typename RandomIt, typename Func>
-  void assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
-                             RandomIt init_elems_begin, Func&& coors2idx, TenT& a) {
+  TenT assign_from_range(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
+                         RandomIt first, Func&& coors2idx) {
+    TenT a;
     // Create tensor with the specified shape
     allocate(ctx, shape, a);
 
@@ -103,7 +106,7 @@ namespace tci {
       if (dim == shape.size()) {
         // Base case: all dimensions set, assign the element
         auto index = std::invoke(coors2idx, current_coords);
-        auto value = *(init_elems_begin + index);
+        auto value = *(first + index);
         elem_t<TenT> elem_val = static_cast<elem_t<TenT>>(value);
 
         set_elem(ctx, a, current_coords, elem_val);
@@ -118,14 +121,14 @@ namespace tci {
     };
 
     assign_recursive({}, 0);
+    return a;
   }
 
+  // Deprecated: Forward to assign_from_range
   template <typename TenT, typename RandomIt, typename Func>
   TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
                              RandomIt init_elems_begin, Func&& coors2idx) {
-    TenT result;
-    assign_from_container(ctx, shape, init_elems_begin, std::forward<Func>(coors2idx), result);
-    return result;
+    return assign_from_range<TenT, RandomIt, Func>(ctx, shape, init_elems_begin, std::forward<Func>(coors2idx));
   }
 
   /**
