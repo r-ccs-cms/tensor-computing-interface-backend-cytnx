@@ -10,7 +10,6 @@ using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
 using ContextHandle = tci::context_handle_t<Tensor>;
 using Elem = tci::elem_t<Tensor>;  // double
 using Real = tci::real_t<Tensor>;  // double
-using Int = tci::bond_label_t<Tensor>;
 
 TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {
   // Create context
