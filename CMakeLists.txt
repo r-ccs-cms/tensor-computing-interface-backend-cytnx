@@ -2,11 +2,19 @@ cmake_minimum_required(VERSION 3.24) # Required for Cytnx
 
 # ---- Project ----
 
-project(
-  TCI
-  VERSION 1.0
-  LANGUAGES CXX
-)
+if(USE_CUDA)
+  project(
+    TCI
+    VERSION 1.0
+    LANGUAGES CXX CUDA
+  )
+else()
+  project(
+    TCI
+    VERSION 1.0
+    LANGUAGES CXX
+  )
+endif()
 
 # ---- Build Options ----
 
