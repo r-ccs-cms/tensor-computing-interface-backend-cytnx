@@ -37,6 +37,13 @@ endif()
 include(cmake/CPM.cmake)
 
 # ---- Add Cytnx as a subdirectory ----
+# Fix: Set Kron.cpp to compile with nvcc when USE_CUDA is enabled
+if(USE_CUDA)
+  set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/Cytnx/src/linalg/Kron.cpp
+    PROPERTIES LANGUAGE CUDA
+  )
+endif()
 add_subdirectory(external/Cytnx)
 
 # ---- Add source files ----
