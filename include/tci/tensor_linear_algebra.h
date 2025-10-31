@@ -182,65 +182,6 @@ namespace tci {
                                     const rank_t<TenT> num_of_bds_as_row, TenT& u,
                                     real_ten_t<TenT>& s_diag, TenT& v_dag);
 
-  /**
-   * @brief Truncated SVD with target truncation error
-   *
-   * @tparam TenT Tensor type
-   * @param ctx Context handle for the tensor library
-   * @param a Input tensor
-   * @param num_of_bds_as_row Number of bonds to treat as rows
-   * @param u Left unitary matrix
-   * @param s_diag Singular values (diagonal)
-   * @param v_dag Right unitary matrix (conjugate transpose)
-   * @param trunc_err Truncation error (output)
-   * @param target_trunc_err Target truncation error (chi_min=1, chi_max=∞ implicitly)
-   * @param s_min Minimum singular value threshold
-   */
-  template <typename TenT>
-  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const rank_t<TenT> num_of_bds_as_row,
-                 TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
-                 const real_t<TenT> target_trunc_err, const real_t<TenT> s_min);
-
-  /**
-   * @brief Truncated SVD with maximum bond dimension
-   *
-   * @tparam TenT Tensor type
-   * @param ctx Context handle for the tensor library
-   * @param a Input tensor
-   * @param num_of_bds_as_row Number of bonds to treat as rows
-   * @param u Left unitary matrix
-   * @param s_diag Singular values (diagonal)
-   * @param v_dag Right unitary matrix (conjugate transpose)
-   * @param trunc_err Truncation error (output)
-   * @param chi_max Maximum bond dimension (chi_min=1, target_trunc_err=0 implicitly)
-   * @param s_min Minimum singular value threshold
-   */
-  template <typename TenT>
-  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const rank_t<TenT> num_of_bds_as_row,
-                 TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
-                 const bond_dim_t<TenT> chi_max, const real_t<TenT> s_min);
-
-  /**
-   * @brief Truncated SVD with full control
-   *
-   * @tparam TenT Tensor type
-   * @param ctx Context handle for the tensor library
-   * @param a Input tensor
-   * @param num_of_bds_as_row Number of bonds to treat as rows
-   * @param u Left unitary matrix
-   * @param s_diag Singular values (diagonal)
-   * @param v_dag Right unitary matrix (conjugate transpose)
-   * @param trunc_err Truncation error (output)
-   * @param chi_min Minimum bond dimension
-   * @param chi_max Maximum bond dimension
-   * @param target_trunc_err Target truncation error
-   * @param s_min Minimum singular value threshold
-   */
-  template <typename TenT>
-  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const rank_t<TenT> num_of_bds_as_row,
-                 TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
-                 const bond_dim_t<TenT> chi_min, const bond_dim_t<TenT> chi_max,
-                 const real_t<TenT> target_trunc_err, const real_t<TenT> s_min);
 
   /**
    * @brief QR decomposition
