@@ -152,6 +152,20 @@ if(TARGET cytnx)
   endif()
 endif()
 
+# Fix: Link NVIDIA HPC SDK runtime libraries when CUDA is enabled
+# HPTT (used by Cytnx) is built with NVIDIA compiler, but g++ linker
+# doesn't automatically include NVIDIA runtime libraries
+if(USE_CUDA)
+  # Find NVIDIA libraries directory
+  get_filename_component(NVIDIA_LIB_DIR ${CMAKE_CUDA_COMPILER}/../lib ABSOLUTE)
+  message(STATUS "Adding NVIDIA HPC SDK library path: ${NVIDIA_LIB_DIR}")
+
+  # Add NVIDIA library directory to link path and link all required libraries
+  # This is simpler than finding each library individually
+  target_link_directories(cytnx PUBLIC ${NVIDIA_LIB_DIR})
+  target_link_libraries(cytnx PUBLIC nvomp nvc nvhpcatm nvcpumath)
+endif()
+
 # ---- Generate version header ----
 
 configure_file(
