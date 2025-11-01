@@ -3,19 +3,16 @@ cmake_minimum_required(VERSION 3.24) # Required for Cytnx
 # ---- Project ----
 
 if(USE_CUDA)
-  project(
-    TCI
-    VERSION 1.0
-    LANGUAGES CXX CUDA
-  )
+  set(TCI_LANGUAGES CXX CUDA)
 else()
-  project(
-    TCI
-    VERSION 1.0
-    LANGUAGES CXX
-  )
+  set(TCI_LANGUAGES CXX)
 endif()
 
+project(
+  TCI
+  VERSION 0.2.0
+  LANGUAGES ${TCI_LANGUAGES}
+)
 # ---- Build Options ----
 
 option(ENABLE_ASAN_ODR "Enable AddressSanitizer ODR violation detection" OFF)
