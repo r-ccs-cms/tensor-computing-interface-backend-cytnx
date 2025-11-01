@@ -13,6 +13,11 @@ project(
   VERSION 0.2.0
   LANGUAGES ${TCI_LANGUAGES}
 )
+
+# ---- Version Information ----
+
+set(TCI_SPEC_VERSION "1.0-rc.1")
+
 # ---- Build Options ----
 
 option(ENABLE_ASAN_ODR "Enable AddressSanitizer ODR violation detection" OFF)
@@ -42,6 +47,20 @@ if(USE_CUDA)
   )
 endif()
 add_subdirectory(external/Cytnx)
+
+# ---- Generate version header ----
+
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/tci/version.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/include/tci/version.h"
+  @ONLY
+)
+
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/tci/detail/version_impl.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/include/tci/detail/version_impl.h"
+  @ONLY
+)
 
 # ---- Add source files ----
 
@@ -129,6 +148,7 @@ endif()
 
 target_include_directories(
   ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                         $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
                          $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
                          $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/external/Cytnx/include>
 )
