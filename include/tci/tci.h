@@ -10,6 +10,7 @@
 #include "tci/tensor_linear_algebra.h"
 #include "tci/tensor_manipulation.h"
 #include "tci/tensor_traits.h"
+#include "tci/version.h"
 
 /**
  * @file tci.h
