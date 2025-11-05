@@ -38,7 +38,78 @@ endif()
 
 include(cmake/CPM.cmake)
 
+# ---- Find or build ARPACK dependency ----
+# ARPACK is required by Cytnx for eigenvalue computations
+# Users can specify existing ARPACK installation via:
+#   - ARPACK_ROOT environment variable
+#   - -DARPACK_ROOT=/path/to/arpack on cmake command line
+# If not found, ARPACK-NG will be automatically built from source
+
+# Ensure consistent BLAS/LAPACK usage
+# The toolchain file may have already set BLA_VENDOR, preserve it
+if(NOT DEFINED BLA_VENDOR)
+  # If not set by toolchain, use default (OpenBLAS for macOS, Intel for Intel compiler)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
+    set(BLA_VENDOR Intel10_64lp CACHE STRING "Use Intel MKL")
+  endif()
+endif()
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# First, try to find existing ARPACK installation
+find_package(ARPACK QUIET)
+
+if(NOT ARPACK_FOUND)
+  # If not found, build ARPACK-NG from source
+  include(ExternalARPACK)
+else()
+  message(STATUS "Using existing ARPACK: ${ARPACK_LIBRARIES}")
+endif()
+
 # ---- Add Cytnx as a subdirectory ----
+# Provide ARPACK to Cytnx
+# Cytnx expects ARPACK_LIB variable to be set
+# Note: ARPACK requires Fortran runtime (ifcore) when built with Intel Fortran
+
+# TODO: Review if this manual INTERFACE_LINK_LIBRARIES extraction is necessary.
+# This was added to work around Cytnx's find_library(ARPACK_LIB) overwriting our settings,
+# but may be overly complex. Consider if Cytnx's CMakeLists should be patched instead.
+if(TARGET ARPACK::ARPACK)
+  # Get all libraries needed for ARPACK (including Fortran runtime)
+  get_target_property(ARPACK_INTERFACE_LIBS ARPACK::ARPACK INTERFACE_LINK_LIBRARIES)
+  if(ARPACK_INTERFACE_LIBS)
+    # Combine ARPACK library and its dependencies (e.g., Fortran runtime)
+    set(ARPACK_LIB "${ARPACK_LIBRARIES};${ARPACK_INTERFACE_LIBS}")
+  else()
+    set(ARPACK_LIB ${ARPACK_LIBRARIES})
+  endif()
+else()
+  set(ARPACK_LIB ${ARPACK_LIBRARIES})
+endif()
+
+# Mark ARPACK_LIB as found to prevent Cytnx from re-searching
+# Cytnx's find_library(ARPACK_LIB ...) will be skipped if this variable is already set
+set(ARPACK_LIB "${ARPACK_LIB}" CACHE STRING "ARPACK library with dependencies for Cytnx" FORCE)
+
+# Ensure Cytnx uses the same BLAS/LAPACK as the rest of the project
+# This prevents linking both OpenBLAS and MKL
+# Cytnx will inherit BLA_VENDOR cache variable if set
+
+# Provide the already-found BLAS/LAPACK libraries to Cytnx
+# This prevents Cytnx from searching again and finding OpenBLAS
+if(BLAS_FOUND AND LAPACK_FOUND)
+  set(BLAS_LIBRARIES ${BLAS_LIBRARIES} CACHE STRING "BLAS libraries" FORCE)
+  set(LAPACK_LIBRARIES ${LAPACK_LIBRARIES} CACHE STRING "LAPACK libraries" FORCE)
+  set(BLAS_FOUND TRUE CACHE BOOL "BLAS found" FORCE)
+  set(LAPACK_FOUND TRUE CACHE BOOL "LAPACK found" FORCE)
+
+  # For Intel MKL, enable USE_MKL in Cytnx
+  # This will make Cytnx use MKL and properly set up include directories
+  if(DEFINED ENV{MKLROOT})
+    set(USE_MKL ON CACHE BOOL "Enable MKL in Cytnx" FORCE)
+  endif()
+endif()
+
 # Fix: Set Kron.cpp to compile with nvcc when USE_CUDA is enabled
 if(USE_CUDA)
   set_source_files_properties(
@@ -46,7 +117,30 @@ if(USE_CUDA)
     PROPERTIES LANGUAGE CUDA
   )
 endif()
+
+# Disable LTO/IPO for Cytnx to prevent LLVM bitcode in static libraries
+# Intel compilers produce LLVM IR bitcode with LTO, which causes linker errors
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+
 add_subdirectory(external/Cytnx)
+
+# Force disable IPO/LTO on Cytnx target after it's created
+# Cytnx enables CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE by default
+# This causes LLVM bitcode in static libraries with Intel compilers
+if(TARGET cytnx)
+  set_target_properties(cytnx PROPERTIES INTERPROCEDURAL_OPTIMIZATION FALSE)
+
+  # Apply compiler-specific flags for disabling LTO/IPO
+  if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
+    # Intel compiler specific flags
+    target_compile_options(cytnx PRIVATE -fno-lto -no-ipo)
+    target_link_options(cytnx PRIVATE -fno-lto -no-ipo)
+  else()
+    # For Clang/GCC, only use -fno-lto (they don't have -no-ipo)
+    target_compile_options(cytnx PRIVATE -fno-lto)
+    target_link_options(cytnx PRIVATE -fno-lto)
+  endif()
+endif()
 
 # ---- Generate version header ----
 
@@ -136,6 +230,36 @@ configure_asan_odr_detection(${PROJECT_NAME})
 
 # Link dependencies
 target_link_libraries(${PROJECT_NAME} PUBLIC cytnx)
+
+# If ARPACK was built as an imported target, link it directly to TCI
+# This ensures that ARPACK's INTERFACE_LINK_LIBRARIES (including ifcore) are properly propagated
+if(TARGET ARPACK::ARPACK)
+  target_link_libraries(${PROJECT_NAME} PUBLIC ARPACK::ARPACK)
+endif()
+
+# TODO: Simplify this manual library propagation logic.
+# This complex loop was added to work around static library linking issues with Intel compilers
+# where INTERFACE_LINK_LIBRARIES weren't being properly propagated.
+# Consider:
+# 1. Whether this is still needed after IPO/LTO fixes
+# 2. If CMake's native transitive dependency handling is sufficient
+# Since TCI is a static library, we need to explicitly propagate all of Cytnx's
+# INTERFACE_LINK_LIBRARIES to TCI's own INTERFACE_LINK_LIBRARIES.
+# This ensures that downstream targets (examples, tests) get all necessary libraries.
+get_target_property(CYTNX_INTERFACE_LIBS cytnx INTERFACE_LINK_LIBRARIES)
+if(CYTNX_INTERFACE_LIBS)
+  # Remove any incomplete "-lifcore" entries, but keep full paths
+  list(FILTER CYTNX_INTERFACE_LIBS EXCLUDE REGEX "^-lifcore$")
+
+  # Add libraries to TCI's interface, but skip CMake target names (like Boost::boost)
+  # Only add actual library files or linker flags
+  foreach(lib ${CYTNX_INTERFACE_LIBS})
+    # Check if lib is an actual file path or linker flag, not a target name
+    if(lib MATCHES "^/" OR lib MATCHES "^-l" OR lib MATCHES "^\\.\\.")
+      target_link_libraries(${PROJECT_NAME} PUBLIC ${lib})
+    endif()
+  endforeach()
+endif()
 
 # Create a flag boundary: Remove Cytnx's -w flag from INTERFACE propagation
 # This allows TCI's tests and examples to show deprecation warnings
