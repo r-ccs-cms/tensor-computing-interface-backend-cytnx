@@ -578,7 +578,7 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
     RealTensor s_diag;
     Real trunc_err;
 
-    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, 3ULL, 1e-10);
+    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>(3), 1e-10);
 
     // Apply sqrt to singular values
     CHECK_NOTHROW(tci::for_each(ctx, s_diag, [](Real& elem) { elem = std::sqrt(elem); }));
