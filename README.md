@@ -65,7 +65,9 @@ git clone --recursive https://github.com/r-ccs-cms/tensor-computing-interface-ba
 cd tensor-computing-interface-backend-cytnx
 ```
 
-### 2. Install Dependencies (macOS with Homebrew)
+### 2. Install Dependencies
+
+#### macOS with Homebrew
 
 ```bash
 brew install openblas llvm libomp cmake boost arpack ninja
@@ -73,20 +75,65 @@ brew install openblas llvm libomp cmake boost arpack ninja
 
 llvm (LLVM Clang) is optional; Apple Clang may work.
 
+#### Linux with Intel oneAPI (HPC environments)
+
+For HPC systems using environment modules and Intel oneAPI:
+
+```bash
+# Load required modules
+module load intel/oneapi  # Provides icx, icpx, ifort, and MKL
+module load boost         # Boost library (if available)
+
+# ARPACK will be automatically built from source using MKL as backend
+# No manual installation needed
+```
+
+**Notes:**
+- Intel oneAPI module provides: C/C++ compilers (icx/icpx), Fortran compiler (ifort/ifx), and MKL (Math Kernel Library)
+- ARPACK-NG will be automatically downloaded and built by CMake using MKL for BLAS/LAPACK
+- If you have a pre-built ARPACK, set `ARPACK_ROOT` environment variable or use `-DARPACK_ROOT=/path/to/arpack`
+
 ### 3. Configure and Build
 
 #### Option A: Using CMake Presets (Recommended)
 
+**macOS with Homebrew:**
+
 ```bash
-# Configure and build with Homebrew preset (automatically handles dependencies)
+# Release build
 cmake --preset brew-release
 cmake --build --preset brew-release
 ctest --preset brew-release
+
+# Debug build
+cmake --preset brew-debug
+cmake --build --preset brew-debug
+ctest --preset brew-debug
+```
+
+**Linux with Intel oneAPI:**
+
+```bash
+# First, load Intel oneAPI and Boost modules
+module load intel/oneapi boost
+
+# Release build
+cmake --preset intel-release
+cmake --build --preset intel-release
+ctest --preset intel-release
+
+# Debug build
+cmake --preset intel-debug
+cmake --build --preset intel-debug
+ctest --preset intel-debug
+
+# Run tests directly for detailed output
+./build-intel-debug/test/TCITests
 ```
 
 #### Option B: Manual Configuration
 
-**For development (with debugging features):**
+**macOS (Homebrew):**
 
 ```bash
 cmake --preset brew-debug
@@ -180,8 +227,12 @@ g++ -std=c++17 -I<tci-install>/include your_code.cpp -lTCI -lcytnx
 ├── source/                        # TCI implementation (C++17 features, C++20 compile)
 ├── test/                          # Test suite
 ├── external/Cytnx/                # Cytnx library submodule
-├── cmake/toolchains/              # CMake toolchain files
-│   └── macos-homebrew.cmake       # Homebrew dependency configuration
+├── cmake/
+│   ├── toolchains/                # CMake toolchain files
+│   │   ├── macos-homebrew.cmake   # Homebrew dependency configuration
+│   │   └── linux-intel-oneapi.cmake  # Intel oneAPI toolchain
+│   ├── FindARPACK.cmake           # ARPACK detection module
+│   └── ExternalARPACK.cmake       # Auto-build ARPACK-NG from source
 ├── CMakePresets.json              # CMake preset configurations
 └── CMakeLists.txt                 # Build configuration
 ```
@@ -214,6 +265,26 @@ open build/doc/doxygen/html/index.html
 - Use explicit template specialization to hide implementation details
 - **CMake presets** provide simplified build configuration
 - **Homebrew toolchain** automatically handles keg-only dependency paths
+- **Intel toolchain** supports Intel oneAPI compilers with MKL
+
+### ARPACK Dependency
+
+TCI automatically handles ARPACK dependency:
+
+1. **First**, searches for existing ARPACK installation via `ARPACK_ROOT` environment variable or `-DARPACK_ROOT=/path/to/arpack`
+2. **If not found**, automatically downloads and builds ARPACK-NG from source
+3. **Auto-built ARPACK** uses detected BLAS/LAPACK (OpenBLAS on macOS, MKL on Intel environments)
+
+**Using pre-built ARPACK:**
+
+```bash
+# Via environment variable
+export ARPACK_ROOT=/path/to/arpack
+cmake --preset intel-release
+
+# Or via CMake argument
+cmake --preset intel-release -DARPACK_ROOT=/path/to/arpack
+```
 
 ### Testing
 

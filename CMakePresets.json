@@ -45,6 +45,36 @@
         "ENABLE_ASAN_ODR_STRICT": "OFF",
         "ENABLE_ODR_INDICATOR": "ON"
       }
+    },
+    {
+      "name": "intel-debug",
+      "displayName": "Debug build with Intel oneAPI",
+      "description": "Linux debug build using Intel oneAPI compilers (icx/icpx) and MKL. Requires: module load intel/oneapi",
+      "generator": "Ninja",
+      "binaryDir": "build-intel-debug",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "cmake/toolchains/linux-intel-oneapi.cmake",
+        "BUILD_PYTHON": "OFF",
+        "BUILD_EXAMPLES": "ON",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_STANDARD": "20",
+        "TCI_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "intel-release",
+      "displayName": "Release build with Intel oneAPI",
+      "description": "Linux release build using Intel oneAPI compilers (icx/icpx) and MKL. Requires: module load intel/oneapi",
+      "generator": "Ninja",
+      "binaryDir": "build-intel-release",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "cmake/toolchains/linux-intel-oneapi.cmake",
+        "BUILD_PYTHON": "OFF",
+        "BUILD_EXAMPLES": "OFF",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_STANDARD": "20",
+        "TCI_BUILD_TESTS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -62,6 +92,16 @@
       "name": "brew-debug",
       "configurePreset": "brew-debug",
       "jobs": 8
+    },
+    {
+      "name": "intel-debug",
+      "configurePreset": "intel-debug",
+      "jobs": 1
+    },
+    {
+      "name": "intel-release",
+      "configurePreset": "intel-release",
+      "jobs": 1
     }
   ],
   "testPresets": [
@@ -78,6 +118,20 @@
       "environment": {
         "CTEST_OUTPUT_ON_FAILURE": "1",
         "ASAN_OPTIONS": "detect_odr_violation=1:abort_on_error=0:halt_on_error=0:log_path=./asan_odr_debug"
+      }
+    },
+    {
+      "name": "intel-debug",
+      "configurePreset": "intel-debug",
+      "environment": {
+        "CTEST_OUTPUT_ON_FAILURE": "1"
+      }
+    },
+    {
+      "name": "intel-release",
+      "configurePreset": "intel-release",
+      "environment": {
+        "CTEST_OUTPUT_ON_FAILURE": "1"
       }
     }
   ]
