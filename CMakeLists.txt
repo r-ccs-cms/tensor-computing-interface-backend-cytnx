@@ -43,8 +43,56 @@ if(USE_CUDA)
     ${CMAKE_CURRENT_SOURCE_DIR}/external/Cytnx/src/linalg/Kron.cpp
     PROPERTIES LANGUAGE CUDA
   )
+
+  # Prevent Cytnx from overriding CMAKE_CUDA_ARCHITECTURES to "native"
+  # which fails when no GPU is detected at configure time
+  # Set both as normal variable (for Cytnx's NOT DEFINED check) and CACHE
+  if(CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+    set(CMAKE_CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}" CACHE STRING "CUDA architectures" FORCE)
+    message(STATUS "Forcing CUDA_ARCHITECTURES to: ${CMAKE_CUDA_ARCHITECTURES}")
+  endif()
+
+  # Pre-emptively set cuTensor library variables to prevent FindCUTENSOR from setting them to NOTFOUND
+  # This must be done BEFORE add_subdirectory(external/Cytnx)
+  if(USE_CUTENSOR AND DEFINED CUTENSOR_LIBRARY_DIRS)
+    set(CUTENSOR_LIB "${CUTENSOR_LIBRARY_DIRS}/libcutensor.so" CACHE FILEPATH "CuTensor library" FORCE)
+    set(CUTENSORMg_LIB "${CUTENSOR_LIBRARY_DIRS}/libcutensorMg.so" CACHE FILEPATH "CuTensorMg library" FORCE)
+    message(STATUS "Pre-setting cuTensor libraries before Cytnx configuration:")
+    message(STATUS "  CUTENSOR_LIB: ${CUTENSOR_LIB}")
+    message(STATUS "  CUTENSORMg_LIB: ${CUTENSORMg_LIB}")
+  endif()
 endif()
+
 add_subdirectory(external/Cytnx)
+
+# Fix CuTensor library paths after Cytnx configuration
+# FindCUTENSOR.cmake assumes /12 for CUDA 12.x but actual path is /12.6
+# Replace NOTFOUND variables with actual library paths in cytnx target
+if(USE_CUTENSOR AND CUTENSOR_LIBRARY_DIRS)
+  message(STATUS "Fixing CuTensor library paths for cytnx target")
+
+  set(CUTENSOR_LIB_FIXED "${CUTENSOR_LIBRARY_DIRS}/libcutensor.so")
+  set(CUTENSORMg_LIB_FIXED "${CUTENSOR_LIBRARY_DIRS}/libcutensorMg.so")
+
+  # Fix LINK_LIBRARIES property
+  get_target_property(CYTNX_LINK_LIBS cytnx LINK_LIBRARIES)
+  if(CYTNX_LINK_LIBS)
+    list(REMOVE_ITEM CYTNX_LINK_LIBS "CUTENSOR_LIB-NOTFOUND" "CUTENSORMg_LIB-NOTFOUND")
+    list(APPEND CYTNX_LINK_LIBS "${CUTENSOR_LIB_FIXED}" "${CUTENSORMg_LIB_FIXED}")
+    set_target_properties(cytnx PROPERTIES LINK_LIBRARIES "${CYTNX_LINK_LIBS}")
+  endif()
+
+  # Fix INTERFACE_LINK_LIBRARIES property
+  get_target_property(CYTNX_INTERFACE_LINK_LIBS cytnx INTERFACE_LINK_LIBRARIES)
+  if(CYTNX_INTERFACE_LINK_LIBS)
+    list(REMOVE_ITEM CYTNX_INTERFACE_LINK_LIBS "CUTENSOR_LIB-NOTFOUND" "CUTENSORMg_LIB-NOTFOUND")
+    list(APPEND CYTNX_INTERFACE_LINK_LIBS "${CUTENSOR_LIB_FIXED}" "${CUTENSORMg_LIB_FIXED}")
+    set_target_properties(cytnx PROPERTIES INTERFACE_LINK_LIBRARIES "${CYTNX_INTERFACE_LINK_LIBS}")
+  endif()
+
+  message(STATUS "Fixed CuTensor libraries: ${CUTENSOR_LIB_FIXED};${CUTENSORMg_LIB_FIXED}")
+endif()
 
 # Fix: Link NVIDIA HPC SDK runtime libraries when CUDA is enabled
 # HPTT (used by Cytnx) is built with NVIDIA compiler, but g++ linker
@@ -81,13 +129,13 @@ target_compile_options(${PROJECT_NAME} PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>
 
 # Function to configure ASAN ODR detection
 function(configure_asan_odr_detection target)
-    if(ENABLE_ASAN_ODR OR ENABLE_ASAN_ODR_STRICT)
-        # Check if compiler supports AddressSanitizer
-        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-            message(STATUS "Enabling AddressSanitizer ODR detection for ${target}")
+  if(ENABLE_ASAN_ODR OR ENABLE_ASAN_ODR_STRICT)
+    # Check if compiler supports AddressSanitizer
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+      message(STATUS "Enabling AddressSanitizer ODR detection for ${target}")
 
-            # Basic AddressSanitizer flags
-            target_compile_options(${target} PUBLIC
+      # Basic AddressSanitizer flags
+      target_compile_options(${target} PUBLIC
                 -fsanitize=address
                 -g
                 -O1
@@ -95,38 +143,38 @@ function(configure_asan_odr_detection target)
                 -fno-optimize-sibling-calls
             )
 
-            target_link_options(${target} PUBLIC
+      target_link_options(${target} PUBLIC
                 -fsanitize=address
             )
 
-            # ODR indicator symbols (enabled by default on non-Windows)
-            if(ENABLE_ODR_INDICATOR AND NOT WIN32)
-                target_compile_options(${target} PUBLIC
+      # ODR indicator symbols (enabled by default on non-Windows)
+      if(ENABLE_ODR_INDICATOR AND NOT WIN32)
+        target_compile_options(${target} PUBLIC
                     -fsanitize-address-use-odr-indicator
                 )
-            elseif(NOT ENABLE_ODR_INDICATOR)
-                target_compile_options(${target} PUBLIC
+      elseif(NOT ENABLE_ODR_INDICATOR)
+        target_compile_options(${target} PUBLIC
                     -fno-sanitize-address-use-odr-indicator
                 )
-            endif()
+      endif()
 
-            # Additional flags for better ODR detection
-            target_compile_options(${target} PUBLIC
+      # Additional flags for better ODR detection
+      target_compile_options(${target} PUBLIC
                 -fno-sanitize-recover=address  # Stop on first violation
                 -fno-common                    # Prevent common symbol merging
             )
 
-            # Set runtime environment variables via CMake
-            set_target_properties(${target} PROPERTIES
+      # Set runtime environment variables via CMake
+      set_target_properties(${target} PROPERTIES
                 ENVIRONMENT "ASAN_OPTIONS=detect_odr_violation=$<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2,1>:abort_on_error=1:halt_on_error=1"
             )
 
-            message(STATUS "ASAN ODR detection level: $<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2 (strict),1 (normal)>")
+      message(STATUS "ASAN ODR detection level: $<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2 (strict),1 (normal)>")
 
-        else()
-            message(WARNING "AddressSanitizer ODR detection requested but compiler ${CMAKE_CXX_COMPILER_ID} may not support it")
-        endif()
+    else()
+      message(WARNING "AddressSanitizer ODR detection requested but compiler ${CMAKE_CXX_COMPILER_ID} may not support it")
     endif()
+  endif()
 endfunction()
 
 # Apply ASAN ODR configuration to main target
