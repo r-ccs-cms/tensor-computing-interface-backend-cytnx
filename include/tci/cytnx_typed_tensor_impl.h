@@ -2227,7 +2227,12 @@ namespace tci {
 
   // Context management for CytnxTensor<ElemT>
   template <typename ElemT> void create_context(context_handle_t<CytnxTensor<ElemT>>& ctx) {
-    ctx = cytnx::Device.cpu;
+    // Use GPU 0 if available, otherwise fall back to CPU
+    if (cytnx::Device.Ngpus > 0) {
+      ctx = cytnx::Device.cuda;
+    } else {
+      ctx = cytnx::Device.cpu;
+    }
   }
 
   template <typename ElemT> void destroy_context(context_handle_t<CytnxTensor<ElemT>>& ctx) {
