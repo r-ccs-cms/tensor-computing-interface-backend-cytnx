@@ -91,7 +91,7 @@ TEST_CASE("Deprecated APIs produce warnings") {
     Real trunc_err;
 
     // Using deprecated API - should show warning (10 parameters with chi_max, target_trunc_err, s_min)
-    tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, 2ULL, 1e-2, 1e-10);
+    tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, tci::bond_dim_t<Tensor>(2), 1e-2, 1e-10);
 
     CHECK(tci::size(ctx, u) > 0);
   }
