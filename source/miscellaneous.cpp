@@ -5,7 +5,14 @@
 namespace tci {
 
   // Context management for CytnxContextHandle
-  template <> void create_context(CytnxContextHandle& ctx) { ctx.set_value(cytnx::Device.cpu); }
+  template <> void create_context(CytnxContextHandle& ctx) {
+    // Use GPU 0 if available, otherwise fall back to CPU
+    if (cytnx::Device.Ngpus > 0) {
+      ctx.set_value(cytnx::Device.cuda);
+    } else {
+      ctx.set_value(cytnx::Device.cpu);
+    }
+  }
 
   void create_context(CytnxContextHandle& ctx, int gpu_id) {
     if (cytnx::Device.Ngpus == 0) {
