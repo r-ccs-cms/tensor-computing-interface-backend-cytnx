@@ -12,6 +12,11 @@
         "BUILD_PYTHON": "OFF",
         "BUILD_EXAMPLES": "OFF",
         "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "environment": {
+        "LDFLAGS": "-L/opt/homebrew/opt/libomp/lib",
+        "CPPFLAGS": "-I/opt/homebrew/opt/libomp/include",
+        "OpenMP_ROOT": "/opt/homebrew/opt/libomp"
       }
     },
     {
@@ -26,6 +31,11 @@
         "BUILD_EXAMPLES": "OFF",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_STANDARD": "20"
+      },
+      "environment": {
+        "LDFLAGS": "-L/opt/homebrew/opt/libomp/lib",
+        "CPPFLAGS": "-I/opt/homebrew/opt/libomp/include",
+        "OpenMP_ROOT": "/opt/homebrew/opt/libomp"
       }
     },
     {
@@ -43,7 +53,14 @@
         "TCI_BUILD_TESTS": "ON",
         "ENABLE_ASAN_ODR": "ON",
         "ENABLE_ASAN_ODR_STRICT": "OFF",
-        "ENABLE_ODR_INDICATOR": "ON"
+        "ENABLE_ODR_INDICATOR": "ON",
+        "USE_HPTT": "ON",
+        "HPTT_ENABLE_ARM": "OFF"
+      },
+      "environment": {
+        "LDFLAGS": "-L/opt/homebrew/opt/libomp/lib",
+        "CPPFLAGS": "-I/opt/homebrew/opt/libomp/include",
+        "OpenMP_ROOT": "/opt/homebrew/opt/libomp"
       }
     },
     {

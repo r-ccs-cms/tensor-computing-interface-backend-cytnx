@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.24) # Required for Cytnx
 
+# Fix toolchain file path for subdirectories (like Cytnx)
+# Convert relative paths to absolute paths BEFORE project() to ensure subprojects can find the toolchain
+if(CMAKE_TOOLCHAIN_FILE AND NOT IS_ABSOLUTE "${CMAKE_TOOLCHAIN_FILE}")
+  get_filename_component(CMAKE_TOOLCHAIN_FILE "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+  set(CMAKE_TOOLCHAIN_FILE "${CMAKE_TOOLCHAIN_FILE}" CACHE FILEPATH "Toolchain file" FORCE)
+endif()
+
 # ---- Project ----
 
 if(USE_CUDA)
