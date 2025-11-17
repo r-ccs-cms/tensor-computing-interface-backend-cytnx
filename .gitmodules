@@ -1,4 +1,4 @@
 [submodule "external/Cytnx"]
 	path = external/Cytnx
-	url = https://github.com/Cytnx-dev/Cytnx.git
-	branch = master
+	url = https://github.com/ultimatile/Cytnx.git
+	branch = fix-to-use-nvcc-for-kron-cpp
