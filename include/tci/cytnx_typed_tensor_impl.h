@@ -1094,22 +1094,26 @@ namespace tci {
 
   // Deprecated: Old trunc_svd overload (1) - only s_min
   template <typename ElemT> [[deprecated(
-      "Parameter order changed. Use trunc_svd(..., trunc_err, target_trunc_err, s_min). Will be "
-      "removed in the next major version")]]
+      "Parameter order changed. Use trunc_svd(..., trunc_err, chi_max, s_min) or trunc_svd(..., "
+      "trunc_err, chi_min, chi_max, target_trunc_err, s_min). This API will be removed in the next "
+      "major version")]]
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
                  const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
                  real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
                  real_t<CytnxTensor<ElemT>>& trunc_err, const real_t<CytnxTensor<ElemT>> s_min) {
-    // Forward to new API with target_trunc_err=0.0
+    // Forward to spec_v1 overload (1) with chi_min=1, target_trunc_err=0
+    constexpr bond_dim_t<CytnxTensor<ElemT>> chi_min = 1;
     constexpr real_t<CytnxTensor<ElemT>> target_trunc_err = 0.0;
-    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, target_trunc_err, s_min);
+    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min,
+              static_cast<bond_dim_t<CytnxTensor<ElemT>>>(std::numeric_limits<std::uint64_t>::max()),
+              target_trunc_err, s_min);
   }
 
   // Deprecated: Old trunc_svd overload (2) - chi_max, target_trunc_err, s_min
   template <typename ElemT> [[deprecated(
       "Parameter order changed. Use trunc_svd(..., trunc_err, chi_max, s_min) or trunc_svd(..., "
-      "trunc_err, chi_min, chi_max, target_trunc_err, s_min). Will be removed in the next major "
-      "version")]]
+      "trunc_err, chi_min, chi_max, target_trunc_err, s_min). This API will be removed in the next "
+      "major version")]]
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
                  const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
                  real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
@@ -1117,7 +1121,7 @@ namespace tci {
                  const bond_dim_t<CytnxTensor<ElemT>> chi_max,
                  const real_t<CytnxTensor<ElemT>> target_trunc_err,
                  const real_t<CytnxTensor<ElemT>> s_min) {
-    // Forward to new API (full version with chi_min=1)
+    // Forward to spec_v1 overload (2) with chi_min=1
     constexpr bond_dim_t<CytnxTensor<ElemT>> chi_min = 1;
     trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
               target_trunc_err, s_min);
