@@ -75,7 +75,7 @@ TEST_CASE("Miscellaneous Functions") {
 
     // Verify shapes match
     CHECK(shape(ctx, a) == shape(ctx, b));
-    CHECK(rank(ctx, a) == rank(ctx, b));
+    CHECK(order(ctx, a) == order(ctx, b));
 
     // Verify independence (modify original, copy should be unaffected)
     Ten original_b = copy(ctx, b);
@@ -98,7 +98,7 @@ TEST_CASE("Miscellaneous Functions") {
 
     // Verify shapes match
     CHECK(shape(ctx, a) == shape(ctx, b));
-    CHECK(rank(ctx, a) == rank(ctx, b));
+    CHECK(order(ctx, a) == order(ctx, b));
 
     destroy_context(ctx2);
   }
@@ -140,7 +140,7 @@ TEST_CASE("Miscellaneous Functions") {
 
     // Both should have same characteristics
     CHECK(shape(ctx, a) == shape(ctx, b));
-    CHECK(rank(ctx, a) == rank(ctx, b));
+    CHECK(order(ctx, a) == order(ctx, b));
 
     destroy_context(ctx2);
   }

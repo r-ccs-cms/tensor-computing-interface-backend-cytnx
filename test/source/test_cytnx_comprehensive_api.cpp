@@ -125,7 +125,7 @@ TEST_CASE("CytnxTensor - Linear algebra functions") {
 
     // Extract diagonal
     tci::diag(ctx, a, d);
-    CHECK(tci::rank(ctx, d) == 1);
+    CHECK(tci::order(ctx, d) == 1);
     CHECK(tci::size(ctx, d) == 3);
 
     auto elem = tci::get_elem(ctx, d, {1});
@@ -133,7 +133,7 @@ TEST_CASE("CytnxTensor - Linear algebra functions") {
 
     // Create diagonal matrix from vector
     tci::diag(ctx, d, d2);
-    CHECK(tci::rank(ctx, d2) == 2);
+    CHECK(tci::order(ctx, d2) == 2);
 
     auto s = tci::shape(ctx, d2);
     CHECK(s[0] == 3);

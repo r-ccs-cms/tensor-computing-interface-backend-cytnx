@@ -548,7 +548,7 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
     RealTensor s_diag;
     Real trunc_err;
 
-    tci::rank_t<Tensor> num_rows = 1;
+    tci::order_t<Tensor> num_rows = 1;
     tci::bond_dim_t<Tensor> chi_max = 4;
     Real s_min = 1e-10;
 
@@ -734,7 +734,7 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
 
     // Check eigenvalues
-    CHECK(tci::rank(ctx, eigenvals) == 1);
+    CHECK(tci::order(ctx, eigenvals) == 1);
     CHECK(tci::size(ctx, eigenvals) == 2);
 
     auto eval0 = tci::get_elem(ctx, eigenvals, {0});
@@ -743,7 +743,7 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     CHECK(std::abs(eval1.real() - 1.0) < 1e-10);
 
     // Check eigenvectors
-    CHECK(tci::rank(ctx, eigenvecs) == 2);
+    CHECK(tci::order(ctx, eigenvecs) == 2);
     CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
     CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
   }
@@ -760,7 +760,7 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs);
 
     // Check eigenvalues
-    CHECK(tci::rank(ctx, eigenvals) == 1);
+    CHECK(tci::order(ctx, eigenvals) == 1);
     CHECK(tci::size(ctx, eigenvals) == 2);
 
     auto eval0 = tci::get_elem(ctx, eigenvals, {0});
@@ -769,7 +769,7 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     CHECK(std::abs(eval1 - 1.0) < 1e-10);
 
     // Check eigenvectors
-    CHECK(tci::rank(ctx, eigenvecs) == 2);
+    CHECK(tci::order(ctx, eigenvecs) == 2);
     CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
     CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
   }
@@ -801,7 +801,7 @@ TEST_CASE("CytnxTensor - I/O Operations") {
     tci::load(ctx, test_file, loaded);
 
     // Verify shape
-    CHECK(tci::rank(ctx, loaded) == 2);
+    CHECK(tci::order(ctx, loaded) == 2);
     auto loaded_shape = tci::shape(ctx, loaded);
     CHECK(loaded_shape[0] == 2);
     CHECK(loaded_shape[1] == 3);
@@ -840,7 +840,7 @@ TEST_CASE("CytnxTensor - I/O Operations") {
     tci::load(cctx, test_file, loaded);
 
     // Verify shape
-    CHECK(tci::rank(cctx, loaded) == 2);
+    CHECK(tci::order(cctx, loaded) == 2);
     auto loaded_shape = tci::shape(cctx, loaded);
     CHECK(loaded_shape[0] == 2);
     CHECK(loaded_shape[1] == 2);

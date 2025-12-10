@@ -56,8 +56,8 @@ TEST_CASE("TCI Matrix Decomposition - LQ") {
     tci::CytnxTensor<cytnx::cytnx_complex128> l, q;
     tci::lq(ctx, matrix, 2, l, q);
 
-    CHECK(tci::rank(ctx, l) == 3);
-    CHECK(tci::rank(ctx, q) == 1);
+    CHECK(tci::order(ctx, l) == 3);
+    CHECK(tci::order(ctx, q) == 1);
   }
 
   tci::destroy_context(ctx);
@@ -150,12 +150,12 @@ TEST_CASE("TCI Eigenvalue Problems") {
     tci::CytnxTensor<cytnx::cytnx_complex128> eigenvals, eigenvecs;
     tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
 
-    CHECK(tci::rank(ctx, eigenvals) == 1);
+    CHECK(tci::order(ctx, eigenvals) == 1);
     CHECK(tci::size(ctx, eigenvals) == 2);
     CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvals, {0})) - 1.0) < 1e-10);
     CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvals, {1})) - 1.0) < 1e-10);
 
-    CHECK(tci::rank(ctx, eigenvecs) == 2);
+    CHECK(tci::order(ctx, eigenvecs) == 2);
     CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
     CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
     CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvecs, {0, 0})) - 1.0) < 1e-10);
@@ -170,12 +170,12 @@ TEST_CASE("TCI Eigenvalue Problems") {
     tci::CytnxTensor<cytnx::cytnx_complex128> eigenvecs;
     tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs);
 
-    CHECK(tci::rank(ctx, eigenvals) == 1);
+    CHECK(tci::order(ctx, eigenvals) == 1);
     CHECK(tci::size(ctx, eigenvals) == 2);
     CHECK(std::abs(tci::get_elem(ctx, eigenvals, {0}) - 1.0) < 1e-10);
     CHECK(std::abs(tci::get_elem(ctx, eigenvals, {1}) - 1.0) < 1e-10);
 
-    CHECK(tci::rank(ctx, eigenvecs) == 2);
+    CHECK(tci::order(ctx, eigenvecs) == 2);
     CHECK(tci::shape(ctx, eigenvecs)[0] == 2);
     CHECK(tci::shape(ctx, eigenvecs)[1] == 2);
     CHECK(std::abs(tci::real(tci::get_elem(ctx, eigenvecs, {0, 0})) - 1.0) < 1e-10);
@@ -555,9 +555,9 @@ TEST_CASE("TCI SVD Decomposition") {
     auto s_shape = tci::shape(ctx, s_diag);
     auto v_shape = tci::shape(ctx, v_dag);
 
-    // U should be 3x3 (or 3x rank)
+    // U should be 3x3 (or 3x order)
     CHECK(u_shape[0] == 3);
-    // s_diag should be rank-1 with singular values
+    // s_diag should be order-1 with singular values
     CHECK(s_shape.size() == 1);
     // V^dagger should have appropriate dimensions
     CHECK(v_shape.size() >= 1);
@@ -577,7 +577,7 @@ TEST_CASE("TCI SVD Decomposition") {
     tci::CytnxTensor<cytnx::cytnx_complex128> rect_matrix;
     tci::zeros(ctx, {2, 3}, rect_matrix);
 
-    // Create a rank-2 matrix for testing
+    // Create a order-2 matrix for testing
     tci::set_elem(ctx, rect_matrix, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
     tci::set_elem(ctx, rect_matrix, {0, 1}, cytnx::cytnx_complex128(2.0, 0.0));
     tci::set_elem(ctx, rect_matrix, {0, 2}, cytnx::cytnx_complex128(3.0, 0.0));

@@ -55,7 +55,7 @@ TEST_CASE("TCI GPU Tensor Operations") {
     tci::CytnxTensor<cytnx::cytnx_double> tensor;
 
     CHECK_NOTHROW(tci::zeros(ctx, shape, tensor));
-    CHECK(tci::rank(ctx, tensor) == 2);
+    CHECK(tci::order(ctx, tensor) == 2);
     CHECK(tci::shape(ctx, tensor) == shape);
   }
 
@@ -84,7 +84,7 @@ TEST_CASE("TCI Tensor Creation") {
     tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
 
     CHECK_NOTHROW(tci::zeros(ctx, shape, tensor));
-    CHECK(tci::rank(ctx, tensor) == 2);
+    CHECK(tci::order(ctx, tensor) == 2);
 
     auto result_shape = tci::shape(ctx, tensor);
     CHECK(result_shape.size() == 2);
@@ -96,7 +96,7 @@ TEST_CASE("TCI Tensor Creation") {
     tci::CytnxTensor<cytnx::cytnx_complex128> identity;
 
     CHECK_NOTHROW(tci::eye(ctx, 3, identity));
-    CHECK(tci::rank(ctx, identity) == 2);
+    CHECK(tci::order(ctx, identity) == 2);
 
     auto result_shape = tci::shape(ctx, identity);
     CHECK(result_shape.size() == 2);
@@ -167,7 +167,7 @@ TEST_CASE("TCI Tensor Properties") {
   tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
   tci::zeros(ctx, shape, tensor);
 
-  SUBCASE("Tensor rank") { CHECK(tci::rank(ctx, tensor) == 3); }
+  SUBCASE("Tensor order") { CHECK(tci::order(ctx, tensor) == 3); }
 
   SUBCASE("Tensor shape") {
     auto result_shape = tci::shape(ctx, tensor);
@@ -200,7 +200,7 @@ TEST_CASE("TCI Tensor Operations") {
     tci::zeros(ctx, shape, original);
     CHECK_NOTHROW(tci::copy(ctx, original, copy));
 
-    CHECK(tci::rank(ctx, copy) == tci::rank(ctx, original));
+    CHECK(tci::order(ctx, copy) == tci::order(ctx, original));
     CHECK(tci::shape(ctx, copy) == tci::shape(ctx, original));
   }
 
@@ -257,7 +257,7 @@ TEST_CASE("TCI assign_from_container") {
         tci::assign_from_container(ctx, shape, container.begin(), std::move(coors2idx), tensor));
 
     // Verify tensor properties
-    CHECK(tci::rank(ctx, tensor) == 2);
+    CHECK(tci::order(ctx, tensor) == 2);
     auto result_shape = tci::shape(ctx, tensor);
     CHECK(result_shape[0] == 2);
     CHECK(result_shape[1] == 3);

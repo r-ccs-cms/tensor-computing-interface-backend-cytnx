@@ -384,7 +384,7 @@ TEST_CASE("TCI Diagonal Operations") {
     tci::diag(ctx, vector);
 
     // Should now be 3x3 matrix
-    CHECK(tci::rank(ctx, vector) == 2);
+    CHECK(tci::order(ctx, vector) == 2);
     CHECK(tci::shape(ctx, vector)[0] == 3);
     CHECK(tci::shape(ctx, vector)[1] == 3);
 
@@ -405,8 +405,8 @@ TEST_CASE("TCI Diagonal Operations") {
     // Convert to diagonal vector
     tci::diag(ctx, identity);
 
-    // Should now be rank-1 vector
-    CHECK(tci::rank(ctx, identity) == 1);
+    // Should now be order-1 vector
+    CHECK(tci::order(ctx, identity) == 1);
     CHECK(tci::size(ctx, identity) == 3);
 
     // Check elements are [1, 1, 1]
@@ -445,7 +445,7 @@ TEST_CASE("TCI Trace Operations" * doctest::skip()) {
     tci::trace(ctx, matrix, pairs);
 
     // Should now be scalar with value 2+3+4 = 9
-    CHECK(tci::rank(ctx, matrix) == 0);  // Scalar tensor
+    CHECK(tci::order(ctx, matrix) == 0);  // Scalar tensor
     CHECK(std::abs(tci::real(tci::get_elem(ctx, matrix, {})) - 9.0) < 1e-10);
   }
 

@@ -20,7 +20,8 @@ namespace tci {
    */
   template <typename ElemT> struct tensor_traits<CytnxTensor<ElemT>> {
     using ten_t = CytnxTensor<ElemT>;
-    using rank_t = cytnx::cytnx_uint64;
+    using order_t = cytnx::cytnx_uint64;
+    using rank_t = order_t;
     using shape_t = List<cytnx::cytnx_uint64>;
     using bond_dim_t = cytnx::cytnx_uint64;
     using bond_idx_t = cytnx::cytnx_uint64;
@@ -60,7 +61,8 @@ namespace tci {
    */
   template <typename ElemT> struct tensor_traits<const CytnxTensor<ElemT>> {
     using ten_t = const CytnxTensor<ElemT>;
-    using rank_t = cytnx::cytnx_uint64;
+    using order_t = cytnx::cytnx_uint64;
+    using rank_t = order_t;
     using shape_t = List<cytnx::cytnx_uint64>;
     using bond_dim_t = cytnx::cytnx_uint64;
     using bond_idx_t = cytnx::cytnx_uint64;

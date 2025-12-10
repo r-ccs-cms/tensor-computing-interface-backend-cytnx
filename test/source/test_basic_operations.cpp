@@ -53,9 +53,9 @@ TEST_CASE("TCI Copy Operations") {
     CHECK(std::abs(tci::real(val2) - (-5.5)) < 1e-10);
     CHECK(std::abs(tci::imag(val2) - 7.7) < 1e-10);
 
-    // Verify shape and rank preservation
+    // Verify shape and order preservation
     CHECK(tci::shape(ctx, a) == tci::shape(ctx, b));
-    CHECK(tci::rank(ctx, a) == tci::rank(ctx, b));
+    CHECK(tci::order(ctx, a) == tci::order(ctx, b));
   }
 
   SUBCASE("Deep copy preserves data - out-of-place version (documentation example)") {
@@ -81,9 +81,9 @@ TEST_CASE("TCI Copy Operations") {
     CHECK(std::abs(tci::real(val2_a) - tci::real(val2_b)) < 1e-10);
     CHECK(std::abs(tci::imag(val2_a) - tci::imag(val2_b)) < 1e-10);
 
-    // Verify shape and rank preservation
+    // Verify shape and order preservation
     CHECK(tci::shape(ctx, a) == tci::shape(ctx, b));
-    CHECK(tci::rank(ctx, a) == tci::rank(ctx, b));
+    CHECK(tci::order(ctx, a) == tci::order(ctx, b));
   }
 
   SUBCASE("Copy is independent (modifications don't affect original)") {
@@ -114,7 +114,7 @@ TEST_CASE("TCI Copy Operations") {
     CHECK_NOTHROW(tci::copy(ctx, a, b));
 
     // Both should have same characteristics
-    CHECK(tci::rank(ctx, a) == tci::rank(ctx, b));
+    CHECK(tci::order(ctx, a) == tci::order(ctx, b));
     CHECK(tci::shape(ctx, a) == tci::shape(ctx, b));
   }
 

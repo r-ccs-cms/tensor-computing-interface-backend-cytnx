@@ -189,9 +189,16 @@ namespace tci {
   }
 
   template <typename ElemT>
-  rank_t<CytnxTensor<ElemT>> rank(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                  const CytnxTensor<ElemT>& a) {
-    return static_cast<rank_t<CytnxTensor<ElemT>>>(a.backend.shape().size());
+  order_t<CytnxTensor<ElemT>> order(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                    const CytnxTensor<ElemT>& a) {
+    return static_cast<order_t<CytnxTensor<ElemT>>>(a.backend.shape().size());
+  }
+
+  template <typename ElemT>
+  [[deprecated("Use tci::order instead. This API will be removed in the next major version")]]
+  order_t<CytnxTensor<ElemT>> rank(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                                   const CytnxTensor<ElemT>& a) {
+    return order(ctx, a);
   }
 
   template <typename ElemT>
@@ -744,12 +751,12 @@ namespace tci {
   // SVD (full)
   template <typename ElemT>
   void svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+           const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
            real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag) {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
       left_dim *= a_shape[i];
     }
     cytnx::cytnx_uint64 right_dim = 1;
@@ -780,7 +787,7 @@ namespace tci {
 
     // Reshape U
     shape_t<CytnxTensor<ElemT>> u_shape;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
       u_shape.push_back(a_shape[i]);
     }
     u_shape.push_back(bond_dim);
@@ -809,12 +816,12 @@ namespace tci {
   // QR decomposition
   template <typename ElemT> void qr(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                     const CytnxTensor<ElemT>& a,
-                                    const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                                    const order_t<CytnxTensor<ElemT>> num_of_bds_as_row,
                                     CytnxTensor<ElemT>& q, CytnxTensor<ElemT>& r) {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
       left_dim *= a_shape[i];
     }
     cytnx::cytnx_uint64 right_dim = 1;
@@ -840,7 +847,7 @@ namespace tci {
 
     // Reshape Q
     shape_t<CytnxTensor<ElemT>> q_shape;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
       q_shape.push_back(a_shape[i]);
     }
     q_shape.push_back(bond_dim);
@@ -866,14 +873,14 @@ namespace tci {
   // LQ decomposition
   template <typename ElemT> void lq(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                     const CytnxTensor<ElemT>& a,
-                                    const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                                    const order_t<CytnxTensor<ElemT>> num_of_bds_as_row,
                                     CytnxTensor<ElemT>& l, CytnxTensor<ElemT>& q) {
     // LQ = (Q†L†)† where Q†L† is QR of A†
     // Transpose and do QR, then transpose results back
 
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
       left_dim *= a_shape[i];
     }
     cytnx::cytnx_uint64 right_dim = 1;
@@ -904,7 +911,7 @@ namespace tci {
 
     // Reshape L
     shape_t<CytnxTensor<ElemT>> l_shape;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
       l_shape.push_back(a_shape[i]);
     }
     l_shape.push_back(bond_dim);
@@ -930,7 +937,7 @@ namespace tci {
   // Truncated SVD - overload (2): chi_max, s_min
   template <typename ElemT>
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
                  real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
                  real_t<CytnxTensor<ElemT>>& trunc_err,
                  const bond_dim_t<CytnxTensor<ElemT>> chi_max,
@@ -945,7 +952,7 @@ namespace tci {
   // Truncated SVD - overload (1): target_trunc_err, s_min
   template <typename ElemT>
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
                  real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
                  real_t<CytnxTensor<ElemT>>& trunc_err,
                  const real_t<CytnxTensor<ElemT>> target_trunc_err,
@@ -961,7 +968,7 @@ namespace tci {
   // Truncated SVD - overload (3): full control
   template <typename ElemT>
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
                  real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
                  real_t<CytnxTensor<ElemT>>& trunc_err,
                  const bond_dim_t<CytnxTensor<ElemT>> chi_min,
@@ -971,7 +978,7 @@ namespace tci {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
       left_dim *= a_shape[i];
     }
     cytnx::cytnx_uint64 right_dim = 1;
@@ -1059,7 +1066,7 @@ namespace tci {
 
     // Reshape U
     shape_t<CytnxTensor<ElemT>> u_shape;
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row; ++i) {
       u_shape.push_back(a_shape[i]);
     }
     u_shape.push_back(bond_dim);
@@ -1090,7 +1097,7 @@ namespace tci {
       "Parameter order changed. Use trunc_svd(..., trunc_err, target_trunc_err, s_min). Will be "
       "removed in the next major version")]]
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
                  real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
                  real_t<CytnxTensor<ElemT>>& trunc_err, const real_t<CytnxTensor<ElemT>> s_min) {
     // Forward to new API with target_trunc_err=0.0
@@ -1104,7 +1111,7 @@ namespace tci {
       "trunc_err, chi_min, chi_max, target_trunc_err, s_min). Will be removed in the next major "
       "version")]]
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-                 const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
+                 const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
                  real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
                  real_t<CytnxTensor<ElemT>>& trunc_err,
                  const bond_dim_t<CytnxTensor<ElemT>> chi_max,
@@ -1119,14 +1126,14 @@ namespace tci {
   // Eigenvalue decomposition - eigvals (general matrix eigenvalues)
   template <typename ElemT> void eigvals(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                          const CytnxTensor<ElemT>& a,
-                                         const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                                         const order_t<CytnxTensor<ElemT>> num_of_bds_as_row,
                                          cplx_ten_t<CytnxTensor<ElemT>>& w_diag) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
       row_dim *= a_shape[i];
     }
     for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
@@ -1155,14 +1162,14 @@ namespace tci {
   // Eigenvalue decomposition - eigvalsh (hermitian matrix eigenvalues)
   template <typename ElemT> void eigvalsh(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                           const CytnxTensor<ElemT>& a,
-                                          const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+                                          const order_t<CytnxTensor<ElemT>> num_of_bds_as_row,
                                           real_ten_t<CytnxTensor<ElemT>>& w_diag) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
       row_dim *= a_shape[i];
     }
     for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
@@ -1188,14 +1195,14 @@ namespace tci {
   // Eigenvalue decomposition - eig (general matrix eigenvalues and eigenvectors)
   template <typename ElemT>
   void eig(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+           const order_t<CytnxTensor<ElemT>> num_of_bds_as_row,
            cplx_ten_t<CytnxTensor<ElemT>>& w_diag, cplx_ten_t<CytnxTensor<ElemT>>& v) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
       row_dim *= a_shape[i];
     }
     for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
@@ -1233,14 +1240,14 @@ namespace tci {
   // Eigenvalue decomposition - eigh (hermitian matrix eigenvalues and eigenvectors)
   template <typename ElemT>
   void eigh(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-            const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row,
+            const order_t<CytnxTensor<ElemT>> num_of_bds_as_row,
             real_ten_t<CytnxTensor<ElemT>>& w_diag, CytnxTensor<ElemT>& v) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
       row_dim *= a_shape[i];
     }
     for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
@@ -2074,13 +2081,13 @@ namespace tci {
   // inverse - matrix inverse (in-place)
   template <typename ElemT> void inverse(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                          CytnxTensor<ElemT>& inout,
-                                         const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
+                                         const order_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
     auto a_shape = shape(ctx, inout);
 
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
       row_dim *= a_shape[i];
     }
     for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
@@ -2114,13 +2121,13 @@ namespace tci {
   // inverse - matrix inverse (out-of-place)
   template <typename ElemT>
   void inverse(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
-               const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& out) {
+               const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& out) {
     auto a_shape = shape(ctx, in);
 
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
       row_dim *= a_shape[i];
     }
     for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
@@ -2154,13 +2161,13 @@ namespace tci {
   // exp - matrix exponential (in-place)
   template <typename ElemT> void exp(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                      CytnxTensor<ElemT>& inout,
-                                     const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
+                                     const order_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
     auto a_shape = shape(ctx, inout);
 
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
       row_dim *= a_shape[i];
     }
     for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {
@@ -2189,13 +2196,13 @@ namespace tci {
   // exp - matrix exponential (out-of-place)
   template <typename ElemT>
   void exp(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& in,
-           const rank_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& out) {
+           const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& out) {
     auto a_shape = shape(ctx, in);
 
     cytnx::cytnx_uint64 row_dim = 1;
     cytnx::cytnx_uint64 col_dim = 1;
 
-    for (rank_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
+    for (order_t<CytnxTensor<ElemT>> i = 0; i < num_of_bds_as_row && i < a_shape.size(); ++i) {
       row_dim *= a_shape[i];
     }
     for (size_t i = num_of_bds_as_row; i < a_shape.size(); ++i) {

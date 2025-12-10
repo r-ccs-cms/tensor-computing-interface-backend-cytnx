@@ -2,6 +2,7 @@
 
 #include <complex>
 #include <cstddef>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -22,10 +23,36 @@ namespace tci {
   // Map type - currently restricted to std::unordered_map
   template <typename T, typename U> using Map = std::unordered_map<T, U>;
 
+  namespace detail {
+    // Helper to support both new order_t and legacy rank_t specializations
+    template <typename TenT, typename = void> struct order_type_fallback {
+      using type = typename tensor_traits<TenT>::rank_t;
+    };
+
+    template <typename TenT>
+    struct order_type_fallback<TenT, std::void_t<typename tensor_traits<TenT>::order_t>> {
+      using type = typename tensor_traits<TenT>::order_t;
+    };
+
+    // Helper to support legacy rank_t alias; falls back to order_t if rank_t is absent
+    template <typename TenT, typename = void> struct rank_type_fallback {
+      using type = typename tensor_traits<TenT>::order_t;
+    };
+
+    template <typename TenT>
+    struct rank_type_fallback<TenT, std::void_t<typename tensor_traits<TenT>::rank_t>> {
+      using type = typename tensor_traits<TenT>::rank_t;
+    };
+  }  // namespace detail
+
   // Convenience type aliases for extracting types from tensor_traits
   template <typename TenT> using ten_t = typename tensor_traits<TenT>::ten_t;
 
-  template <typename TenT> using rank_t = typename tensor_traits<TenT>::rank_t;
+  template <typename TenT> using order_t = typename detail::order_type_fallback<TenT>::type;
+
+  template <typename TenT>
+  using rank_t [[deprecated("Use tci::order_t instead. This API will be removed in the next major version")]]
+      = typename detail::rank_type_fallback<TenT>::type;
 
   template <typename TenT> using shape_t = typename tensor_traits<TenT>::shape_t;
 
@@ -70,7 +97,8 @@ namespace tci {
   template <typename TenT> struct tensor_traits {
     // Member types that must be defined in specializations:
     // - ten_t: The actual type of TenT
-    // - rank_t: Type for tensor rank (integer)
+    // - order_t: (preferred) Type for tensor order/rank (integer)
+    // - rank_t: Legacy rank type (integer); order_t will alias this if order_t is absent
     // - shape_t: Type for tensor shape (List<bond_dim_t>)
     // - bond_dim_t: Type for bond dimension (integer)
     // - bond_idx_t: Type for bond index (integer)
