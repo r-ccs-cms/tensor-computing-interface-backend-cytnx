@@ -1283,7 +1283,7 @@ namespace tci {
   // Check if two tensors are close within tolerance
   template <typename ElemT> bool close(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                        const CytnxTensor<ElemT>& a, const CytnxTensor<ElemT>& b,
-                                       const elem_t<CytnxTensor<ElemT>> epsilon) {
+                                       const real_t<CytnxTensor<ElemT>> epsilon) {
     (void)ctx;
     // Check shape first
     if (a.backend.shape() != b.backend.shape()) {
@@ -1316,7 +1316,7 @@ namespace tci {
   template <typename ElemT>
   [[deprecated("Use close instead. This API will be removed in the next major version")]]
   bool eq(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
-          const CytnxTensor<ElemT>& b, const elem_t<CytnxTensor<ElemT>> epsilon) {
+          const CytnxTensor<ElemT>& b, const real_t<CytnxTensor<ElemT>> epsilon) {
     return close(ctx, a, b, epsilon);
   }
 

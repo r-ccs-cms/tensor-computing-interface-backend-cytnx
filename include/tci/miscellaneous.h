@@ -114,7 +114,7 @@ namespace tci {
    * @return bool True if tensors are close within tolerance
    */
   template <typename TenT>
-  bool close(context_handle_t<TenT>& ctx, const TenT& a, const TenT& b, const elem_t<TenT> epsilon);
+  bool close(context_handle_t<TenT>& ctx, const TenT& a, const TenT& b, const real_t<TenT> epsilon);
 
   /**
    * @brief Check if two tensors are equal within tolerance (deprecated - use close)
@@ -129,7 +129,7 @@ namespace tci {
    */
   template <typename TenT>
   [[deprecated("Use close instead. This API will be removed in the next major version")]]
-  bool eq(context_handle_t<TenT>& ctx, const TenT& a, const TenT& b, const elem_t<TenT> epsilon);
+  bool eq(context_handle_t<TenT>& ctx, const TenT& a, const TenT& b, const real_t<TenT> epsilon);
 
   /**
    * @brief Convert tensor between different types
