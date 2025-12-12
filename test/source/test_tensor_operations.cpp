@@ -741,6 +741,46 @@ TEST_CASE("TCI Tensor Contraction") {
     CHECK(std::abs(tci::real(c12) - 10.0) < 1e-10);
   }
 
+  SUBCASE("Duplicate labels within single tensor should throw") {
+    // Test that repeated labels within a single tensor are detected and rejected
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_a = {3, 3, 4};
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_b = {5};
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c;
+    tci::zeros(ctx, shape_a, a);
+    tci::zeros(ctx, shape_b, b);
+
+    // Test case 1: Duplicate labels in first tensor using string notation
+    // "iij" has label 'i' repeated twice within tensor a
+    CHECK_THROWS_AS(tci::contract(ctx, a, "iij", b, "k", c, "jk"), std::invalid_argument);
+
+    // Test case 2: Duplicate labels in second tensor using string notation
+    // "kk" has label 'k' repeated twice within tensor b - but b is rank-1, so this is invalid
+    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_b2 = {5, 5};
+    tci::CytnxTensor<cytnx::cytnx_complex128> b2;
+    tci::zeros(ctx, shape_b2, b2);
+    CHECK_THROWS_AS(tci::contract(ctx, a, "ijk", b2, "kk", c, "ij"), std::invalid_argument);
+
+    // Test case 3: Duplicate labels in first tensor using label list notation
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_a_dup
+        = {1, 1, 2};  // Label 1 appears twice
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_b_single
+        = {3};
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_c_out
+        = {2, 3};
+    CHECK_THROWS_AS(
+        tci::contract(ctx, a, bd_labs_a_dup, b, bd_labs_b_single, c, bd_labs_c_out),
+        std::invalid_argument);
+
+    // Test case 4: No duplicate - should succeed
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_a_valid
+        = {1, 2, 3};
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_b_valid
+        = {4};
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_c_valid
+        = {1, 2, 3, 4};
+    CHECK_NOTHROW(tci::contract(ctx, a, bd_labs_a_valid, b, bd_labs_b_valid, c, bd_labs_c_valid));
+  }
+
   tci::destroy_context(ctx);
 }
 

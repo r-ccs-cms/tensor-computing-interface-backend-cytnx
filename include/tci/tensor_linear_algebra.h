@@ -32,9 +32,30 @@ namespace tci {
       }
 
     private:
+      // Check for duplicate labels within a single tensor's label list
+      void check_duplicate_labels(const List<bond_label_t<TenT>>& labels,
+                                  const char* tensor_name) {
+        std::set<bond_label_t<TenT>> seen;
+        for (const auto& label : labels) {
+          if (seen.count(label)) {
+            std::ostringstream oss;
+            oss << "contract: repeated label '" << label << "' within " << tensor_name
+                << " (spec v1 prohibits repeating labels within a single operand; "
+                << "use tci::trace first if needed)";
+            throw std::invalid_argument(oss.str());
+          }
+          seen.insert(label);
+        }
+      }
+
       void analyze(const List<bond_label_t<TenT>>& bd_labs_a,
                    const List<bond_label_t<TenT>>& bd_labs_b,
                    const List<bond_label_t<TenT>>& bd_labs_c) {
+        // Check for duplicate labels within each tensor
+        // Spec v1 prohibits repeating labels within a single operand
+        check_duplicate_labels(bd_labs_a, "first tensor");
+        check_duplicate_labels(bd_labs_b, "second tensor");
+
         // Find contracted indices (appear in both a and b, not in c)
         std::set<bond_label_t<TenT>> labels_b(bd_labs_b.begin(), bd_labs_b.end());
         std::set<bond_label_t<TenT>> labels_c(bd_labs_c.begin(), bd_labs_c.end());
