@@ -193,7 +193,7 @@ TEST_CASE("TCI Tensor Equality") {
     tci::eye(ctx, 2, tensor1);
     tci::eye(ctx, 2, tensor2);
 
-    tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>> epsilon = 1e-10;
+    tci::real_t<tci::CytnxTensor<cytnx::cytnx_complex128>> epsilon = 1e-10;
     bool are_equal = tci::eq(ctx, tensor1, tensor2, epsilon);
 
     // This will FAIL if eq is a placeholder that only compares shapes
@@ -205,7 +205,7 @@ TEST_CASE("TCI Tensor Equality") {
     tci::eye(ctx, 2, tensor1);
     tci::zeros(ctx, {2, 2}, tensor2);
 
-    tci::elem_t<tci::CytnxTensor<cytnx::cytnx_complex128>> epsilon = 1e-10;
+    tci::real_t<tci::CytnxTensor<cytnx::cytnx_complex128>> epsilon = 1e-10;
     bool are_equal = tci::eq(ctx, tensor1, tensor2, epsilon);
 
     // This should be false - identity != zeros

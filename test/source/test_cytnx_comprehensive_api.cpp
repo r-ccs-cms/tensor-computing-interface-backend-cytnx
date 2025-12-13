@@ -273,7 +273,7 @@ TEST_CASE("CytnxTensor - Utility functions") {
     tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), a);
     tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), b);
 
-    CHECK(tci::eq(ctx, a, b, Elem(1e-10, 0)));
+    CHECK(tci::eq(ctx, a, b, 1e-10));
   }
 
   SUBCASE("eq function - different values") {
@@ -281,7 +281,7 @@ TEST_CASE("CytnxTensor - Utility functions") {
     tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), a);
     tci::fill(ctx, {2, 3}, Elem(1.6, 2.5), b);
 
-    CHECK_FALSE(tci::eq(ctx, a, b, Elem(1e-10, 0)));
+    CHECK_FALSE(tci::eq(ctx, a, b, 1e-10));
   }
 
   SUBCASE("eq function - different shapes") {
@@ -289,7 +289,7 @@ TEST_CASE("CytnxTensor - Utility functions") {
     tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), a);
     tci::fill(ctx, {3, 2}, Elem(1.5, 2.5), b);
 
-    CHECK_FALSE(tci::eq(ctx, a, b, Elem(1e-10, 0)));
+    CHECK_FALSE(tci::eq(ctx, a, b, 1e-10));
   }
 
   SUBCASE("eq function - within epsilon") {
@@ -297,8 +297,8 @@ TEST_CASE("CytnxTensor - Utility functions") {
     tci::fill(ctx, {2, 3}, Elem(1.5, 2.5), a);
     tci::fill(ctx, {2, 3}, Elem(1.5 + 1e-8, 2.5), b);
 
-    CHECK(tci::eq(ctx, a, b, Elem(1e-7, 0)));
-    CHECK_FALSE(tci::eq(ctx, a, b, Elem(1e-9, 0)));
+    CHECK(tci::eq(ctx, a, b, 1e-7));
+    CHECK_FALSE(tci::eq(ctx, a, b, 1e-9));
   }
 
   SUBCASE("to_cplx function - real to complex") {

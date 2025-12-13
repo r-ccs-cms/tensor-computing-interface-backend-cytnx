@@ -173,7 +173,7 @@ TEST_CASE("tci::load API compliance test") {
     CHECK(original_shape == loaded_shape);
 
     // Verify the tensors are equal (with small epsilon for floating point comparison)
-    CHECK(tci::eq(ctx, original_tensor, loaded_tensor, cytnx::cytnx_complex128(1e-10, 0.0)));
+    CHECK(tci::eq(ctx, original_tensor, loaded_tensor, 1e-10));
   }
 
   tci::destroy_context(ctx);

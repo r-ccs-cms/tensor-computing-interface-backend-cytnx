@@ -189,7 +189,7 @@ void io_and_utilities() {
 
   // Test equality comparison
   Ten test_tensor2 = eye<Ten>(ctx, 3);
-  bool are_equal = close(ctx, test_tensor, test_tensor2, std::complex<double>(1e-10, 0));
+  bool are_equal = close(ctx, test_tensor, test_tensor2, 1e-10);
   std::cout << "  Tensors are equal: " << (are_equal ? "true" : "false") << std::endl;
 
   // Convert to STL container functionality disabled due to template linkage issues
@@ -236,7 +236,7 @@ void demonstrate_verbose_output() {
 
   // This will trigger TCI_VERBOSE output for show, close, and convert functions
   show(ctx, A);
-  bool equal = close(ctx, A, B, std::complex<double>(1e-6, 0));
+  bool equal = close(ctx, A, B, 1e-6);
 
   Ten C;
   context_handle_t<Ten> ctx2;

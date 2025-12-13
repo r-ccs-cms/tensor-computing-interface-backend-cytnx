@@ -54,13 +54,13 @@ TEST_CASE("Miscellaneous Functions") {
     Ten c = zeros<Ten>(ctx, {2, 2});
 
     // Test equality with small epsilon
-    CHECK(eq(ctx, a, b, std::complex<double>(1e-10, 0)));
+    CHECK(eq(ctx, a, b, 1e-10));
 
     // Test inequality
-    CHECK_FALSE(eq(ctx, a, c, std::complex<double>(1e-10, 0)));
+    CHECK_FALSE(eq(ctx, a, c, 1e-10));
 
     // Test with larger epsilon (should be equal to zero within tolerance)
-    CHECK(eq(ctx, c, zeros<Ten>(ctx, {2, 2}), std::complex<double>(1e-6, 0)));
+    CHECK(eq(ctx, c, zeros<Ten>(ctx, {2, 2}), 1e-6));
   }
 
   SUBCASE("tci::convert - same context (copy behavior)") {
@@ -71,7 +71,7 @@ TEST_CASE("Miscellaneous Functions") {
     CHECK_NOTHROW(convert(ctx, a, ctx, b));
 
     // Verify the conversion worked - data should be identical
-    CHECK(eq(ctx, a, b, std::complex<double>(1e-15, 0)));
+    CHECK(eq(ctx, a, b, 1e-15));
 
     // Verify shapes match
     CHECK(shape(ctx, a) == shape(ctx, b));
@@ -80,7 +80,7 @@ TEST_CASE("Miscellaneous Functions") {
     // Verify independence (modify original, copy should be unaffected)
     Ten original_b = copy(ctx, b);
     set_elem(ctx, a, {0, 0}, std::complex<double>(999.0, 0.0));
-    CHECK(eq(ctx, b, original_b, std::complex<double>(1e-15, 0)));
+    CHECK(eq(ctx, b, original_b, 1e-15));
   }
 
   SUBCASE("tci::convert - different contexts") {
@@ -94,7 +94,7 @@ TEST_CASE("Miscellaneous Functions") {
     CHECK_NOTHROW(convert(ctx, a, ctx2, b));
 
     // Verify the conversion worked
-    CHECK(eq(ctx, a, b, std::complex<double>(1e-10, 0)));
+    CHECK(eq(ctx, a, b, 1e-10));
 
     // Verify shapes match
     CHECK(shape(ctx, a) == shape(ctx, b));
@@ -227,7 +227,7 @@ TEST_CASE("Integration with TCI_VERBOSE") {
 
     // Test eq with instrumentation
     Ten b = eye<Ten>(ctx, 2);
-    CHECK(eq(ctx, a, b, std::complex<double>(1e-10, 0)));
+    CHECK(eq(ctx, a, b, 1e-10));
 
     // Test convert with instrumentation
     Ten c;
