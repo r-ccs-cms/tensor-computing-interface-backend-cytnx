@@ -37,9 +37,6 @@ namespace tci {
                                           const shape_t<CytnxTensor<ElemT>>& shape,
                                           CytnxTensor<ElemT>& a);
 
-  template <typename ElemT> CytnxTensor<ElemT> allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                                        const shape_t<CytnxTensor<ElemT>>& shape);
-
   // Read-only getter functions for CytnxTensor<ElemT>
   template <typename ElemT>
   void get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
@@ -68,13 +65,6 @@ namespace tci {
       cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
     }
     a.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<ElemT>(), ctx);
-  }
-
-  template <typename ElemT> CytnxTensor<ElemT> allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                                        const shape_t<CytnxTensor<ElemT>>& shape) {
-    CytnxTensor<ElemT> result;
-    allocate(ctx, shape, result);
-    return result;
   }
 
   template <typename ElemT>
@@ -142,21 +132,27 @@ namespace tci {
 
   // Additional functions for CytnxTensor<ElemT>
 
-  template <typename ElemT> void zeros(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                       const shape_t<CytnxTensor<ElemT>>& shape,
-                                       CytnxTensor<ElemT>& a) {
+  template <typename ElemT>
+  [[deprecated("Reserved for future GPU support. Use: auto result = tci::zeros(ctx, shape);")]]
+  void zeros(context_handle_t<CytnxTensor<ElemT>>& ctx,
+             const shape_t<CytnxTensor<ElemT>>& shape,
+             CytnxTensor<ElemT>& a) {
     allocate(ctx, shape, a);
     a.backend.storage().set_zeros();
   }
 
-  template <typename ElemT> void eye(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                     bond_dim_t<CytnxTensor<ElemT>> dim, CytnxTensor<ElemT>& a) {
+  template <typename ElemT>
+  [[deprecated("Reserved for future GPU support. Use: auto result = tci::eye(ctx, N);")]]
+  void eye(context_handle_t<CytnxTensor<ElemT>>& ctx,
+           bond_dim_t<CytnxTensor<ElemT>> dim, CytnxTensor<ElemT>& a) {
     a.backend = cytnx::eye(dim, detail::elem_to_cytnx_type<ElemT>(), ctx);
   }
 
-  template <typename ElemT> void fill(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                      const shape_t<CytnxTensor<ElemT>>& shape,
-                                      elem_t<CytnxTensor<ElemT>> value, CytnxTensor<ElemT>& a) {
+  template <typename ElemT>
+  [[deprecated("Reserved for future GPU support. Use: auto result = tci::fill(ctx, shape, v);")]]
+  void fill(context_handle_t<CytnxTensor<ElemT>>& ctx,
+            const shape_t<CytnxTensor<ElemT>>& shape,
+            elem_t<CytnxTensor<ElemT>> value, CytnxTensor<ElemT>& a) {
     allocate(ctx, shape, a);
     auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
     auto* data = a.backend.storage().template data<ElemT>();
@@ -1870,20 +1866,34 @@ namespace tci {
     contract(ctx, a, bd_labs_a, b, bd_labs_b, c, bd_labs_c);
   }
 
+  // Forward declarations for allocate (out-of-place) specializations
+  template <> CytnxTensor<cytnx::cytnx_double> allocate<CytnxTensor<cytnx::cytnx_double>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape);
+  template <> CytnxTensor<cytnx::cytnx_float> allocate<CytnxTensor<cytnx::cytnx_float>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape);
+  template <> CytnxTensor<cytnx::cytnx_complex128> allocate<CytnxTensor<cytnx::cytnx_complex128>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape);
+  template <> CytnxTensor<cytnx::cytnx_complex64> allocate<CytnxTensor<cytnx::cytnx_complex64>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape);
+
   // Explicit specializations for zeros (out-of-place) for all supported element types
   template <> inline CytnxTensor<cytnx::cytnx_double> zeros<CytnxTensor<cytnx::cytnx_double>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape) {
-    CytnxTensor<cytnx::cytnx_double> result;
-    zeros(ctx, shape, result);
+    auto result = allocate<CytnxTensor<cytnx::cytnx_double>>(ctx, shape);
+    result.backend.storage().set_zeros();
     return result;
   }
 
   template <> inline CytnxTensor<cytnx::cytnx_float> zeros<CytnxTensor<cytnx::cytnx_float>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape) {
-    CytnxTensor<cytnx::cytnx_float> result;
-    zeros(ctx, shape, result);
+    auto result = allocate<CytnxTensor<cytnx::cytnx_float>>(ctx, shape);
+    result.backend.storage().set_zeros();
     return result;
   }
 
@@ -1891,16 +1901,16 @@ namespace tci {
   inline CytnxTensor<cytnx::cytnx_complex128> zeros<CytnxTensor<cytnx::cytnx_complex128>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape) {
-    CytnxTensor<cytnx::cytnx_complex128> result;
-    zeros(ctx, shape, result);
+    auto result = allocate<CytnxTensor<cytnx::cytnx_complex128>>(ctx, shape);
+    result.backend.storage().set_zeros();
     return result;
   }
 
   template <> inline CytnxTensor<cytnx::cytnx_complex64> zeros<CytnxTensor<cytnx::cytnx_complex64>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape) {
-    CytnxTensor<cytnx::cytnx_complex64> result;
-    zeros(ctx, shape, result);
+    auto result = allocate<CytnxTensor<cytnx::cytnx_complex64>>(ctx, shape);
+    result.backend.storage().set_zeros();
     return result;
   }
 
@@ -1909,8 +1919,12 @@ namespace tci {
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape,
       elem_t<CytnxTensor<cytnx::cytnx_double>> value) {
-    CytnxTensor<cytnx::cytnx_double> result;
-    fill(ctx, shape, value, result);
+    auto result = allocate<CytnxTensor<cytnx::cytnx_double>>(ctx, shape);
+    auto total_size = static_cast<cytnx::cytnx_uint64>(result.backend.storage().size());
+    auto* data = result.backend.storage().template data<cytnx::cytnx_double>();
+    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
+      data[i] = value;
+    }
     return result;
   }
 
@@ -1918,8 +1932,12 @@ namespace tci {
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape,
       elem_t<CytnxTensor<cytnx::cytnx_float>> value) {
-    CytnxTensor<cytnx::cytnx_float> result;
-    fill(ctx, shape, value, result);
+    auto result = allocate<CytnxTensor<cytnx::cytnx_float>>(ctx, shape);
+    auto total_size = static_cast<cytnx::cytnx_uint64>(result.backend.storage().size());
+    auto* data = result.backend.storage().template data<cytnx::cytnx_float>();
+    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
+      data[i] = value;
+    }
     return result;
   }
 
@@ -1928,8 +1946,12 @@ namespace tci {
       context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape,
       elem_t<CytnxTensor<cytnx::cytnx_complex128>> value) {
-    CytnxTensor<cytnx::cytnx_complex128> result;
-    fill(ctx, shape, value, result);
+    auto result = allocate<CytnxTensor<cytnx::cytnx_complex128>>(ctx, shape);
+    auto total_size = static_cast<cytnx::cytnx_uint64>(result.backend.storage().size());
+    auto* data = result.backend.storage().template data<cytnx::cytnx_complex128>();
+    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
+      data[i] = value;
+    }
     return result;
   }
 
@@ -1937,45 +1959,16 @@ namespace tci {
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape,
       elem_t<CytnxTensor<cytnx::cytnx_complex64>> value) {
-    CytnxTensor<cytnx::cytnx_complex64> result;
-    fill(ctx, shape, value, result);
+    auto result = allocate<CytnxTensor<cytnx::cytnx_complex64>>(ctx, shape);
+    auto total_size = static_cast<cytnx::cytnx_uint64>(result.backend.storage().size());
+    auto* data = result.backend.storage().template data<cytnx::cytnx_complex64>();
+    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
+      data[i] = value;
+    }
     return result;
   }
 
-  // Explicit specializations for eye (out-of-place) for all supported element types
-  template <> inline CytnxTensor<cytnx::cytnx_double> eye<CytnxTensor<cytnx::cytnx_double>>(
-      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
-      const bond_dim_t<CytnxTensor<cytnx::cytnx_double>> N) {
-    CytnxTensor<cytnx::cytnx_double> result;
-    eye(ctx, N, result);
-    return result;
-  }
-
-  template <> inline CytnxTensor<cytnx::cytnx_float> eye<CytnxTensor<cytnx::cytnx_float>>(
-      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
-      const bond_dim_t<CytnxTensor<cytnx::cytnx_float>> N) {
-    CytnxTensor<cytnx::cytnx_float> result;
-    eye(ctx, N, result);
-    return result;
-  }
-
-  template <> inline CytnxTensor<cytnx::cytnx_complex128> eye<CytnxTensor<cytnx::cytnx_complex128>>(
-      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
-      const bond_dim_t<CytnxTensor<cytnx::cytnx_complex128>> N) {
-    CytnxTensor<cytnx::cytnx_complex128> result;
-    eye(ctx, N, result);
-    return result;
-  }
-
-  template <> inline CytnxTensor<cytnx::cytnx_complex64> eye<CytnxTensor<cytnx::cytnx_complex64>>(
-      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
-      const bond_dim_t<CytnxTensor<cytnx::cytnx_complex64>> N) {
-    CytnxTensor<cytnx::cytnx_complex64> result;
-    eye(ctx, N, result);
-    return result;
-  }
-
-  // Explicit specializations for allocate (out-of-place) for all supported element types
+  // Explicit specializations for allocate (out-of-place) - implementations
   template <> inline CytnxTensor<cytnx::cytnx_double> allocate<CytnxTensor<cytnx::cytnx_double>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape) {
@@ -1992,8 +1985,7 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_complex128> allocate<CytnxTensor<cytnx::cytnx_complex128>>(
+  template <> inline CytnxTensor<cytnx::cytnx_complex128> allocate<CytnxTensor<cytnx::cytnx_complex128>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape) {
     CytnxTensor<cytnx::cytnx_complex128> result;
@@ -2001,12 +1993,44 @@ namespace tci {
     return result;
   }
 
-  template <>
-  inline CytnxTensor<cytnx::cytnx_complex64> allocate<CytnxTensor<cytnx::cytnx_complex64>>(
+  template <> inline CytnxTensor<cytnx::cytnx_complex64> allocate<CytnxTensor<cytnx::cytnx_complex64>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape) {
     CytnxTensor<cytnx::cytnx_complex64> result;
     allocate(ctx, shape, result);
+    return result;
+  }
+
+  // Explicit specializations for eye (out-of-place) for all supported element types
+  template <> inline CytnxTensor<cytnx::cytnx_double> eye<CytnxTensor<cytnx::cytnx_double>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
+      const bond_dim_t<CytnxTensor<cytnx::cytnx_double>> N) {
+    CytnxTensor<cytnx::cytnx_double> result;
+    result.backend = cytnx::eye(N, detail::elem_to_cytnx_type<cytnx::cytnx_double>(), ctx);
+    return result;
+  }
+
+  template <> inline CytnxTensor<cytnx::cytnx_float> eye<CytnxTensor<cytnx::cytnx_float>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
+      const bond_dim_t<CytnxTensor<cytnx::cytnx_float>> N) {
+    CytnxTensor<cytnx::cytnx_float> result;
+    result.backend = cytnx::eye(N, detail::elem_to_cytnx_type<cytnx::cytnx_float>(), ctx);
+    return result;
+  }
+
+  template <> inline CytnxTensor<cytnx::cytnx_complex128> eye<CytnxTensor<cytnx::cytnx_complex128>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
+      const bond_dim_t<CytnxTensor<cytnx::cytnx_complex128>> N) {
+    CytnxTensor<cytnx::cytnx_complex128> result;
+    result.backend = cytnx::eye(N, detail::elem_to_cytnx_type<cytnx::cytnx_complex128>(), ctx);
+    return result;
+  }
+
+  template <> inline CytnxTensor<cytnx::cytnx_complex64> eye<CytnxTensor<cytnx::cytnx_complex64>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
+      const bond_dim_t<CytnxTensor<cytnx::cytnx_complex64>> N) {
+    CytnxTensor<cytnx::cytnx_complex64> result;
+    result.backend = cytnx::eye(N, detail::elem_to_cytnx_type<cytnx::cytnx_complex64>(), ctx);
     return result;
   }
 

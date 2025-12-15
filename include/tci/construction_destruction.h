@@ -38,12 +38,16 @@ namespace tci {
   /**
    * @brief Create a tensor filled with zeros (in-place version)
    *
+   * @deprecated Reserved for future GPU support. Use out-of-place version instead:
+   *             auto result = tci::zeros(ctx, shape);
+   *
    * @tparam TenT Tensor type
    * @param ctx Context handle for the tensor library
    * @param shape Shape of the tensor
    * @param a Output tensor
    */
   template <typename TenT>
+  [[deprecated("Reserved for future GPU support. Use: auto result = tci::zeros(ctx, shape);")]]
   void zeros(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, TenT& a);
 
   /**
@@ -187,12 +191,17 @@ namespace tci {
   /**
    * @brief Create an identity matrix (in-place version)
    *
+   * @deprecated Reserved for future GPU support. Use out-of-place version instead:
+   *             auto result = tci::eye(ctx, N);
+   *
    * @tparam TenT Tensor type
    * @param ctx Context handle for the tensor library
    * @param N Size of the square matrix
    * @param a Output tensor
    */
-  template <typename TenT> void eye(context_handle_t<TenT>& ctx, const bond_dim_t<TenT> N, TenT& a);
+  template <typename TenT>
+  [[deprecated("Reserved for future GPU support. Use: auto result = tci::eye(ctx, N);")]]
+  void eye(context_handle_t<TenT>& ctx, const bond_dim_t<TenT> N, TenT& a);
 
   /**
    * @brief Create an identity matrix (out-of-place version)
@@ -207,6 +216,9 @@ namespace tci {
   /**
    * @brief Fill tensor with a constant value (in-place version)
    *
+   * @deprecated Reserved for future GPU support. Use out-of-place version instead:
+   *             auto result = tci::fill(ctx, shape, v);
+   *
    * @tparam TenT Tensor type
    * @param ctx Context handle for the tensor library
    * @param shape Shape of the tensor
@@ -214,6 +226,7 @@ namespace tci {
    * @param a Output tensor
    */
   template <typename TenT>
+  [[deprecated("Reserved for future GPU support. Use: auto result = tci::fill(ctx, shape, v);")]]
   void fill(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, const elem_t<TenT> v, TenT& a);
 
   /**
