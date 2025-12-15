@@ -56,17 +56,6 @@ namespace tci {
 
   // Template implementations
 
-  template <typename ElemT> void allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                          const shape_t<CytnxTensor<ElemT>>& shape,
-                                          CytnxTensor<ElemT>& a) {
-    std::vector<cytnx::cytnx_uint64> cytnx_shape;
-    cytnx_shape.reserve(shape.size());
-    for (const auto& dim : shape) {
-      cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
-    }
-    a.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<ElemT>(), ctx);
-  }
-
   template <typename ElemT>
   elem_t<CytnxTensor<ElemT>> get_elem(context_handle_t<CytnxTensor<ElemT>>& ctx,
                                       const CytnxTensor<ElemT>& a,
@@ -248,16 +237,19 @@ namespace tci {
   }
 
   // Copy operation
-  template <typename ElemT> void copy(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                      const CytnxTensor<ElemT>& orig, CytnxTensor<ElemT>& dist) {
-    dist.backend = orig.backend.clone();
+  template <typename ElemT>
+  CytnxTensor<ElemT> copy(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                          const CytnxTensor<ElemT>& orig) {
+    CytnxTensor<ElemT> result;
+    result.backend = orig.backend.clone();
+    return result;
   }
 
-  template <typename ElemT> CytnxTensor<ElemT> copy(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                                    const CytnxTensor<ElemT>& orig) {
-    CytnxTensor<ElemT> result;
-    copy(ctx, orig, result);
-    return result;
+  template <typename ElemT>
+  [[deprecated("Use return-value version instead: auto result = copy(ctx, orig)")]]
+  void copy(context_handle_t<CytnxTensor<ElemT>>& ctx,
+            const CytnxTensor<ElemT>& orig, CytnxTensor<ElemT>& dist) {
+    dist = copy(ctx, orig);
   }
 
   // Clear operation
@@ -1823,18 +1815,20 @@ namespace tci {
     detail::for_each_recursive_const_typed(in, std::forward<Func>(f), 0, coords, shape);
   }
 
-  // move - move tensor contents (in-place)
-  template <typename ElemT> void move(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                                      CytnxTensor<ElemT>& from, CytnxTensor<ElemT>& to) {
-    to.backend = std::move(from.backend);
-  }
-
   // move - move tensor contents (out-of-place)
   template <typename ElemT>
   CytnxTensor<ElemT> move(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& from) {
     CytnxTensor<ElemT> result;
-    move(ctx, from, result);
+    result.backend = std::move(from.backend);
     return result;
+  }
+
+  // move - move tensor contents (in-place)
+  template <typename ElemT>
+  [[deprecated("Use return-value version instead: auto result = move(ctx, from)")]]
+  void move(context_handle_t<CytnxTensor<ElemT>>& ctx,
+            CytnxTensor<ElemT>& from, CytnxTensor<ElemT>& to) {
+    to = move(ctx, from);
   }
 
   // to_cplx - convert to complex tensor (out-of-place)
@@ -1982,7 +1976,12 @@ namespace tci {
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape) {
     CytnxTensor<cytnx::cytnx_double> result;
-    allocate(ctx, shape, result);
+    std::vector<cytnx::cytnx_uint64> cytnx_shape;
+    cytnx_shape.reserve(shape.size());
+    for (const auto& dim : shape) {
+      cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
+    }
+    result.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_double>(), ctx);
     return result;
   }
 
@@ -1990,7 +1989,12 @@ namespace tci {
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape) {
     CytnxTensor<cytnx::cytnx_float> result;
-    allocate(ctx, shape, result);
+    std::vector<cytnx::cytnx_uint64> cytnx_shape;
+    cytnx_shape.reserve(shape.size());
+    for (const auto& dim : shape) {
+      cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
+    }
+    result.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_float>(), ctx);
     return result;
   }
 
@@ -1998,7 +2002,12 @@ namespace tci {
       context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape) {
     CytnxTensor<cytnx::cytnx_complex128> result;
-    allocate(ctx, shape, result);
+    std::vector<cytnx::cytnx_uint64> cytnx_shape;
+    cytnx_shape.reserve(shape.size());
+    for (const auto& dim : shape) {
+      cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
+    }
+    result.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_complex128>(), ctx);
     return result;
   }
 
@@ -2006,8 +2015,22 @@ namespace tci {
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape) {
     CytnxTensor<cytnx::cytnx_complex64> result;
-    allocate(ctx, shape, result);
+    std::vector<cytnx::cytnx_uint64> cytnx_shape;
+    cytnx_shape.reserve(shape.size());
+    for (const auto& dim : shape) {
+      cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
+    }
+    result.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_complex64>(), ctx);
     return result;
+  }
+
+  // Generic template for allocate (in-place, deprecated)
+  template <typename ElemT>
+  [[deprecated("Use return-value version instead: auto result = allocate(ctx, shape)")]]
+  void allocate(context_handle_t<CytnxTensor<ElemT>>& ctx,
+                const shape_t<CytnxTensor<ElemT>>& shape,
+                CytnxTensor<ElemT>& a) {
+    a = allocate<CytnxTensor<ElemT>>(ctx, shape);
   }
 
   // Explicit specializations for eye (out-of-place) for all supported element types

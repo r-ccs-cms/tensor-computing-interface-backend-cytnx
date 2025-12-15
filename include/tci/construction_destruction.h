@@ -136,41 +136,6 @@ namespace tci {
   }
 
   /**
-   * @brief Create a tensor with random values (in-place version)
-   *
-   * @tparam TenT Tensor type
-   * @tparam RandNumGen Random number generator type
-   * @param ctx Context handle for the tensor library
-   * @param shape Shape of the tensor
-   * @param gen Random number generator
-   * @param a Output tensor
-   */
-  template <typename TenT, typename RandNumGen>
-  void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen, TenT& a) {
-    allocate(ctx, shape, a);
-
-    // Use coordinate-based approach to avoid storage compatibility issues
-    auto total_size = size(ctx, a);
-    elem_coors_t<TenT> coords(shape.size(), 0);
-
-    for (size_t flat_idx = 0; flat_idx < total_size; ++flat_idx) {
-      // Generate random value and convert to appropriate elem_t
-      auto raw_val = std::invoke(gen);
-      elem_t<TenT> elem_val = static_cast<elem_t<TenT>>(raw_val);
-
-      set_elem(ctx, a, coords, elem_val);
-
-      // Advance to next coordinate (row-major order)
-      for (int dim = static_cast<int>(coords.size()) - 1; dim >= 0; --dim) {
-        if (++coords[dim] < shape[dim]) {
-          break;
-        }
-        coords[dim] = 0;
-      }
-    }
-  }
-
-  /**
    * @brief Create a tensor with random values (out-of-place version)
    *
    * @tparam TenT Tensor type
@@ -183,9 +148,45 @@ namespace tci {
   template <typename TenT, typename RandNumGen>
   TenT random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen) {
     TenT result;
-    // Forward generator to in-place version to avoid duplication and maintain perfect forwarding
-    random(ctx, shape, std::forward<RandNumGen>(gen), result);
+    allocate(ctx, shape, result);
+
+    // Use coordinate-based approach to avoid storage compatibility issues
+    auto total_size = size(ctx, result);
+    elem_coors_t<TenT> coords(shape.size(), 0);
+
+    for (size_t flat_idx = 0; flat_idx < total_size; ++flat_idx) {
+      // Generate random value and convert to appropriate elem_t
+      auto raw_val = std::invoke(gen);
+      elem_t<TenT> elem_val = static_cast<elem_t<TenT>>(raw_val);
+
+      set_elem(ctx, result, coords, elem_val);
+
+      // Advance to next coordinate (row-major order)
+      for (int dim = static_cast<int>(coords.size()) - 1; dim >= 0; --dim) {
+        if (++coords[dim] < shape[dim]) {
+          break;
+        }
+        coords[dim] = 0;
+      }
+    }
     return result;
+  }
+
+  /**
+   * @brief Create a tensor with random values (in-place version)
+   *
+   * @tparam TenT Tensor type
+   * @tparam RandNumGen Random number generator type
+   * @param ctx Context handle for the tensor library
+   * @param shape Shape of the tensor
+   * @param gen Random number generator
+   * @param a Output tensor
+   * @deprecated Use return-value version instead: auto result = random(ctx, shape, gen)
+   */
+  template <typename TenT, typename RandNumGen>
+  [[deprecated("Use return-value version instead: auto result = random(ctx, shape, gen)")]]
+  void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen, TenT& a) {
+    a = random(ctx, shape, std::forward<RandNumGen>(gen));
   }
 
   /**
