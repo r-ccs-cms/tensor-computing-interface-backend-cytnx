@@ -137,8 +137,7 @@ namespace tci {
   void zeros(context_handle_t<CytnxTensor<ElemT>>& ctx,
              const shape_t<CytnxTensor<ElemT>>& shape,
              CytnxTensor<ElemT>& a) {
-    allocate(ctx, shape, a);
-    a.backend.storage().set_zeros();
+    fill(ctx, shape, elem_t<CytnxTensor<ElemT>>(0), a);
   }
 
   template <typename ElemT>
@@ -1880,38 +1879,48 @@ namespace tci {
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape);
 
+  // Forward declarations for fill (out-of-place) specializations
+  template <> CytnxTensor<cytnx::cytnx_double> fill<CytnxTensor<cytnx::cytnx_double>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape,
+      elem_t<CytnxTensor<cytnx::cytnx_double>> value);
+  template <> CytnxTensor<cytnx::cytnx_float> fill<CytnxTensor<cytnx::cytnx_float>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape,
+      elem_t<CytnxTensor<cytnx::cytnx_float>> value);
+  template <> CytnxTensor<cytnx::cytnx_complex128> fill<CytnxTensor<cytnx::cytnx_complex128>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape,
+      elem_t<CytnxTensor<cytnx::cytnx_complex128>> value);
+  template <> CytnxTensor<cytnx::cytnx_complex64> fill<CytnxTensor<cytnx::cytnx_complex64>>(
+      context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
+      const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape,
+      elem_t<CytnxTensor<cytnx::cytnx_complex64>> value);
+
   // Explicit specializations for zeros (out-of-place) for all supported element types
   template <> inline CytnxTensor<cytnx::cytnx_double> zeros<CytnxTensor<cytnx::cytnx_double>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_double>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_double>>& shape) {
-    auto result = allocate<CytnxTensor<cytnx::cytnx_double>>(ctx, shape);
-    result.backend.storage().set_zeros();
-    return result;
+    return fill<CytnxTensor<cytnx::cytnx_double>>(ctx, shape, 0.0);
   }
 
   template <> inline CytnxTensor<cytnx::cytnx_float> zeros<CytnxTensor<cytnx::cytnx_float>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_float>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_float>>& shape) {
-    auto result = allocate<CytnxTensor<cytnx::cytnx_float>>(ctx, shape);
-    result.backend.storage().set_zeros();
-    return result;
+    return fill<CytnxTensor<cytnx::cytnx_float>>(ctx, shape, 0.0f);
   }
 
   template <>
   inline CytnxTensor<cytnx::cytnx_complex128> zeros<CytnxTensor<cytnx::cytnx_complex128>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape) {
-    auto result = allocate<CytnxTensor<cytnx::cytnx_complex128>>(ctx, shape);
-    result.backend.storage().set_zeros();
-    return result;
+    return fill<CytnxTensor<cytnx::cytnx_complex128>>(ctx, shape, std::complex<double>(0.0, 0.0));
   }
 
   template <> inline CytnxTensor<cytnx::cytnx_complex64> zeros<CytnxTensor<cytnx::cytnx_complex64>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape) {
-    auto result = allocate<CytnxTensor<cytnx::cytnx_complex64>>(ctx, shape);
-    result.backend.storage().set_zeros();
-    return result;
+    return fill<CytnxTensor<cytnx::cytnx_complex64>>(ctx, shape, std::complex<float>(0.0f, 0.0f));
   }
 
   // Explicit specializations for fill (out-of-place) for all supported element types
