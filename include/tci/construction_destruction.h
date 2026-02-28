@@ -186,7 +186,7 @@ namespace tci {
   template <typename TenT, typename RandNumGen>
   [[deprecated("Use return-value version instead: auto result = random(ctx, shape, gen)")]]
   void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen, TenT& a) {
-    a = random(ctx, shape, std::forward<RandNumGen>(gen));
+    a = random<TenT>(ctx, shape, std::forward<RandNumGen>(gen));
   }
 
   /**
