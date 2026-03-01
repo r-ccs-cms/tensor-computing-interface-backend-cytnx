@@ -26,10 +26,9 @@ TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {
   auto g2 = -0.5 * g;
   // Initialize Hamiltonian matrix elements
   std::vector<Elem> h_elements = {J, g2, g2, 0.0, g2, -J, 0.0, g2, g2, 0.0, -J, g2, 0.0, g2, g2, J};
-  Tensor h;
-  tci::assign_from_container(
+  Tensor h = tci::assign_from_range<Tensor>(
       context, {4, 4}, h_elements.begin(),
-      [](const tci::elem_coors_t<Tensor>& coors) { return coors[0] * 4 + coors[1]; }, h);
+      [](const tci::elem_coors_t<Tensor>& coors) { return coors[0] * 4 + coors[1]; });
 
   tci::transpose(context, h, {1, 0});
   Tensor v, w;

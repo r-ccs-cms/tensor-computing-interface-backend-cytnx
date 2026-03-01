@@ -3,6 +3,7 @@
 #include "tci/construction_destruction.h"
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/cytnx_typed_tensor_impl.h"
+#include "tci/cytnx_typed_tensor_impl_deprecated.h"
 #include "tci/debugging.h"
 #include "tci/io_operations.h"
 #include "tci/miscellaneous.h"

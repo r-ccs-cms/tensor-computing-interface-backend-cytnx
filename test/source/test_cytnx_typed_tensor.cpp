@@ -200,7 +200,7 @@ TEST_CASE("CytnxTensor - Construction") {
     tci::shape_t<Tensor> shape = {2, 3};
     Tensor tensor;
 
-    CHECK_NOTHROW(tci::assign_from_container(ctx, shape, container.begin(), coors2idx, tensor));
+    CHECK_NOTHROW(tensor = tci::assign_from_range<Tensor>(ctx, shape, container.begin(), coors2idx));
 
     // Verify tensor properties
     CHECK(tensor.backend.shape().size() == 2);
@@ -237,7 +237,7 @@ TEST_CASE("CytnxTensor - Construction") {
     tci::shape_t<Tensor> shape = {2, 2};
     Tensor tensor;
 
-    CHECK_NOTHROW(tci::assign_from_container(ctx, shape, container.begin(), coors2idx, tensor));
+    CHECK_NOTHROW(tensor = tci::assign_from_range<Tensor>(ctx, shape, container.begin(), coors2idx));
 
     // Verify element values with column-major layout
     Elem elem_00 = tci::get_elem(ctx, tensor, {0, 0});

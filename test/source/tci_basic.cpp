@@ -254,7 +254,7 @@ TEST_CASE("TCI assign_from_container") {
     tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
 
     CHECK_NOTHROW(
-        tci::assign_from_container(ctx, shape, container.begin(), std::move(coors2idx), tensor));
+        tensor = tci::assign_from_range<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, shape, container.begin(), std::move(coors2idx)));
 
     // Verify tensor properties
     CHECK(tci::order(ctx, tensor) == 2);
@@ -294,7 +294,7 @@ TEST_CASE("TCI assign_from_container") {
     tci::CytnxTensor<cytnx::cytnx_complex128> tensor;
 
     CHECK_NOTHROW(
-        tci::assign_from_container(ctx, shape, container.begin(), std::move(coors2idx), tensor));
+        tensor = tci::assign_from_range<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, shape, container.begin(), std::move(coors2idx)));
 
     // Verify element values with column-major layout
     auto elem_00 = tci::get_elem(ctx, tensor, {0, 0});

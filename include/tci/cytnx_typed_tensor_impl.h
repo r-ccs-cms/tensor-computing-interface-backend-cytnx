@@ -33,19 +33,15 @@ namespace tci {
   // These are separate from the main TCI header declarations to avoid conflicts
 
   // Construction/Destruction functions for TenT
-  template <typename TenT> void allocate(context_handle_t<TenT>& ctx,
-                                          const shape_t<TenT>& shape,
-                                          TenT& a);
+  template <typename TenT>
+  void allocate(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, TenT& a);
 
   // Read-only getter functions for TenT
-  template <typename TenT>
-  void get_elem(context_handle_t<TenT>& ctx, const TenT& a,
-                const elem_coors_t<TenT>& coors, elem_t<TenT>& elem);
+  template <typename TenT> void get_elem(context_handle_t<TenT>& ctx, const TenT& a,
+                                         const elem_coors_t<TenT>& coors, elem_t<TenT>& elem);
 
-  template <typename TenT>
-  elem_t<TenT> get_elem(context_handle_t<TenT>& ctx,
-                                      const TenT& a,
-                                      const elem_coors_t<TenT>& coors);
+  template <typename TenT> elem_t<TenT> get_elem(context_handle_t<TenT>& ctx, const TenT& a,
+                                                 const elem_coors_t<TenT>& coors);
 
   // Tensor manipulation functions for TenT
   template <typename TenT, typename Func>
@@ -56,10 +52,8 @@ namespace tci {
 
   // Template implementations
 
-  template <typename TenT>
-  elem_t<TenT> get_elem(context_handle_t<TenT>& ctx,
-                                      const TenT& a,
-                                      const elem_coors_t<TenT>& coors) {
+  template <typename TenT> elem_t<TenT> get_elem(context_handle_t<TenT>& ctx, const TenT& a,
+                                                 const elem_coors_t<TenT>& coors) {
     std::vector<cytnx::cytnx_uint64> cytnx_coors;
     cytnx_coors.reserve(coors.size());
     for (const auto& coord : coors) {
@@ -69,9 +63,8 @@ namespace tci {
   }
 
   // Void overload (reserved for future GPU support)
-  template <typename TenT>
-  void get_elem(context_handle_t<TenT>& ctx, const TenT& a,
-                const elem_coors_t<TenT>& coors, elem_t<TenT>& elem) {
+  template <typename TenT> void get_elem(context_handle_t<TenT>& ctx, const TenT& a,
+                                         const elem_coors_t<TenT>& coors, elem_t<TenT>& elem) {
     // Runtime warning (emitted once per program execution)
     static bool warned = false;
     if (!warned) {
@@ -123,24 +116,19 @@ namespace tci {
 
   template <typename TenT>
   [[deprecated("Reserved for future GPU support. Use: auto result = tci::zeros(ctx, shape);")]]
-  void zeros(context_handle_t<TenT>& ctx,
-             const shape_t<TenT>& shape,
-             TenT& a) {
+  void zeros(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, TenT& a) {
     fill(ctx, shape, elem_t<TenT>(0), a);
   }
 
   template <typename TenT>
   [[deprecated("Reserved for future GPU support. Use: auto result = tci::eye(ctx, N);")]]
-  void eye(context_handle_t<TenT>& ctx,
-           bond_dim_t<TenT> dim, TenT& a) {
+  void eye(context_handle_t<TenT>& ctx, bond_dim_t<TenT> dim, TenT& a) {
     a.backend = cytnx::eye(dim, detail::elem_to_cytnx_type<elem_t<TenT>>(), ctx);
   }
 
   template <typename TenT>
   [[deprecated("Reserved for future GPU support. Use: auto result = tci::fill(ctx, shape, v);")]]
-  void fill(context_handle_t<TenT>& ctx,
-            const shape_t<TenT>& shape,
-            elem_t<TenT> value, TenT& a) {
+  void fill(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, elem_t<TenT> value, TenT& a) {
     allocate(ctx, shape, a);
     auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
     auto* data = a.backend.storage().template data<elem_t<TenT>>();
@@ -149,9 +137,8 @@ namespace tci {
     }
   }
 
-  template <typename TenT>
-  void set_elem(context_handle_t<TenT>& ctx, TenT& a,
-                const elem_coors_t<TenT>& coors, elem_t<TenT> elem) {
+  template <typename TenT> void set_elem(context_handle_t<TenT>& ctx, TenT& a,
+                                         const elem_coors_t<TenT>& coors, elem_t<TenT> elem) {
     std::vector<cytnx::cytnx_uint64> cytnx_coors;
     cytnx_coors.reserve(coors.size());
     for (const auto& coord : coors) {
@@ -160,9 +147,7 @@ namespace tci {
     a.backend.template at<elem_t<TenT>>(cytnx_coors) = elem;
   }
 
-  template <typename TenT>
-  shape_t<TenT> shape(context_handle_t<TenT>& ctx,
-                                    const TenT& a) {
+  template <typename TenT> shape_t<TenT> shape(context_handle_t<TenT>& ctx, const TenT& a) {
     auto cytnx_shape = a.backend.shape();
     shape_t<TenT> result;
     result.reserve(cytnx_shape.size());
@@ -172,28 +157,15 @@ namespace tci {
     return result;
   }
 
-  template <typename TenT>
-  order_t<TenT> order(context_handle_t<TenT>& ctx,
-                                    const TenT& a) {
+  template <typename TenT> order_t<TenT> order(context_handle_t<TenT>& ctx, const TenT& a) {
     return static_cast<order_t<TenT>>(a.backend.shape().size());
   }
 
-  template <typename TenT>
-  [[deprecated("Use tci::order instead. This API will be removed in the next major version")]]
-  order_t<TenT> rank(context_handle_t<TenT>& ctx,
-                                   const TenT& a) {
-    return order(ctx, a);
-  }
-
-  template <typename TenT>
-  ten_size_t<TenT> size(context_handle_t<TenT>& ctx,
-                                      const TenT& a) {
+  template <typename TenT> ten_size_t<TenT> size(context_handle_t<TenT>& ctx, const TenT& a) {
     return static_cast<ten_size_t<TenT>>(a.backend.storage().size());
   }
 
-  template <typename TenT>
-  std::size_t size_bytes(context_handle_t<TenT>& ctx,
-                                            const TenT& a) {
+  template <typename TenT> std::size_t size_bytes(context_handle_t<TenT>& ctx, const TenT& a) {
     // Calculate total bytes using dtype element size
     auto dtype = a.backend.dtype();
     std::size_t elem_size = 0;
@@ -216,38 +188,26 @@ namespace tci {
     return a.backend.storage().size() * elem_size;
   }
 
-  template <typename TenT>
-  void show(context_handle_t<TenT>& ctx, const TenT& a) {
+  template <typename TenT> void show(context_handle_t<TenT>& ctx, const TenT& a) {
     std::cout << a.backend << std::endl;
   }
 
   // Copy operation
-  template <typename TenT>
-  TenT copy(context_handle_t<TenT>& ctx,
-                          const TenT& orig) {
+  template <typename TenT> TenT copy(context_handle_t<TenT>& ctx, const TenT& orig) {
     TenT result;
     result.backend = orig.backend.clone();
     return result;
   }
 
-  template <typename TenT>
-  [[deprecated("Use return-value version instead: auto result = copy(ctx, orig)")]]
-  void copy(context_handle_t<TenT>& ctx,
-            const TenT& orig, TenT& dist) {
-    dist = copy(ctx, orig);
-  }
-
   // Clear operation
-  template <typename TenT>
-  void clear(context_handle_t<TenT>& ctx, TenT& a) {
+  template <typename TenT> void clear(context_handle_t<TenT>& ctx, TenT& a) {
     // Create empty tensor
     a.backend = cytnx::Tensor();
   }
 
   // Reshape operation
-  template <typename TenT> void reshape(context_handle_t<TenT>& ctx,
-                                         TenT& inout,
-                                         const shape_t<TenT>& new_shape) {
+  template <typename TenT>
+  void reshape(context_handle_t<TenT>& ctx, TenT& inout, const shape_t<TenT>& new_shape) {
     std::vector<cytnx::cytnx_int64> cytnx_shape;
     cytnx_shape.reserve(new_shape.size());
     for (const auto& dim : new_shape) {
@@ -256,9 +216,8 @@ namespace tci {
     inout.backend = inout.backend.reshape(cytnx_shape);
   }
 
-  template <typename TenT>
-  void reshape(context_handle_t<TenT>& ctx, const TenT& in,
-               const shape_t<TenT>& new_shape, TenT& out) {
+  template <typename TenT> void reshape(context_handle_t<TenT>& ctx, const TenT& in,
+                                        const shape_t<TenT>& new_shape, TenT& out) {
     std::vector<cytnx::cytnx_int64> cytnx_shape;
     cytnx_shape.reserve(new_shape.size());
     for (const auto& dim : new_shape) {
@@ -268,9 +227,8 @@ namespace tci {
   }
 
   // Transpose operation
-  template <typename TenT>
-  void transpose(context_handle_t<TenT>& ctx, TenT& inout,
-                 const std::vector<bond_idx_t<TenT>>& new_order) {
+  template <typename TenT> void transpose(context_handle_t<TenT>& ctx, TenT& inout,
+                                          const std::vector<bond_idx_t<TenT>>& new_order) {
     std::vector<cytnx::cytnx_uint64> cytnx_order;
     cytnx_order.reserve(new_order.size());
     for (const auto& idx : new_order) {
@@ -279,10 +237,9 @@ namespace tci {
     inout.backend = inout.backend.permute(cytnx_order);
   }
 
-  template <typename TenT>
-  void transpose(context_handle_t<TenT>& ctx, const TenT& in,
-                 const std::vector<bond_idx_t<TenT>>& new_order,
-                 TenT& out) {
+  template <typename TenT> void transpose(context_handle_t<TenT>& ctx, const TenT& in,
+                                          const std::vector<bond_idx_t<TenT>>& new_order,
+                                          TenT& out) {
     std::vector<cytnx::cytnx_uint64> cytnx_order;
     cytnx_order.reserve(new_order.size());
     for (const auto& idx : new_order) {
@@ -292,8 +249,7 @@ namespace tci {
   }
 
   // Complex conjugate
-  template <typename TenT>
-  void cplx_conj(context_handle_t<TenT>& ctx, TenT& inout) {
+  template <typename TenT> void cplx_conj(context_handle_t<TenT>& ctx, TenT& inout) {
     if constexpr (std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex128>
                   || std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex64>) {
       inout.backend = inout.backend.Conj();
@@ -301,8 +257,7 @@ namespace tci {
     // For real types, do nothing
   }
 
-  template <typename TenT> void cplx_conj(context_handle_t<TenT>& ctx,
-                                           const TenT& in, TenT& out) {
+  template <typename TenT> void cplx_conj(context_handle_t<TenT>& ctx, const TenT& in, TenT& out) {
     if constexpr (std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex128>
                   || std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex64>) {
       out.backend = in.backend.Conj();
@@ -312,9 +267,8 @@ namespace tci {
   }
 
   // Real part extraction
-  template <typename TenT> void real(context_handle_t<TenT>& ctx,
-                                      const TenT& in,
-                                      real_ten_t<TenT>& out) {
+  template <typename TenT>
+  void real(context_handle_t<TenT>& ctx, const TenT& in, real_ten_t<TenT>& out) {
     if constexpr (std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex128>
                   || std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex64>) {
       // Clone first since real() is not const
@@ -326,18 +280,15 @@ namespace tci {
     }
   }
 
-  template <typename TenT>
-  real_ten_t<TenT> real(context_handle_t<TenT>& ctx,
-                                      const TenT& in) {
+  template <typename TenT> real_ten_t<TenT> real(context_handle_t<TenT>& ctx, const TenT& in) {
     real_ten_t<TenT> result;
     real(ctx, in, result);
     return result;
   }
 
   // Imaginary part extraction
-  template <typename TenT> void imag(context_handle_t<TenT>& ctx,
-                                      const TenT& in,
-                                      real_ten_t<TenT>& out) {
+  template <typename TenT>
+  void imag(context_handle_t<TenT>& ctx, const TenT& in, real_ten_t<TenT>& out) {
     if constexpr (std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex128>
                   || std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex64>) {
       // Clone first since imag() is not const
@@ -350,18 +301,15 @@ namespace tci {
     }
   }
 
-  template <typename TenT>
-  real_ten_t<TenT> imag(context_handle_t<TenT>& ctx,
-                                      const TenT& in) {
+  template <typename TenT> real_ten_t<TenT> imag(context_handle_t<TenT>& ctx, const TenT& in) {
     real_ten_t<TenT> result;
     imag(ctx, in, result);
     return result;
   }
 
   // Convert real tensor to complex tensor
-  template <typename TenT> void to_cplx(context_handle_t<TenT>& ctx,
-                                         const TenT& in,
-                                         cplx_ten_t<TenT>& out) {
+  template <typename TenT>
+  void to_cplx(context_handle_t<TenT>& ctx, const TenT& in, cplx_ten_t<TenT>& out) {
     if (in.backend.dtype() == cytnx::Type.ComplexDouble
         || in.backend.dtype() == cytnx::Type.ComplexFloat) {
       // Already complex, just copy
@@ -373,16 +321,12 @@ namespace tci {
   }
 
   // Norm calculation
-  template <typename TenT>
-  real_t<TenT> norm(context_handle_t<TenT>& ctx,
-                                  const TenT& a) {
+  template <typename TenT> real_t<TenT> norm(context_handle_t<TenT>& ctx, const TenT& a) {
     return a.backend.Norm().template item<real_t<TenT>>();
   }
 
   // Normalize
-  template <typename TenT>
-  real_t<TenT> normalize(context_handle_t<TenT>& ctx,
-                                       TenT& inout) {
+  template <typename TenT> real_t<TenT> normalize(context_handle_t<TenT>& ctx, TenT& inout) {
     auto n = norm(ctx, inout);
     if (n > 0) {
       inout.backend = inout.backend / n;
@@ -391,8 +335,7 @@ namespace tci {
   }
 
   template <typename TenT>
-  real_t<TenT> normalize(context_handle_t<TenT>& ctx,
-                                       const TenT& in, TenT& out) {
+  real_t<TenT> normalize(context_handle_t<TenT>& ctx, const TenT& in, TenT& out) {
     auto n = norm(ctx, in);
     if (n > 0) {
       out.backend = in.backend / n;
@@ -403,21 +346,18 @@ namespace tci {
   }
 
   // Scale
-  template <typename TenT> void scale(context_handle_t<TenT>& ctx,
-                                       TenT& inout,
-                                       const elem_t<TenT> s) {
+  template <typename TenT>
+  void scale(context_handle_t<TenT>& ctx, TenT& inout, const elem_t<TenT> s) {
     inout.backend = inout.backend * s;
   }
 
   template <typename TenT>
-  void scale(context_handle_t<TenT>& ctx, const TenT& in,
-             const elem_t<TenT> s, TenT& out) {
+  void scale(context_handle_t<TenT>& ctx, const TenT& in, const elem_t<TenT> s, TenT& out) {
     out.backend = in.backend * s;
   }
 
   // Diag - extract diagonal or create diagonal matrix
-  template <typename TenT>
-  void diag(context_handle_t<TenT>& ctx, TenT& inout) {
+  template <typename TenT> void diag(context_handle_t<TenT>& ctx, TenT& inout) {
     auto r = inout.backend.shape().size();
     if (r == 1) {
       // Create diagonal matrix from vector
@@ -450,16 +390,14 @@ namespace tci {
     }
   }
 
-  template <typename TenT> void diag(context_handle_t<TenT>& ctx,
-                                      const TenT& in, TenT& out) {
+  template <typename TenT> void diag(context_handle_t<TenT>& ctx, const TenT& in, TenT& out) {
     out.backend = in.backend.clone();
     diag(ctx, out);
   }
 
   // Trace - partial trace over specified bond pairs
-  template <typename TenT> void trace(context_handle_t<TenT>& ctx,
-                                       TenT& inout,
-                                       const bond_idx_pairs_t<TenT>& bdidx_pairs) {
+  template <typename TenT>
+  void trace(context_handle_t<TenT>& ctx, TenT& inout, const bond_idx_pairs_t<TenT>& bdidx_pairs) {
     cytnx::Tensor result = inout.backend;
 
     // Create index mapping to track axis renumbering after each trace
@@ -501,22 +439,19 @@ namespace tci {
     inout.backend = result;
   }
 
-  template <typename TenT>
-  void trace(context_handle_t<TenT>& ctx, const TenT& in,
-             const bond_idx_pairs_t<TenT>& bdidx_pairs, TenT& out) {
+  template <typename TenT> void trace(context_handle_t<TenT>& ctx, const TenT& in,
+                                      const bond_idx_pairs_t<TenT>& bdidx_pairs, TenT& out) {
     out.backend = in.backend.clone();
     trace(ctx, out, bdidx_pairs);
   }
 
   // Contract - tensor contraction following Einstein summation
   // Restored from b7ecb2a9^ (correct implementation using cytnx::linalg::Tensordot)
-  template <typename TenT>
-  void contract(context_handle_t<TenT>& ctx, const TenT& a,
-                const std::vector<bond_label_t<TenT>>& bd_labs_a,
-                const TenT& b,
-                const std::vector<bond_label_t<TenT>>& bd_labs_b,
-                TenT& c,
-                const std::vector<bond_label_t<TenT>>& bd_labs_c) {
+  template <typename TenT> void contract(context_handle_t<TenT>& ctx, const TenT& a,
+                                         const std::vector<bond_label_t<TenT>>& bd_labs_a,
+                                         const TenT& b,
+                                         const std::vector<bond_label_t<TenT>>& bd_labs_b, TenT& c,
+                                         const std::vector<bond_label_t<TenT>>& bd_labs_c) {
     (void)ctx;
 
     const auto rank_a = a.backend.shape().size();
@@ -524,15 +459,14 @@ namespace tci {
 
     bool treat_as_label_mode = (bd_labs_a.size() == rank_a) && (bd_labs_b.size() == rank_b);
 
-    const auto in_range
-        = [](size_t rank, const std::vector<bond_label_t<TenT>>& axes_list) {
-            for (auto axis : axes_list) {
-              if (axis < 0 || static_cast<size_t>(axis) >= rank) {
-                return false;
-              }
-            }
-            return true;
-          };
+    const auto in_range = [](size_t rank, const std::vector<bond_label_t<TenT>>& axes_list) {
+      for (auto axis : axes_list) {
+        if (axis < 0 || static_cast<size_t>(axis) >= rank) {
+          return false;
+        }
+      }
+      return true;
+    };
 
     if (!in_range(rank_a, bd_labs_a) || !in_range(rank_b, bd_labs_b)) {
       treat_as_label_mode = true;
@@ -613,8 +547,7 @@ namespace tci {
 
     // Axis mode
     auto convert_axes
-        = [](size_t rank, const std::vector<bond_label_t<TenT>>& axes_list,
-             const char* which) {
+        = [](size_t rank, const std::vector<bond_label_t<TenT>>& axes_list, const char* which) {
             std::vector<cytnx::cytnx_uint64> axes;
             axes.reserve(axes_list.size());
             std::vector<bool> seen(rank, false);
@@ -692,9 +625,8 @@ namespace tci {
   }
 
   // Linear combination
-  template <typename TenT> void linear_combine(context_handle_t<TenT>& ctx,
-                                                const std::vector<TenT>& ins,
-                                                TenT& out) {
+  template <typename TenT>
+  void linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins, TenT& out) {
     if (ins.empty()) {
       return;
     }
@@ -705,11 +637,9 @@ namespace tci {
     }
   }
 
-  template <typename TenT>
-  void linear_combine(context_handle_t<TenT>& ctx,
-                      const std::vector<TenT>& ins,
-                      const std::vector<elem_t<TenT>>& coefs,
-                      TenT& out) {
+  template <typename TenT> void linear_combine(context_handle_t<TenT>& ctx,
+                                               const std::vector<TenT>& ins,
+                                               const std::vector<elem_t<TenT>>& coefs, TenT& out) {
     if (ins.empty() || ins.size() != coefs.size()) {
       return;
     }
@@ -721,10 +651,9 @@ namespace tci {
   }
 
   // SVD (full)
-  template <typename TenT>
-  void svd(context_handle_t<TenT>& ctx, const TenT& a,
-           const order_t<TenT> num_of_bds_as_row, TenT& u,
-           real_ten_t<TenT>& s_diag, TenT& v_dag) {
+  template <typename TenT> void svd(context_handle_t<TenT>& ctx, const TenT& a,
+                                    const order_t<TenT> num_of_bds_as_row, TenT& u,
+                                    real_ten_t<TenT>& s_diag, TenT& v_dag) {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
@@ -786,10 +715,8 @@ namespace tci {
   }
 
   // QR decomposition
-  template <typename TenT> void qr(context_handle_t<TenT>& ctx,
-                                    const TenT& a,
-                                    const order_t<TenT> num_of_bds_as_row,
-                                    TenT& q, TenT& r) {
+  template <typename TenT> void qr(context_handle_t<TenT>& ctx, const TenT& a,
+                                   const order_t<TenT> num_of_bds_as_row, TenT& q, TenT& r) {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
@@ -843,10 +770,8 @@ namespace tci {
   }
 
   // LQ decomposition
-  template <typename TenT> void lq(context_handle_t<TenT>& ctx,
-                                    const TenT& a,
-                                    const order_t<TenT> num_of_bds_as_row,
-                                    TenT& l, TenT& q) {
+  template <typename TenT> void lq(context_handle_t<TenT>& ctx, const TenT& a,
+                                   const order_t<TenT> num_of_bds_as_row, TenT& l, TenT& q) {
     // LQ = (Q†L†)† where Q†L† is QR of A†
     // Transpose and do QR, then transpose results back
 
@@ -908,12 +833,9 @@ namespace tci {
 
   // Truncated SVD - overload (2): chi_max, s_min
   template <typename TenT>
-  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a,
-                 const order_t<TenT> num_of_bds_as_row, TenT& u,
-                 real_ten_t<TenT>& s_diag, TenT& v_dag,
-                 real_t<TenT>& trunc_err,
-                 const bond_dim_t<TenT> chi_max,
-                 const real_t<TenT> s_min) {
+  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
+                 TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
+                 const bond_dim_t<TenT> chi_max, const real_t<TenT> s_min) {
     // Call full version with chi_min=1, target_trunc_err=0
     constexpr bond_dim_t<TenT> chi_min = 1;
     constexpr real_t<TenT> target_trunc_err = 0.0;
@@ -923,30 +845,22 @@ namespace tci {
 
   // Truncated SVD - overload (1): target_trunc_err, s_min
   template <typename TenT>
-  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a,
-                 const order_t<TenT> num_of_bds_as_row, TenT& u,
-                 real_ten_t<TenT>& s_diag, TenT& v_dag,
-                 real_t<TenT>& trunc_err,
-                 const real_t<TenT> target_trunc_err,
-                 const real_t<TenT> s_min) {
+  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
+                 TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
+                 const real_t<TenT> target_trunc_err, const real_t<TenT> s_min) {
     // Call full version with chi_min=1, chi_max=∞ (represented by a very large value)
     constexpr bond_dim_t<TenT> chi_min = 1;
-    constexpr bond_dim_t<TenT> chi_max
-        = std::numeric_limits<bond_dim_t<TenT>>::max();
+    constexpr bond_dim_t<TenT> chi_max = std::numeric_limits<bond_dim_t<TenT>>::max();
     trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
               target_trunc_err, s_min);
   }
 
   // Truncated SVD - overload (3): full control
   template <typename TenT>
-  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a,
-                 const order_t<TenT> num_of_bds_as_row, TenT& u,
-                 real_ten_t<TenT>& s_diag, TenT& v_dag,
-                 real_t<TenT>& trunc_err,
-                 const bond_dim_t<TenT> chi_min,
-                 const bond_dim_t<TenT> chi_max,
-                 const real_t<TenT> target_trunc_err,
-                 const real_t<TenT> s_min) {
+  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
+                 TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
+                 const bond_dim_t<TenT> chi_min, const bond_dim_t<TenT> chi_max,
+                 const real_t<TenT> target_trunc_err, const real_t<TenT> s_min) {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
@@ -1064,46 +978,10 @@ namespace tci {
     v_dag.backend = vt_backend.reshape(v_cytnx_shape);
   }
 
-  // Deprecated: Old trunc_svd overload (1) - only s_min
-  template <typename TenT> [[deprecated(
-      "Parameter order changed. Use trunc_svd(..., trunc_err, chi_max, s_min) or trunc_svd(..., "
-      "trunc_err, chi_min, chi_max, target_trunc_err, s_min). This API will be removed in the next "
-      "major version")]]
-  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a,
-                 const order_t<TenT> num_of_bds_as_row, TenT& u,
-                 real_ten_t<TenT>& s_diag, TenT& v_dag,
-                 real_t<TenT>& trunc_err, const real_t<TenT> s_min) {
-    // Forward to spec_v1 overload (1) with chi_min=1, target_trunc_err=0
-    constexpr bond_dim_t<TenT> chi_min = 1;
-    constexpr real_t<TenT> target_trunc_err = 0.0;
-    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min,
-              static_cast<bond_dim_t<TenT>>(std::numeric_limits<std::uint64_t>::max()),
-              target_trunc_err, s_min);
-  }
-
-  // Deprecated: Old trunc_svd overload (2) - chi_max, target_trunc_err, s_min
-  template <typename TenT> [[deprecated(
-      "Parameter order changed. Use trunc_svd(..., trunc_err, chi_max, s_min) or trunc_svd(..., "
-      "trunc_err, chi_min, chi_max, target_trunc_err, s_min). This API will be removed in the next "
-      "major version")]]
-  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a,
-                 const order_t<TenT> num_of_bds_as_row, TenT& u,
-                 real_ten_t<TenT>& s_diag, TenT& v_dag,
-                 real_t<TenT>& trunc_err,
-                 const bond_dim_t<TenT> chi_max,
-                 const real_t<TenT> target_trunc_err,
-                 const real_t<TenT> s_min) {
-    // Forward to spec_v1 overload (2) with chi_min=1
-    constexpr bond_dim_t<TenT> chi_min = 1;
-    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
-              target_trunc_err, s_min);
-  }
-
   // Eigenvalue decomposition - eigvals (general matrix eigenvalues)
-  template <typename TenT> void eigvals(context_handle_t<TenT>& ctx,
-                                         const TenT& a,
-                                         const order_t<TenT> num_of_bds_as_row,
-                                         cplx_ten_t<TenT>& w_diag) {
+  template <typename TenT> void eigvals(context_handle_t<TenT>& ctx, const TenT& a,
+                                        const order_t<TenT> num_of_bds_as_row,
+                                        cplx_ten_t<TenT>& w_diag) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -1136,10 +1014,9 @@ namespace tci {
   }
 
   // Eigenvalue decomposition - eigvalsh (hermitian matrix eigenvalues)
-  template <typename TenT> void eigvalsh(context_handle_t<TenT>& ctx,
-                                          const TenT& a,
-                                          const order_t<TenT> num_of_bds_as_row,
-                                          real_ten_t<TenT>& w_diag) {
+  template <typename TenT> void eigvalsh(context_handle_t<TenT>& ctx, const TenT& a,
+                                         const order_t<TenT> num_of_bds_as_row,
+                                         real_ten_t<TenT>& w_diag) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -1169,10 +1046,9 @@ namespace tci {
   }
 
   // Eigenvalue decomposition - eig (general matrix eigenvalues and eigenvectors)
-  template <typename TenT>
-  void eig(context_handle_t<TenT>& ctx, const TenT& a,
-           const order_t<TenT> num_of_bds_as_row,
-           cplx_ten_t<TenT>& w_diag, cplx_ten_t<TenT>& v) {
+  template <typename TenT> void eig(context_handle_t<TenT>& ctx, const TenT& a,
+                                    const order_t<TenT> num_of_bds_as_row, cplx_ten_t<TenT>& w_diag,
+                                    cplx_ten_t<TenT>& v) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -1214,10 +1090,9 @@ namespace tci {
   }
 
   // Eigenvalue decomposition - eigh (hermitian matrix eigenvalues and eigenvectors)
-  template <typename TenT>
-  void eigh(context_handle_t<TenT>& ctx, const TenT& a,
-            const order_t<TenT> num_of_bds_as_row,
-            real_ten_t<TenT>& w_diag, TenT& v) {
+  template <typename TenT> void eigh(context_handle_t<TenT>& ctx, const TenT& a,
+                                     const order_t<TenT> num_of_bds_as_row,
+                                     real_ten_t<TenT>& w_diag, TenT& v) {
     auto a_shape = shape(ctx, a);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -1253,9 +1128,8 @@ namespace tci {
   }
 
   // Check if two tensors are close within tolerance
-  template <typename TenT> bool close(context_handle_t<TenT>& ctx,
-                                       const TenT& a, const TenT& b,
-                                       const real_t<TenT> epsilon) {
+  template <typename TenT> bool close(context_handle_t<TenT>& ctx, const TenT& a, const TenT& b,
+                                      const real_t<TenT> epsilon) {
     (void)ctx;
     // Check shape first
     if (a.backend.shape() != b.backend.shape()) {
@@ -1282,60 +1156,6 @@ namespace tci {
     // Compare with epsilon tolerance
     double eps_magnitude = std::abs(epsilon);
     return diff_norm <= eps_magnitude;
-  }
-
-  // Deprecated: Tensor equality check with epsilon tolerance
-  template <typename TenT>
-  [[deprecated("Use close instead. This API will be removed in the next major version")]]
-  bool eq(context_handle_t<TenT>& ctx, const TenT& a,
-          const TenT& b, const real_t<TenT> epsilon) {
-    return close(ctx, a, b, epsilon);
-  }
-
-  // assign_from_container - create tensor from container
-  template <typename TenT, typename RandomIt, typename Func>
-  void assign_from_container(context_handle_t<TenT>& ctx,
-                             const shape_t<TenT>& shape, RandomIt init_elems_begin,
-                             Func&& coors2idx, TenT& a) {
-    // Allocate tensor with the specified shape
-    allocate(ctx, shape, a);
-
-    // Generate all coordinate combinations and assign values
-    std::function<void(elem_coors_t<TenT>, std::size_t)> assign_recursive;
-    assign_recursive = [&](elem_coors_t<TenT> current_coords, std::size_t dim) {
-      if (dim == shape.size()) {
-        // Base case: all dimensions set, assign the element
-        auto index = std::invoke(coors2idx, current_coords);
-        auto value = *(init_elems_begin + index);
-
-        // Convert value to elem_t<TenT>
-        elem_t<TenT> elem_val;
-        if constexpr (std::is_same_v<elem_t<TenT>, decltype(value)>) {
-          elem_val = value;
-        } else if constexpr (std::is_arithmetic_v<decltype(value)>) {
-          elem_val = static_cast<elem_t<TenT>>(value);
-        } else if constexpr (std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex128>
-                             && std::is_same_v<decltype(value), std::complex<double>>) {
-          elem_val = cytnx::cytnx_complex128(value.real(), value.imag());
-        } else if constexpr (std::is_same_v<elem_t<TenT>, cytnx::cytnx_complex64>
-                             && std::is_same_v<decltype(value), std::complex<float>>) {
-          elem_val = cytnx::cytnx_complex64(value.real(), value.imag());
-        } else {
-          elem_val = static_cast<elem_t<TenT>>(value);
-        }
-
-        set_elem(ctx, a, current_coords, elem_val);
-      } else {
-        // Recursive case: iterate through current dimension
-        for (bond_dim_t<TenT> i = 0; i < shape[dim]; ++i) {
-          current_coords.push_back(i);
-          assign_recursive(current_coords, dim + 1);
-          current_coords.pop_back();
-        }
-      }
-    };
-
-    assign_recursive({}, 0);
   }
 
   // Tensor Manipulation functions - independent implementations needed
@@ -1407,8 +1227,7 @@ namespace tci {
 
   template <typename TenT>
   void expand(context_handle_t<TenT>& ctx, TenT& inout,
-              const Map<bond_idx_t<TenT>, bond_dim_t<TenT>>&
-                  bond_idx_increment_map) {
+              const Map<bond_idx_t<TenT>, bond_dim_t<TenT>>& bond_idx_increment_map) {
     auto original_shape = inout.backend.shape();
     std::vector<cytnx::cytnx_uint64> new_shape(original_shape.begin(), original_shape.end());
 
@@ -1432,9 +1251,7 @@ namespace tci {
 
   template <typename TenT>
   void expand(context_handle_t<TenT>& ctx, const TenT& in,
-              const Map<bond_idx_t<TenT>, bond_dim_t<TenT>>&
-                  bond_idx_increment_map,
-              TenT& out) {
+              const Map<bond_idx_t<TenT>, bond_dim_t<TenT>>& bond_idx_increment_map, TenT& out) {
     out = in;
     expand(ctx, out, bond_idx_increment_map);
   }
@@ -1469,18 +1286,16 @@ namespace tci {
 
   template <typename TenT>
   void shrink(context_handle_t<TenT>& ctx, const TenT& in,
-              const bond_idx_elem_coor_pair_map<TenT>& bd_idx_el_coor_pair_map,
-              TenT& out) {
+              const bond_idx_elem_coor_pair_map<TenT>& bd_idx_el_coor_pair_map, TenT& out) {
     out = in;
     shrink(ctx, out, bd_idx_el_coor_pair_map);
   }
 
   // extract_sub
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
-  template <typename TenT> void extract_sub(
-      context_handle_t<TenT>& ctx, TenT& inout,
-      const List<Pair<elem_coor_t<TenT>, elem_coor_t<TenT>>>&
-          coor_pairs) {
+  template <typename TenT>
+  void extract_sub(context_handle_t<TenT>& ctx, TenT& inout,
+                   const List<Pair<elem_coor_t<TenT>, elem_coor_t<TenT>>>& coor_pairs) {
     auto original_shape = inout.backend.shape();
 
     if (coor_pairs.size() != original_shape.size()) {
@@ -1506,21 +1321,17 @@ namespace tci {
     inout.backend = std::move(result);
   }
 
-  template <typename TenT> void extract_sub(
-      context_handle_t<TenT>& ctx, const TenT& in,
-      const List<Pair<elem_coor_t<TenT>, elem_coor_t<TenT>>>&
-          coor_pairs,
-      TenT& out) {
+  template <typename TenT>
+  void extract_sub(context_handle_t<TenT>& ctx, const TenT& in,
+                   const List<Pair<elem_coor_t<TenT>, elem_coor_t<TenT>>>& coor_pairs, TenT& out) {
     out = in;
     extract_sub(ctx, out, coor_pairs);
   }
 
   // replace_sub
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
-  template <typename TenT> void replace_sub(context_handle_t<TenT>& ctx,
-                                             TenT& inout,
-                                             const TenT& sub,
-                                             const elem_coors_t<TenT>& begin_pt) {
+  template <typename TenT> void replace_sub(context_handle_t<TenT>& ctx, TenT& inout,
+                                            const TenT& sub, const elem_coors_t<TenT>& begin_pt) {
     auto main_shape = inout.backend.shape();
     auto sub_shape = sub.backend.shape();
 
@@ -1540,19 +1351,17 @@ namespace tci {
     replace_elements_recursive(inout.backend, sub.backend, 0, begin_pt, sub_coords, sub_shape);
   }
 
-  template <typename TenT>
-  void replace_sub(context_handle_t<TenT>& ctx, const TenT& in,
-                   const TenT& sub, const elem_coors_t<TenT>& begin_pt,
-                   TenT& out) {
+  template <typename TenT> void replace_sub(context_handle_t<TenT>& ctx, const TenT& in,
+                                            const TenT& sub, const elem_coors_t<TenT>& begin_pt,
+                                            TenT& out) {
     out.backend = in.backend.clone();
     replace_sub(ctx, out, sub, begin_pt);
   }
 
   // concatenate
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
-  template <typename TenT>
-  void concatenate(context_handle_t<TenT>& ctx, const List<TenT>& ins,
-                   const bond_idx_t<TenT> axis, TenT& out) {
+  template <typename TenT> void concatenate(context_handle_t<TenT>& ctx, const List<TenT>& ins,
+                                            const bond_idx_t<TenT> axis, TenT& out) {
     if (ins.empty()) {
       throw std::invalid_argument("Cannot concatenate empty list of tensors");
     }
@@ -1614,9 +1423,8 @@ namespace tci {
 
   // stack
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
-  template <typename TenT>
-  void stack(context_handle_t<TenT>& ctx, const List<TenT>& ins,
-             const bond_idx_t<TenT> axis, TenT& out) {
+  template <typename TenT> void stack(context_handle_t<TenT>& ctx, const List<TenT>& ins,
+                                      const bond_idx_t<TenT> axis, TenT& out) {
     if (ins.empty()) {
       throw std::invalid_argument("Cannot stack empty list of tensors");
     }
@@ -1722,8 +1530,7 @@ namespace tci {
 
   // for_each_with_coors for TenT (mutable version)
   template <typename TenT, typename Func>
-  void for_each_with_coors(context_handle_t<TenT>& ctx, TenT& inout,
-                           Func&& f) {
+  void for_each_with_coors(context_handle_t<TenT>& ctx, TenT& inout, Func&& f) {
     auto shape = inout.backend.shape();
     std::vector<cytnx::cytnx_uint64> coords;
     coords.reserve(shape.size());
@@ -1733,8 +1540,7 @@ namespace tci {
 
   // for_each_with_coors for TenT (const version)
   template <typename TenT, typename Func>
-  void for_each_with_coors(context_handle_t<TenT>& ctx, const TenT& in,
-                           Func&& f) {
+  void for_each_with_coors(context_handle_t<TenT>& ctx, const TenT& in, Func&& f) {
     auto shape = in.backend.shape();
     std::vector<cytnx::cytnx_uint64> coords;
     coords.reserve(shape.size());
@@ -1743,36 +1549,24 @@ namespace tci {
   }
 
   // move - move tensor contents (out-of-place)
-  template <typename TenT>
-  TenT move(context_handle_t<TenT>& ctx, TenT& from) {
+  template <typename TenT> TenT move(context_handle_t<TenT>& ctx, TenT& from) {
     TenT result;
     result.backend = std::move(from.backend);
     return result;
   }
 
-  // move - move tensor contents (in-place)
-  template <typename TenT>
-  [[deprecated("Use return-value version instead: auto result = move(ctx, from)")]]
-  void move(context_handle_t<TenT>& ctx,
-            TenT& from, TenT& to) {
-    to = move(ctx, from);
-  }
-
   // to_cplx - convert to complex tensor (out-of-place)
-  template <typename TenT>
-  cplx_ten_t<TenT> to_cplx(context_handle_t<TenT>& ctx,
-                                         const TenT& in) {
+  template <typename TenT> cplx_ten_t<TenT> to_cplx(context_handle_t<TenT>& ctx, const TenT& in) {
     cplx_ten_t<TenT> result;
     to_cplx(ctx, in, result);
     return result;
   }
 
   // contract - tensor contraction (string version)
-  template <typename TenT>
-  void contract(context_handle_t<TenT>& ctx, const TenT& a,
-                const std::string_view bd_labs_str_a, const TenT& b,
-                const std::string_view bd_labs_str_b, TenT& c,
-                const std::string_view bd_labs_str_c) {
+  template <typename TenT> void contract(context_handle_t<TenT>& ctx, const TenT& a,
+                                         const std::string_view bd_labs_str_a, const TenT& b,
+                                         const std::string_view bd_labs_str_b, TenT& c,
+                                         const std::string_view bd_labs_str_c) {
     List<bond_label_t<TenT>> bd_labs_a, bd_labs_b, bd_labs_c;
     for (char ch : bd_labs_str_a) {
       bd_labs_a.push_back(static_cast<bond_label_t<TenT>>(ch));
@@ -1908,7 +1702,8 @@ namespace tci {
     for (const auto& dim : shape) {
       cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
     }
-    result.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_double>(), ctx);
+    result.backend
+        = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_double>(), ctx);
     return result;
   }
 
@@ -1921,11 +1716,13 @@ namespace tci {
     for (const auto& dim : shape) {
       cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
     }
-    result.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_float>(), ctx);
+    result.backend
+        = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_float>(), ctx);
     return result;
   }
 
-  template <> inline CytnxTensor<cytnx::cytnx_complex128> allocate<CytnxTensor<cytnx::cytnx_complex128>>(
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex128> allocate<CytnxTensor<cytnx::cytnx_complex128>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex128>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex128>>& shape) {
     CytnxTensor<cytnx::cytnx_complex128> result;
@@ -1934,11 +1731,13 @@ namespace tci {
     for (const auto& dim : shape) {
       cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
     }
-    result.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_complex128>(), ctx);
+    result.backend
+        = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_complex128>(), ctx);
     return result;
   }
 
-  template <> inline CytnxTensor<cytnx::cytnx_complex64> allocate<CytnxTensor<cytnx::cytnx_complex64>>(
+  template <>
+  inline CytnxTensor<cytnx::cytnx_complex64> allocate<CytnxTensor<cytnx::cytnx_complex64>>(
       context_handle_t<CytnxTensor<cytnx::cytnx_complex64>>& ctx,
       const shape_t<CytnxTensor<cytnx::cytnx_complex64>>& shape) {
     CytnxTensor<cytnx::cytnx_complex64> result;
@@ -1947,17 +1746,9 @@ namespace tci {
     for (const auto& dim : shape) {
       cytnx_shape.push_back(static_cast<cytnx::cytnx_uint64>(dim));
     }
-    result.backend = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_complex64>(), ctx);
+    result.backend
+        = cytnx::Tensor(cytnx_shape, detail::elem_to_cytnx_type<cytnx::cytnx_complex64>(), ctx);
     return result;
-  }
-
-  // Generic template for allocate (in-place, deprecated)
-  template <typename TenT>
-  [[deprecated("Use return-value version instead: auto result = allocate(ctx, shape)")]]
-  void allocate(context_handle_t<TenT>& ctx,
-                const shape_t<TenT>& shape,
-                TenT& a) {
-    a = allocate<TenT>(ctx, shape);
   }
 
   // Explicit specializations for eye (out-of-place) for all supported element types
@@ -1998,9 +1789,8 @@ namespace tci {
   // ===================================================================
 
   // inverse - matrix inverse (in-place)
-  template <typename TenT> void inverse(context_handle_t<TenT>& ctx,
-                                         TenT& inout,
-                                         const order_t<TenT> num_of_bds_as_row) {
+  template <typename TenT>
+  void inverse(context_handle_t<TenT>& ctx, TenT& inout, const order_t<TenT> num_of_bds_as_row) {
     auto a_shape = shape(ctx, inout);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -2038,9 +1828,8 @@ namespace tci {
   }
 
   // inverse - matrix inverse (out-of-place)
-  template <typename TenT>
-  void inverse(context_handle_t<TenT>& ctx, const TenT& in,
-               const order_t<TenT> num_of_bds_as_row, TenT& out) {
+  template <typename TenT> void inverse(context_handle_t<TenT>& ctx, const TenT& in,
+                                        const order_t<TenT> num_of_bds_as_row, TenT& out) {
     auto a_shape = shape(ctx, in);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -2078,9 +1867,8 @@ namespace tci {
   }
 
   // exp - matrix exponential (in-place)
-  template <typename TenT> void exp(context_handle_t<TenT>& ctx,
-                                     TenT& inout,
-                                     const order_t<TenT> num_of_bds_as_row) {
+  template <typename TenT>
+  void exp(context_handle_t<TenT>& ctx, TenT& inout, const order_t<TenT> num_of_bds_as_row) {
     auto a_shape = shape(ctx, inout);
 
     cytnx::cytnx_uint64 row_dim = 1;
@@ -2113,9 +1901,8 @@ namespace tci {
   }
 
   // exp - matrix exponential (out-of-place)
-  template <typename TenT>
-  void exp(context_handle_t<TenT>& ctx, const TenT& in,
-           const order_t<TenT> num_of_bds_as_row, TenT& out) {
+  template <typename TenT> void exp(context_handle_t<TenT>& ctx, const TenT& in,
+                                    const order_t<TenT> num_of_bds_as_row, TenT& out) {
     auto a_shape = shape(ctx, in);
 
     cytnx::cytnx_uint64 row_dim = 1;

@@ -10,6 +10,7 @@
 #include <doctest/doctest.h>
 
 #include <tci/tci.h>
+#include <tci/cytnx_typed_tensor_impl_deprecated.h>
 
 #include <functional>
 #include <vector>
