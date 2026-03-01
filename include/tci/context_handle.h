@@ -11,8 +11,9 @@ namespace tci {
    * @brief Context handle for Cytnx backend
    *
    * This class wraps an integer device ID and restricts direct assignment.
-   * Only create_context() is allowed to initialize the value, preventing
-   * accidental misuse like `ctx = -1;`
+   * Only create_context() is allowed to change the value after construction,
+   * preventing accidental misuse like `ctx = 0;`.
+   * Default-constructed handles target CPU (cytnx::Device.cpu == -1).
    */
   class CytnxContextHandle {
   private:
@@ -26,8 +27,8 @@ namespace tci {
     friend void create_context(CytnxContextHandle& ctx, int gpu_id);
 
   public:
-    // Default constructor (uninitialized state marker)
-    CytnxContextHandle() : value_(-999) {}
+    // Default to CPU device (cytnx::Device.cpu == -1); valid immediately after construction (RAII)
+    CytnxContextHandle() : value_(-1) {}
 
     // Delete construction and assignment from int
     CytnxContextHandle(int) = delete;
