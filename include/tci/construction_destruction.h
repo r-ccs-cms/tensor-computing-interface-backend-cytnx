@@ -147,8 +147,7 @@ namespace tci {
    */
   template <typename TenT, typename RandNumGen>
   TenT random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen) {
-    TenT result;
-    allocate(ctx, shape, result);
+    TenT result = allocate<TenT>(ctx, shape);
 
     // Use coordinate-based approach to avoid storage compatibility issues
     auto total_size = size(ctx, result);
