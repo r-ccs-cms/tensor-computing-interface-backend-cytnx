@@ -155,6 +155,37 @@ cmake -S . -B build \
 cmake --build build --parallel 8
 ```
 
+## Disabling the Deprecated API
+
+The Cytnx backend ships a backward-compatible layer
+(`cytnx_typed_tensor_impl_deprecated.h`) that provides `template <typename ElemT>`
+overloads for every TCI function. Because C++ partial ordering makes these
+`ElemT`-parameterized overloads more specialized than the current
+`template <typename TenT>` API, the compiler selects the deprecated versions even
+when user code does not explicitly request them, producing deprecation warnings.
+
+To suppress the deprecated overloads entirely, define `TCI_NO_DEPRECATED_API`
+before including `tci/tci.h`:
+
+```cpp
+#define TCI_NO_DEPRECATED_API
+#include "tci/tci.h"
+```
+
+Or pass it as a compiler flag:
+
+```bash
+# CMake
+target_compile_definitions(your_target PRIVATE TCI_NO_DEPRECATED_API)
+
+# Command line
+g++ -DTCI_NO_DEPRECATED_API -std=c++17 ...
+```
+
+> **Note:** Some overloads (e.g. out-parameter versions of `linear_combine`)
+> exist only in the deprecated header. When `TCI_NO_DEPRECATED_API` is defined,
+> use the corresponding return-value forms provided by the current API.
+
 ## Usage Example
 
 ### Basic Usage with CytnxTensor
