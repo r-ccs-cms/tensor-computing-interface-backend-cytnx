@@ -73,8 +73,8 @@ namespace tci {
    * @return TenT Created tensor
    */
   template <typename TenT, typename RandomIt, typename Func>
-  TenT assign_from_range(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
-                         RandomIt first, Func&& coors2idx);
+  TenT assign_from_range(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandomIt first,
+                         Func&& coors2idx);
 
   /**
    * @brief Create a tensor from a container/range (deprecated - use assign_from_range)
@@ -89,8 +89,8 @@ namespace tci {
    * @param coors2idx Function to convert coordinates to linear index
    * @return TenT Created tensor
    */
-  template <typename TenT, typename RandomIt, typename Func>
-  [[deprecated("Use assign_from_range instead. This API will be removed in the next major version")]]
+  template <typename TenT, typename RandomIt, typename Func> [[deprecated(
+      "Use assign_from_range instead. This API will be removed in the next major version")]]
   TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
                              RandomIt init_elems_begin, Func&& coors2idx);
 
@@ -98,8 +98,8 @@ namespace tci {
   // Generic implementation that works with any tensor type
 
   template <typename TenT, typename RandomIt, typename Func>
-  TenT assign_from_range(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
-                         RandomIt first, Func&& coors2idx) {
+  TenT assign_from_range(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandomIt first,
+                         Func&& coors2idx) {
     TenT a;
     // Create tensor with the specified shape
     allocate(ctx, shape, a);
@@ -132,7 +132,8 @@ namespace tci {
   template <typename TenT, typename RandomIt, typename Func>
   TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
                              RandomIt init_elems_begin, Func&& coors2idx) {
-    return assign_from_range<TenT, RandomIt, Func>(ctx, shape, init_elems_begin, std::forward<Func>(coors2idx));
+    return assign_from_range<TenT, RandomIt, Func>(ctx, shape, init_elems_begin,
+                                                   std::forward<Func>(coors2idx));
   }
 
   /**
