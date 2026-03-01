@@ -491,6 +491,22 @@ namespace detail {
     contract<CytnxTensor<ElemT>>(ctx, a, bd_labs_str_a, b, bd_labs_str_b, c, bd_labs_str_c);
   }
 
+  // Deprecated: in-place linear_combine
+  template <typename TenT>
+  [[deprecated("Use return-value version instead: auto result = linear_combine(ctx, ins). "
+               "This API will be removed in the next major version")]]
+  void linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins, TenT& out) {
+    out = linear_combine(ctx, ins);
+  }
+
+  template <typename TenT>
+  [[deprecated("Use return-value version instead: auto result = linear_combine(ctx, ins, coefs). "
+               "This API will be removed in the next major version")]]
+  void linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins,
+                       const std::vector<elem_t<TenT>>& coefs, TenT& out) {
+    out = linear_combine(ctx, ins, coefs);
+  }
+
   template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0> [[deprecated(TCI_DEPRECATED_ELEMT_API)]]
   void linear_combine(context_handle_t<CytnxTensor<ElemT>>& ctx,
                       const std::vector<CytnxTensor<ElemT>>& ins, CytnxTensor<ElemT>& out) {

@@ -624,30 +624,34 @@ namespace tci {
     }
   }
 
-  // Linear combination
+  // Linear combination (out-of-place)
   template <typename TenT>
-  void linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins, TenT& out) {
+  TenT linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins) {
+    TenT out;
     if (ins.empty()) {
-      return;
+      return out;
     }
 
     out.backend = ins[0].backend.clone();
     for (size_t i = 1; i < ins.size(); ++i) {
       out.backend = out.backend + ins[i].backend;
     }
+    return out;
   }
 
-  template <typename TenT> void linear_combine(context_handle_t<TenT>& ctx,
-                                               const std::vector<TenT>& ins,
-                                               const std::vector<elem_t<TenT>>& coefs, TenT& out) {
+  template <typename TenT>
+  TenT linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins,
+                       const std::vector<elem_t<TenT>>& coefs) {
+    TenT out;
     if (ins.empty() || ins.size() != coefs.size()) {
-      return;
+      return out;
     }
 
     out.backend = ins[0].backend * coefs[0];
     for (size_t i = 1; i < ins.size(); ++i) {
       out.backend = out.backend + ins[i].backend * coefs[i];
     }
+    return out;
   }
 
   // SVD (full)
