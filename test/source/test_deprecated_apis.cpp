@@ -8,9 +8,8 @@
  */
 
 #include <doctest/doctest.h>
-
-#include <tci/tci.h>
 #include <tci/cytnx_typed_tensor_impl_deprecated.h>
+#include <tci/tci.h>
 
 #include <functional>
 #include <vector>
@@ -91,7 +90,8 @@ TEST_CASE("Deprecated APIs produce warnings") {
     RealTensor s_diag;
     Real trunc_err;
 
-    // Using deprecated API - should show warning (10 parameters with chi_max, target_trunc_err, s_min)
+    // Using deprecated API - should show warning (10 parameters with chi_max, target_trunc_err,
+    // s_min)
     tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, 2ULL, 1e-2, 1e-10);
 
     CHECK(tci::size(ctx, u) > 0);

@@ -79,7 +79,8 @@ TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {
     // SVD decomposition
     Real trunc_err = 0;
     Tensor GA_new, GB_new, Lambda_new;
-    tci::trunc_svd(context, Theta, 2, GA_new, Lambda_new, GB_new, trunc_err, static_cast<tci::bond_dim_t<Tensor>>(chi), 0.0);
+    tci::trunc_svd(context, Theta, 2, GA_new, Lambda_new, GB_new, trunc_err,
+                   static_cast<tci::bond_dim_t<Tensor>>(chi), 0.0);
 
     // Update tensors
     Gamma[A] = GA_new;

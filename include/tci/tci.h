@@ -4,7 +4,7 @@
 #include "tci/cytnx_tensor_traits.h"
 #include "tci/cytnx_typed_tensor_impl.h"
 #ifndef TCI_NO_DEPRECATED_API
-#include "tci/cytnx_typed_tensor_impl_deprecated.h"
+#  include "tci/cytnx_typed_tensor_impl_deprecated.h"
 #endif
 #include "tci/debugging.h"
 #include "tci/io_operations.h"

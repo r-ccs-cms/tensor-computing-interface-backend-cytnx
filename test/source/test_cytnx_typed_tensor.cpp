@@ -200,7 +200,8 @@ TEST_CASE("CytnxTensor - Construction") {
     tci::shape_t<Tensor> shape = {2, 3};
     Tensor tensor;
 
-    CHECK_NOTHROW(tensor = tci::assign_from_range<Tensor>(ctx, shape, container.begin(), coors2idx));
+    CHECK_NOTHROW(tensor
+                  = tci::assign_from_range<Tensor>(ctx, shape, container.begin(), coors2idx));
 
     // Verify tensor properties
     CHECK(tensor.backend.shape().size() == 2);
@@ -237,7 +238,8 @@ TEST_CASE("CytnxTensor - Construction") {
     tci::shape_t<Tensor> shape = {2, 2};
     Tensor tensor;
 
-    CHECK_NOTHROW(tensor = tci::assign_from_range<Tensor>(ctx, shape, container.begin(), coors2idx));
+    CHECK_NOTHROW(tensor
+                  = tci::assign_from_range<Tensor>(ctx, shape, container.begin(), coors2idx));
 
     // Verify element values with column-major layout
     Elem elem_00 = tci::get_elem(ctx, tensor, {0, 0});
@@ -578,7 +580,8 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
     RealTensor s_diag;
     Real trunc_err;
 
-    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>(3), 1e-10);
+    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err,
+                   tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>(3), 1e-10);
 
     // Apply sqrt to singular values
     CHECK_NOTHROW(tci::for_each(ctx, s_diag, [](Real& elem) { elem = std::sqrt(elem); }));

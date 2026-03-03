@@ -763,19 +763,15 @@ TEST_CASE("TCI Tensor Contraction") {
     // Test case 3: Duplicate labels in first tensor using label list notation
     tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_a_dup
         = {1, 1, 2};  // Label 1 appears twice
-    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_b_single
-        = {3};
-    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_c_out
-        = {2, 3};
-    CHECK_THROWS_AS(
-        tci::contract(ctx, a, bd_labs_a_dup, b, bd_labs_b_single, c, bd_labs_c_out),
-        std::invalid_argument);
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_b_single = {3};
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_c_out = {2, 3};
+    CHECK_THROWS_AS(tci::contract(ctx, a, bd_labs_a_dup, b, bd_labs_b_single, c, bd_labs_c_out),
+                    std::invalid_argument);
 
     // Test case 4: No duplicate - should succeed
     tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_a_valid
         = {1, 2, 3};
-    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_b_valid
-        = {4};
+    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_b_valid = {4};
     tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_c_valid
         = {1, 2, 3, 4};
     CHECK_NOTHROW(tci::contract(ctx, a, bd_labs_a_valid, b, bd_labs_b_valid, c, bd_labs_c_valid));

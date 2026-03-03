@@ -33,8 +33,7 @@ namespace tci {
 
     private:
       // Check for duplicate labels within a single tensor's label list
-      void check_duplicate_labels(const List<bond_label_t<TenT>>& labels,
-                                  const char* tensor_name) {
+      void check_duplicate_labels(const List<bond_label_t<TenT>>& labels, const char* tensor_name) {
         std::set<bond_label_t<TenT>> seen;
         for (const auto& label : labels) {
           if (seen.count(label)) {

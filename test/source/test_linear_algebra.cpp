@@ -88,7 +88,8 @@ TEST_CASE("TCI Matrix Decomposition - Truncated SVD") {
     // Test truncated SVD implementation
     // For a 4x4 matrix, num_of_bds_as_row=1 means treat first dimension as row
     CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err,
-                                 tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>(2), 0.1));
+                                 tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>(2),
+                                 0.1));
 
     // Verify dimensions (should be truncated to at most chi_max=2)
     auto u_shape = tci::shape(ctx, u);
@@ -414,7 +415,8 @@ TEST_CASE("TCI Advanced Linear Algebra") {
     tci::set_elem(ctx, singular, {1, 1}, cytnx::cytnx_complex128(4.0, 0.0));
 
     std::cout << "\n[Expected Cytnx Error] Testing singular matrix - Cytnx will output LAPACK "
-                 "error (zgetrf INFO=2). This is expected behavior.\n" << std::endl;
+                 "error (zgetrf INFO=2). This is expected behavior.\n"
+              << std::endl;
     CHECK_THROWS_AS(tci::inverse(ctx, singular, 1, tmp), std::runtime_error);
   }
 
@@ -443,7 +445,8 @@ TEST_CASE("TCI Truncated SVD") {
 
     // Test truncated SVD with chi_max=2 and s_min=0.5
     CHECK_NOTHROW(tci::trunc_svd(ctx, matrix, 2, u, s_diag, v_dag, trunc_err,
-                                 tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>(2), 0.5));
+                                 tci::bond_dim_t<tci::CytnxTensor<cytnx::cytnx_complex128>>(2),
+                                 0.5));
 
     // Verify dimensions (should be truncated to at most chi_max=2)
     auto s_shape = tci::shape(ctx, s_diag);

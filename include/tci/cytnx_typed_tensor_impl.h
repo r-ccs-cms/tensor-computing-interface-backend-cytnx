@@ -639,9 +639,9 @@ namespace tci {
     return out;
   }
 
-  template <typename TenT>
-  TenT linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins,
-                       const std::vector<elem_t<TenT>>& coefs) {
+  template <typename TenT> TenT linear_combine(context_handle_t<TenT>& ctx,
+                                               const std::vector<TenT>& ins,
+                                               const std::vector<elem_t<TenT>>& coefs) {
     TenT out;
     if (ins.empty() || ins.size() != coefs.size()) {
       return out;
@@ -1894,16 +1894,19 @@ namespace tci {
         {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     auto original_dtype = reshaped.dtype();
-    
+
     // Check if matrix is anti-Hermitian: H = -H^dagger
     cytnx::Tensor H_dag = cytnx::linalg::Conj(reshaped).permute({1, 0});
     cytnx::Tensor diff = reshaped + H_dag;
-    
+
     // Read norm with correct type
-    bool is_float = (original_dtype == cytnx::Type.Float || original_dtype == cytnx::Type.ComplexFloat);
-    double norm_diff = is_float ? cytnx::linalg::Norm(diff).item<float>() : cytnx::linalg::Norm(diff).item<double>();
-    double norm_H = is_float ? cytnx::linalg::Norm(reshaped).item<float>() : cytnx::linalg::Norm(reshaped).item<double>();
-    
+    bool is_float
+        = (original_dtype == cytnx::Type.Float || original_dtype == cytnx::Type.ComplexFloat);
+    double norm_diff = is_float ? cytnx::linalg::Norm(diff).item<float>()
+                                : cytnx::linalg::Norm(diff).item<double>();
+    double norm_H = is_float ? cytnx::linalg::Norm(reshaped).item<float>()
+                             : cytnx::linalg::Norm(reshaped).item<double>();
+
     cytnx::Tensor result;
     if (norm_diff < 1e-12 * (norm_H + 1e-14)) {
       // Anti-Hermitian: H = -H^dagger, so iH is Hermitian
@@ -1956,16 +1959,19 @@ namespace tci {
         {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
     auto original_dtype = reshaped.dtype();
-    
+
     // Check if matrix is anti-Hermitian: H = -H^dagger
     cytnx::Tensor H_dag = cytnx::linalg::Conj(reshaped).permute({1, 0});
     cytnx::Tensor diff = reshaped + H_dag;
-    
+
     // Read norm with correct type
-    bool is_float = (original_dtype == cytnx::Type.Float || original_dtype == cytnx::Type.ComplexFloat);
-    double norm_diff = is_float ? cytnx::linalg::Norm(diff).item<float>() : cytnx::linalg::Norm(diff).item<double>();
-    double norm_H = is_float ? cytnx::linalg::Norm(reshaped).item<float>() : cytnx::linalg::Norm(reshaped).item<double>();
-    
+    bool is_float
+        = (original_dtype == cytnx::Type.Float || original_dtype == cytnx::Type.ComplexFloat);
+    double norm_diff = is_float ? cytnx::linalg::Norm(diff).item<float>()
+                                : cytnx::linalg::Norm(diff).item<double>();
+    double norm_H = is_float ? cytnx::linalg::Norm(reshaped).item<float>()
+                             : cytnx::linalg::Norm(reshaped).item<double>();
+
     cytnx::Tensor result;
     if (norm_diff < 1e-12 * (norm_H + 1e-14)) {
       // Anti-Hermitian: H = -H^dagger, so iH is Hermitian

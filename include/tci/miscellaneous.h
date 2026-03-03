@@ -104,7 +104,8 @@ namespace tci {
    *
    * Returns true if two tensors a and b have the same shape and are close to each other
    * within the deviation epsilon for all the elements, and returns false otherwise.
-   * The deviation is measured by |A_ijk... - B_ijk...|, and epsilon should be a real positive number.
+   * The deviation is measured by |A_ijk... - B_ijk...|, and epsilon should be a real positive
+   * number.
    *
    * @tparam TenT Tensor type
    * @param ctx Context handle for the tensor library

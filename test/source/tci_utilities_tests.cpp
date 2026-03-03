@@ -261,8 +261,8 @@ TEST_CASE("Version Information") {
 
     // Check that it matches expected format (contains "数字.数字" pattern)
     // Example valid formats: "1.0", "1.0-rc.1", "2.1.3"
-    bool has_version_pattern = (ver.find_first_of("0123456789") != std::string::npos) &&
-                                (ver.find('.') != std::string::npos);
+    bool has_version_pattern = (ver.find_first_of("0123456789") != std::string::npos)
+                               && (ver.find('.') != std::string::npos);
     CHECK(has_version_pattern);
   }
 }
