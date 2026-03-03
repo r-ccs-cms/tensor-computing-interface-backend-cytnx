@@ -1893,8 +1893,36 @@ namespace tci {
     cytnx::Tensor reshaped = inout.backend.reshape(
         {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
-    // Apply matrix exponential
-    cytnx::Tensor result = cytnx::linalg::ExpM(reshaped);
+    auto original_dtype = reshaped.dtype();
+    
+    // Check if matrix is anti-Hermitian: H = -H^dagger
+    cytnx::Tensor H_dag = cytnx::linalg::Conj(reshaped).permute({1, 0});
+    cytnx::Tensor diff = reshaped + H_dag;
+    
+    // Read norm with correct type
+    bool is_float = (original_dtype == cytnx::Type.Float || original_dtype == cytnx::Type.ComplexFloat);
+    double norm_diff = is_float ? cytnx::linalg::Norm(diff).item<float>() : cytnx::linalg::Norm(diff).item<double>();
+    double norm_H = is_float ? cytnx::linalg::Norm(reshaped).item<float>() : cytnx::linalg::Norm(reshaped).item<double>();
+    
+    cytnx::Tensor result;
+    if (norm_diff < 1e-12 * (norm_H + 1e-14)) {
+      // Anti-Hermitian: H = -H^dagger, so iH is Hermitian
+      // exp(H) = exp(-i * iH) = ExpH(iH, -i)
+      if (is_float) {
+        cytnx::Tensor iH = reshaped * cytnx::cytnx_complex64(0.0f, 1.0f);
+        result = cytnx::linalg::ExpH(iH, cytnx::cytnx_complex64(0.0f, -1.0f));
+        // ExpH may promote to complex128, convert back if needed
+        if (result.dtype() != original_dtype) {
+          result = result.astype(original_dtype);
+        }
+      } else {
+        cytnx::Tensor iH = reshaped * cytnx::cytnx_complex128(0.0, 1.0);
+        result = cytnx::linalg::ExpH(iH, cytnx::cytnx_complex128(0.0, -1.0));
+      }
+    } else {
+      // General case
+      result = cytnx::linalg::ExpM(reshaped);
+    }
 
     // Reshape back to original shape
     std::vector<cytnx::cytnx_int64> original_shape;
@@ -1927,8 +1955,36 @@ namespace tci {
     cytnx::Tensor reshaped = in.backend.reshape(
         {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(col_dim)});
 
-    // Apply matrix exponential
-    cytnx::Tensor result = cytnx::linalg::ExpM(reshaped);
+    auto original_dtype = reshaped.dtype();
+    
+    // Check if matrix is anti-Hermitian: H = -H^dagger
+    cytnx::Tensor H_dag = cytnx::linalg::Conj(reshaped).permute({1, 0});
+    cytnx::Tensor diff = reshaped + H_dag;
+    
+    // Read norm with correct type
+    bool is_float = (original_dtype == cytnx::Type.Float || original_dtype == cytnx::Type.ComplexFloat);
+    double norm_diff = is_float ? cytnx::linalg::Norm(diff).item<float>() : cytnx::linalg::Norm(diff).item<double>();
+    double norm_H = is_float ? cytnx::linalg::Norm(reshaped).item<float>() : cytnx::linalg::Norm(reshaped).item<double>();
+    
+    cytnx::Tensor result;
+    if (norm_diff < 1e-12 * (norm_H + 1e-14)) {
+      // Anti-Hermitian: H = -H^dagger, so iH is Hermitian
+      // exp(H) = exp(-i * iH) = ExpH(iH, -i)
+      if (is_float) {
+        cytnx::Tensor iH = reshaped * cytnx::cytnx_complex64(0.0f, 1.0f);
+        result = cytnx::linalg::ExpH(iH, cytnx::cytnx_complex64(0.0f, -1.0f));
+        // ExpH may promote to complex128, convert back if needed
+        if (result.dtype() != original_dtype) {
+          result = result.astype(original_dtype);
+        }
+      } else {
+        cytnx::Tensor iH = reshaped * cytnx::cytnx_complex128(0.0, 1.0);
+        result = cytnx::linalg::ExpH(iH, cytnx::cytnx_complex128(0.0, -1.0));
+      }
+    } else {
+      // General case
+      result = cytnx::linalg::ExpM(reshaped);
+    }
 
     // Reshape back to original shape
     std::vector<cytnx::cytnx_int64> original_shape;

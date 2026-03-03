@@ -297,6 +297,66 @@ TEST_CASE("TCI Advanced Linear Algebra") {
     CHECK(std::abs(tci::real(n01) - 0.0) < 1e-10);  // Cytnx implementation result
   }
 
+  SUBCASE("Matrix exponential - anti-Hermitian optimization") {
+    // Test anti-Hermitian matrix: H = -H^dagger
+    // Create i*Pauli_Y which is anti-Hermitian: i*[[0, -i], [i, 0]] = [[0, 1], [-1, 0]]
+    tci::CytnxTensor<cytnx::cytnx_complex128> anti_herm;
+    tci::zeros(ctx, {2, 2}, anti_herm);
+    tci::set_elem(ctx, anti_herm, {0, 1}, cytnx::cytnx_complex128(1.0, 0.0));
+    tci::set_elem(ctx, anti_herm, {1, 0}, cytnx::cytnx_complex128(-1.0, 0.0));
+
+    // Verify it's anti-Hermitian: H = -H^dagger
+    // H^dagger = [[0, -1], [1, 0]], so -H^dagger = [[0, 1], [-1, 0]] = H
+    auto h01 = tci::get_elem(ctx, anti_herm, {0, 1});
+    auto h10 = tci::get_elem(ctx, anti_herm, {1, 0});
+    CHECK(std::abs(tci::real(h01) - 1.0) < 1e-14);
+    CHECK(std::abs(tci::imag(h01)) < 1e-14);
+    CHECK(std::abs(tci::real(h10) + 1.0) < 1e-14);
+    CHECK(std::abs(tci::imag(h10)) < 1e-14);
+
+    // Compute exp(H) - should use ExpH optimization path
+    tci::CytnxTensor<cytnx::cytnx_complex128> exp_h;
+    tci::exp(ctx, anti_herm, 1, exp_h);
+
+    // Verify exp(H) is unitary by checking column norms
+    // For anti-Hermitian H, exp(H) should be unitary
+    auto e00 = tci::get_elem(ctx, exp_h, {0, 0});
+    auto e01 = tci::get_elem(ctx, exp_h, {0, 1});
+    auto e10 = tci::get_elem(ctx, exp_h, {1, 0});
+    auto e11 = tci::get_elem(ctx, exp_h, {1, 1});
+
+    // Check unitarity: |e00|^2 + |e10|^2 = 1 (first column norm)
+    double col0_norm_sq = std::norm(e00) + std::norm(e10);
+    double col1_norm_sq = std::norm(e01) + std::norm(e11);
+    CHECK(std::abs(col0_norm_sq - 1.0) < 1e-10);
+    CHECK(std::abs(col1_norm_sq - 1.0) < 1e-10);
+  }
+
+  SUBCASE("Matrix exponential - complex64 precision") {
+    // Test that complex64 tensors preserve their dtype through anti-Hermitian path
+    tci::CytnxTensor<cytnx::cytnx_complex64> anti_herm_f;
+    tci::zeros(ctx, {2, 2}, anti_herm_f);
+    tci::set_elem(ctx, anti_herm_f, {0, 1}, cytnx::cytnx_complex64(1.0f, 0.0f));
+    tci::set_elem(ctx, anti_herm_f, {1, 0}, cytnx::cytnx_complex64(-1.0f, 0.0f));
+
+    tci::CytnxTensor<cytnx::cytnx_complex64> exp_h_f;
+    tci::exp(ctx, anti_herm_f, 1, exp_h_f);
+
+    // Verify dtype is preserved
+    CHECK(exp_h_f.backend.dtype() == cytnx::Type.ComplexFloat);
+
+    // Verify unitarity
+    auto e00 = tci::get_elem(ctx, exp_h_f, {0, 0});
+    auto e01 = tci::get_elem(ctx, exp_h_f, {0, 1});
+    auto e10 = tci::get_elem(ctx, exp_h_f, {1, 0});
+    auto e11 = tci::get_elem(ctx, exp_h_f, {1, 1});
+
+    float col0_norm_sq = std::norm(e00) + std::norm(e10);
+    float col1_norm_sq = std::norm(e01) + std::norm(e11);
+    CHECK(std::abs(col0_norm_sq - 1.0f) < 1e-2f);
+    CHECK(std::abs(col1_norm_sq - 1.0f) < 1e-2f);
+  }
+
   SUBCASE("Matrix exponential - error conditions") {
     // Test non-square matrix error
     tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> non_square_shape = {2, 3};
