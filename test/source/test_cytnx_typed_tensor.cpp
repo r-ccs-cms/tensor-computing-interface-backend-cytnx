@@ -600,8 +600,12 @@ TEST_CASE("CytnxTensor - Miscellaneous functions") {
     // Create context
     CHECK_NOTHROW(tci::create_context(ctx));
 
-    // Context should be initialized to CPU device
-    CHECK(ctx == cytnx::Device.cpu);
+    // Context should be initialized to GPU if available, otherwise CPU
+    if (cytnx::Device.Ngpus > 0) {
+      CHECK(ctx >= cytnx::Device.cuda);  // GPU context
+    } else {
+      CHECK(ctx == cytnx::Device.cpu);   // CPU context
+    }
 
     // Destroy context (should not throw)
     CHECK_NOTHROW(tci::destroy_context(ctx));
@@ -684,11 +688,11 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
   tci::create_context(ctx);
 
   SUBCASE("eigvals - General matrix eigenvalues") {
-    // Create a 2x2 matrix
+    // Create a 2x2 non-symmetric matrix
     Tensor matrix;
     tci::allocate(ctx, {2, 2}, matrix);
 
-    // Fill with test values: [[1, 2], [3, 4]]
+    // Fill with test values: [[1, 2], [3, 4]] (non-symmetric)
     tci::set_elem(ctx, matrix, {0, 0}, Elem{1.0, 0.0});
     tci::set_elem(ctx, matrix, {0, 1}, Elem{2.0, 0.0});
     tci::set_elem(ctx, matrix, {1, 0}, Elem{3.0, 0.0});
@@ -696,11 +700,17 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
 
     CplxTensor eigenvalues;
 
-    // Perform eigenvalue calculation
-    tci::eigvals(ctx, matrix, 1, eigenvalues);
-
-    // Should have 2 eigenvalues
-    CHECK(tci::shape(ctx, eigenvalues)[0] == 2);
+    // GPU version of Cytnx does not support Eig for non-symmetric matrices
+    // CPU version supports it
+    if (ctx >= cytnx::Device.cuda) {
+      // On GPU: expect error for non-symmetric matrix
+      CHECK_THROWS(tci::eigvals(ctx, matrix, 1, eigenvalues));
+    } else {
+      // On CPU: should work
+      CHECK_NOTHROW(tci::eigvals(ctx, matrix, 1, eigenvalues));
+      // Should have 2 eigenvalues
+      CHECK(tci::shape(ctx, eigenvalues)[0] == 2);
+    }
   }
 
   SUBCASE("eigvalsh - Symmetric matrix eigenvalues") {
