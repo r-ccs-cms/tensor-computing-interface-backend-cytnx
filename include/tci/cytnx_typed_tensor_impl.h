@@ -32,10 +32,6 @@ namespace tci {
   // Template function declarations (non-specialized)
   // These are separate from the main TCI header declarations to avoid conflicts
 
-  // Construction/Destruction functions for TenT
-  template <typename TenT>
-  void allocate(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, TenT& a);
-
   // Read-only getter functions for TenT
   template <typename TenT> void get_elem(context_handle_t<TenT>& ctx, const TenT& a,
                                          const elem_coors_t<TenT>& coors, elem_t<TenT>& elem);
@@ -129,7 +125,7 @@ namespace tci {
   template <typename TenT>
   [[deprecated("Reserved for future GPU support. Use: auto result = tci::fill(ctx, shape, v);")]]
   void fill(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, elem_t<TenT> value, TenT& a) {
-    allocate(ctx, shape, a);
+    a = allocate<TenT>(ctx, shape);
     auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
     auto* data = a.backend.storage().template data<elem_t<TenT>>();
     for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
@@ -296,7 +292,7 @@ namespace tci {
       out.backend = temp.imag();
     } else {
       // For real tensors, return zeros
-      allocate(ctx, shape(ctx, in), out);
+      out = allocate<real_ten_t<TenT>>(ctx, shape(ctx, in));
       out.backend.storage().set_zeros();
     }
   }

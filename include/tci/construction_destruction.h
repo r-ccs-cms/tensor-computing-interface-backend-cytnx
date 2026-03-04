@@ -13,20 +13,7 @@
 namespace tci {
 
   /**
-   * @brief Allocate memory for a tensor with given shape (in-place version)
-   *
-   * Memory is allocated but not initialized for performance reasons.
-   *
-   * @tparam TenT Tensor type
-   * @param ctx Context handle for the tensor library
-   * @param shape Shape of the tensor to allocate
-   * @param a Output tensor
-   */
-  template <typename TenT>
-  void allocate(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, TenT& a);
-
-  /**
-   * @brief Allocate memory for a tensor with given shape (out-of-place version)
+   * @brief Allocate memory for a tensor with given shape
    *
    * @tparam TenT Tensor type
    * @param ctx Context handle for the tensor library
@@ -100,9 +87,7 @@ namespace tci {
   template <typename TenT, typename RandomIt, typename Func>
   TenT assign_from_range(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandomIt first,
                          Func&& coors2idx) {
-    TenT a;
-    // Create tensor with the specified shape
-    allocate(ctx, shape, a);
+    TenT a = allocate<TenT>(ctx, shape);
 
     // Generate all coordinate combinations and assign values
     std::function<void(elem_coors_t<TenT>, std::size_t)> assign_recursive;

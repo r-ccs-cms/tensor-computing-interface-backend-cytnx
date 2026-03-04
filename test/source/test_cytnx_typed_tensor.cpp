@@ -4,10 +4,7 @@
 #include <cytnx.hpp>
 #include <filesystem>
 
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/cytnx_typed_tensor.h"
-#include "tci/cytnx_typed_tensor_impl.h"
-#include "tci/io_operations.h"
+#include "tci/tci.h"
 #include "tci/miscellaneous.h"
 #include "tci/tensor_linear_algebra.h"
 
