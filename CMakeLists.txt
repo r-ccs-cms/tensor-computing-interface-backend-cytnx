@@ -129,6 +129,9 @@ endif()
 # Intel compilers produce LLVM IR bitcode with LTO, which causes linker errors
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
 
+# Disable Python bindings for Cytnx (not needed for TCI)
+set(BUILD_PYTHON OFF CACHE BOOL "" FORCE)
+
 add_subdirectory(external/Cytnx)
 
 # Force disable IPO/LTO on Cytnx target after it's created
