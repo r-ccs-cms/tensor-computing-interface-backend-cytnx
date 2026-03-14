@@ -1,46 +1,11 @@
 # TCI (Tensor Computing Interface) - Cytnx Backend
 
-TCI (Tensor Computing Interface) is a universal C++ interface for tensor computing libraries. This repository provides the Cytnx backend implementation, allowing TCI APIs to work with the [Cytnx](https://github.com/Cytnx-dev/Cytnx) tensor library.
+[TCI (Tensor Computing Interface)](https://arxiv.org/abs/2512.23917) is a universal C++ interface for tensor computing libraries. This repository provides the Cytnx backend implementation, allowing TCI APIs to work with the [Cytnx](https://github.com/Cytnx-dev/Cytnx) tensor library.
 
-## Features
+## C++ Standard Requirements
 
-- **Universal Tensor Interface**: Consistent API across different tensor libraries
-- **Cytnx Integration**: Full integration with Cytnx tensor operations
-- **Template-Based Design**: Type-safe generic programming interface
-- **High Performance**: Direct calls to optimized Cytnx backend
-- **Modern CMake**: Clean build system with dependency management
-
-## C++ Standard Requirements and Important Caveats
-
-### User Code Requirements
-
-- **User code**: Must be compiled with **C++17** standard
-- **TCI Public API**: Designed to be fully C++17 compatible
-
-### Implementation Requirements
-
-- **TCI Implementation**: Uses C++17 features only, but requires C++20 compilation
-- **Cytnx Backend**: Requires C++20 standard for compilation
-- **Build System**: CMake with C++20 due to Cytnx dependency
-
-### Why This Mixed Approach?
-
-The TCI implementation acts as a **translation layer** between the C++17 user interface and the C++20 Cytnx library:
-
-```
-[User Code (C++17)] → [TCI API (C++17)] → [TCI Implementation (C++17 features, C++20 compile)] → [Cytnx (C++20)]
-                                                     ↑
-                                              Abstraction boundary
-```
-
-**Key Points:**
-
-1. **TCI implementation code** uses only C++17 language features
-2. **Compilation requires C++20** due to Cytnx header dependencies
-3. **User projects** remain fully C++17 compatible
-4. **No C++20 features leak** into the public TCI API
-
-This design ensures maximum compatibility while leveraging Cytnx's optimized implementations.
+- **Public API**: C++17 compatible — no C++20 features leak into user-facing headers
+- **TCI build**: C++20 (required by Cytnx headers)
 
 ## Dependencies
 
@@ -77,35 +42,20 @@ llvm (LLVM Clang) is optional; Apple Clang may work.
 
 #### Linux with Intel oneAPI (HPC environments)
 
-For HPC systems using environment modules and Intel oneAPI:
-
 ```bash
-# Load required modules
 module load intel/oneapi  # Provides icx, icpx, ifort, and MKL
-module load boost         # Boost library (if available)
-
-# ARPACK will be automatically built from source using MKL as backend
-# No manual installation needed
+module load boost         # Required by Cytnx
 ```
 
-**Notes:**
-- Intel oneAPI module provides: C/C++ compilers (icx/icpx), Fortran compiler (ifort/ifx), and MKL (Math Kernel Library)
-- ARPACK-NG will be automatically downloaded and built by CMake using MKL for BLAS/LAPACK
-- If you have a pre-built ARPACK, set `ARPACK_ROOT` environment variable or use `-DARPACK_ROOT=/path/to/arpack`
+ARPACK-NG will be automatically built from source if not found. To use a pre-built ARPACK, set `ARPACK_ROOT` or pass `-DARPACK_ROOT=/path/to/arpack`.
 
-### 3. Configure and Build
+### 3. Configure, Build, and Test
 
-#### Option A: Using CMake Presets (Recommended)
+#### Using CMake Presets (Recommended)
 
 **macOS with Homebrew:**
 
 ```bash
-# Release build
-cmake --preset brew-release
-cmake --build --preset brew-release
-ctest --preset brew-release
-
-# Debug build
 cmake --preset brew-debug
 cmake --build --preset brew-debug
 ctest --preset brew-debug
@@ -114,77 +64,52 @@ ctest --preset brew-debug
 **Linux with Intel oneAPI:**
 
 ```bash
-# First, load Intel oneAPI and Boost modules
 module load intel/oneapi boost
 
-# Release build
-cmake --preset intel-release
-cmake --build --preset intel-release
-ctest --preset intel-release
-
-# Debug build
 cmake --preset intel-debug
 cmake --build --preset intel-debug
 ctest --preset intel-debug
-
-# Run tests directly for detailed output
-./build-intel-debug/test/TCITests
 ```
 
-#### Option B: Manual Configuration
+Replace `debug` with `release` for optimized builds.
 
-**macOS (Homebrew):**
-
-```bash
-cmake --preset brew-debug
-cmake --build --preset brew-debug
-ctest --preset brew-debug
-```
-
-#### Manual Configuration (Alternative)
+#### Manual Configuration
 
 ```bash
-# Configure with toolchain file
 cmake -S . -B build \
   -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos-homebrew.cmake \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_STANDARD=20 \
-  -DBUILD_PYTHON=OFF
+  -DBUILD_PYTHON=OFF \
+  -DTCI_BUILD_TESTS=ON
 
-# Build
 cmake --build build --parallel 8
+```
+
+### Running Tests Directly
+
+```bash
+# All tests
+./build-debug/test/TCITests
+
+# Specific test cases
+./build-debug/test/TCITests --test-case="*template*"
 ```
 
 ## Disabling the Deprecated API
 
-The Cytnx backend ships a backward-compatible layer
-(`cytnx_typed_tensor_impl_deprecated.h`) that provides `template <typename ElemT>`
-overloads for every TCI function. Because C++ partial ordering makes these
-`ElemT`-parameterized overloads more specialized than the current
-`template <typename TenT>` API, the compiler selects the deprecated versions even
-when user code does not explicitly request them, producing deprecation warnings.
-
-To suppress the deprecated overloads entirely, define `TCI_NO_DEPRECATED_API`
-before including `tci/tci.h`:
+Define `TCI_NO_DEPRECATED_API` to suppress deprecated `template <typename ElemT>` overloads:
 
 ```cpp
 #define TCI_NO_DEPRECATED_API
 #include "tci/tci.h"
 ```
 
-Or pass it as a compiler flag:
+Or via CMake:
 
 ```bash
-# CMake
 target_compile_definitions(your_target PRIVATE TCI_NO_DEPRECATED_API)
-
-# Command line
-g++ -DTCI_NO_DEPRECATED_API -std=c++17 ...
 ```
-
-> **Note:** Some overloads (e.g. out-parameter versions of `linear_combine`)
-> exist only in the deprecated header. When `TCI_NO_DEPRECATED_API` is defined,
-> use the corresponding return-value forms provided by the current API.
 
 ## Usage Example
 
@@ -213,7 +138,7 @@ int main() {
 }
 ```
 
-### Element-wise Arithmetic with Fixed Element Types
+### Element-wise Arithmetic
 
 ```cpp
 #include "tci/tci.h"
@@ -238,150 +163,25 @@ int main() {
 }
 ```
 
-**Key Points:**
-
 - `CytnxTensor<ElemT>` fixes the element type at compile time, so `tci::elem_t<Tensor>` resolves to `ElemT` and supports direct arithmetic.
 - The wrapper exposes the underlying Cytnx tensor via `Tensor::backend` when lower-level Cytnx APIs are required.
-- Legacy usage that relied on `cytnx::Tensor` has been removed; new code should always pick an explicit `ElemT`.
 
 ### Compiling User Code (C++17)
 
 ```bash
-# Your project can use C++17
 g++ -std=c++17 -I<tci-install>/include your_code.cpp -lTCI -lcytnx
-```
-
-## Project Structure
-
-```
-├── include/tci/                    # Public TCI API headers (C++17 compatible)
-├── source/                        # TCI implementation (C++17 features, C++20 compile)
-├── test/                          # Test suite
-├── external/Cytnx/                # Cytnx library submodule
-├── cmake/
-│   ├── toolchains/                # CMake toolchain files
-│   │   ├── macos-homebrew.cmake   # Homebrew dependency configuration
-│   │   └── linux-intel-oneapi.cmake  # Intel oneAPI toolchain
-│   ├── FindARPACK.cmake           # ARPACK detection module
-│   └── ExternalARPACK.cmake       # Auto-build ARPACK-NG from source
-├── CMakePresets.json              # CMake preset configurations
-└── CMakeLists.txt                 # Build configuration
 ```
 
 ## Documentation
 
-Currently, document generation depends on Doxygen and uv.
-
 ```bash
-# generate docs
+# Requires Doxygen and uv
 cmake -S documentation -B build/doc
 cmake --build build/doc --target GenerateDocs
-# view the docs
 open build/doc/doxygen/html/index.html
-```
-
-## Contributing
-
-1. Ensure your contributions maintain C++17 feature compatibility
-2. Only use C++20 features if absolutely necessary for Cytnx integration
-3. Add tests for new functionality
-4. Follow the existing code style
-
-## Development Notes
-
-### Build System
-
-- TCI library compiles with C++20 (required by Cytnx)
-- Public headers remain C++17 compatible
-- Use explicit template specialization to hide implementation details
-- **CMake presets** provide simplified build configuration
-- **Homebrew toolchain** automatically handles keg-only dependency paths
-- **Intel toolchain** supports Intel oneAPI compilers with MKL
-
-### ARPACK Dependency
-
-TCI automatically handles ARPACK dependency:
-
-1. **First**, searches for existing ARPACK installation via `ARPACK_ROOT` environment variable or `-DARPACK_ROOT=/path/to/arpack`
-2. **If not found**, automatically downloads and builds ARPACK-NG from source
-3. **Auto-built ARPACK** uses detected BLAS/LAPACK (OpenBLAS on macOS, MKL on Intel environments)
-
-**Using pre-built ARPACK:**
-
-```bash
-# Via environment variable
-export ARPACK_ROOT=/path/to/arpack
-cmake --preset intel-release
-
-# Or via CMake argument
-cmake --preset intel-release -DARPACK_ROOT=/path/to/arpack
-```
-
-### Testing
-
-#### Using CMake Presets (Recommended)
-
-**Production Testing**
-
-```bash
-# Configure, build and run release tests
-cmake --preset brew-release
-cmake --build --preset brew-release
-ctest --preset brew-release
-```
-
-**Development Testing**
-
-```bash
-# Configure, build and run debug tests
-cmake --preset brew-debug
-cmake --build --preset brew-debug
-ctest --preset brew-debug
-
-# Run tests directly for more detailed output
-./build-debug/test/TCITests
-
-# Run specific test cases
-./build-debug/test/TCITests --test-case="*template*"
-```
-
-#### Manual Test Configuration
-
-```bash
-# Configure test build manually
-cmake -S . -B build-test \
-  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/macos-homebrew.cmake \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_CXX_STANDARD=20 \
-  -DTCI_BUILD_TESTS=ON \
-  -DBUILD_PYTHON=OFF
-
-# Build and run tests
-cmake --build build-test --parallel 8
-./build-test/test/TCITests
-```
-
-#### Test Development Workflow
-
-**Quick development cycle:**
-
-```bash
-# Debug build
-cmake --preset brew-debug && cmake --build --preset brew-debug && ctest --preset brew-debug
-```
-
-**Release validation:**
-
-```bash
-# Release build testing
-cmake --preset brew-release && cmake --build --preset brew-release && ctest --preset brew-release
 ```
 
 ## License
 
 [Apache-2.0 License](LICENSE)
 
-## Related Projects
-
-- [Cytnx](https://github.com/Cytnx-dev/Cytnx): High-performance tensor network library
-- [TCI Specification](link-to-spec): Universal tensor computing interface specification
