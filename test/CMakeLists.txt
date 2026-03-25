@@ -42,6 +42,7 @@ file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
 message(STATUS "Test sources found: ${sources}")
 add_executable(${PROJECT_NAME} ${sources})
 target_link_libraries(${PROJECT_NAME} doctest::doctest TCI::TCI)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../conformance/include)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 message(STATUS "Created test executable: ${PROJECT_NAME}")
 
