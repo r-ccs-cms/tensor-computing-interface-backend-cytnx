@@ -313,4 +313,279 @@ void test_contract_outer_product(tci_test_fixture<TenT>& fix) {
   TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, c, {1, 2})), 10.0, eps);
 }
 
+// --- QR decomposition ---
+
+template <typename TenT>
+void test_qr(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_QR
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT matrix;
+  tci::zeros(ctx, {3, 3}, matrix);
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      tci::set_elem(ctx, matrix,
+                    {static_cast<tci::elem_coor_t<TenT>>(i),
+                     static_cast<tci::elem_coor_t<TenT>>(j)},
+                    make_elem<TenT>(i * 3 + j + 1));
+
+  TenT q, r;
+  tci::qr(ctx, matrix, 1, q, r);
+  TCICT_ASSERT(tci::shape(ctx, q).size() == 2);
+  TCICT_ASSERT(tci::shape(ctx, r).size() == 2);
+}
+
+// --- LQ decomposition ---
+
+template <typename TenT>
+void test_lq(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_LQ
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT matrix;
+  tci::zeros(ctx, {3, 3}, matrix);
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j)
+      tci::set_elem(ctx, matrix,
+                    {static_cast<tci::elem_coor_t<TenT>>(i),
+                     static_cast<tci::elem_coor_t<TenT>>(j)},
+                    make_elem<TenT>(i * 3 + j + 1));
+
+  TenT l, q;
+  tci::lq(ctx, matrix, 1, l, q);
+  TCICT_ASSERT(tci::shape(ctx, l).size() == 2);
+  TCICT_ASSERT(tci::shape(ctx, q).size() == 2);
+}
+
+// --- truncated SVD ---
+
+template <typename TenT>
+void test_trunc_svd(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_TRUNC_SVD
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT matrix;
+  tci::zeros(ctx, {4, 4}, matrix);
+  // Diagonal with known singular values [3,2,1,0.1]
+  for (int i = 0; i < 4; ++i)
+    tci::set_elem(ctx, matrix,
+                  {static_cast<tci::elem_coor_t<TenT>>(i),
+                   static_cast<tci::elem_coor_t<TenT>>(i)},
+                  make_elem<TenT>(3.0 - i * 0.9667));  // approx [3,2.1,1.1,0.1]
+
+  // Use exact diagonal values for cleaner test
+  tci::set_elem(ctx, matrix, {0, 0}, make_elem<TenT>(3.0));
+  tci::set_elem(ctx, matrix, {1, 1}, make_elem<TenT>(2.0));
+  tci::set_elem(ctx, matrix, {2, 2}, make_elem<TenT>(1.0));
+  tci::set_elem(ctx, matrix, {3, 3}, make_elem<TenT>(0.1));
+
+  TenT u, v_dag;
+  tci::real_ten_t<TenT> s_diag;
+  tci::real_t<TenT> trunc_err;
+
+  TCICT_ASSERT_NOTHROW(tci::trunc_svd(
+      ctx, matrix, 1, u, s_diag, v_dag, trunc_err,
+      static_cast<tci::bond_dim_t<TenT>>(2), 0.5));
+
+  auto s_shape = tci::shape(ctx, s_diag);
+  TCICT_ASSERT(s_shape.size() == 1);
+  TCICT_ASSERT(s_shape[0] <= 2);
+  TCICT_ASSERT(trunc_err >= 0.0);
+}
+
+// --- eig (general eigendecomposition of identity) ---
+
+template <typename TenT>
+void test_eig_identity(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EIG
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT matrix;
+  tci::eye(ctx, 2, matrix);
+
+  TenT eigenvals, eigenvecs;
+  tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
+
+  TCICT_ASSERT(tci::order(ctx, eigenvals) == 1);
+  TCICT_ASSERT(tci::size(ctx, eigenvals) == 2);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, eigenvals, {0})), 1.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, eigenvals, {1})), 1.0, eps);
+
+  TCICT_ASSERT(tci::order(ctx, eigenvecs) == 2);
+}
+
+// --- eigh (Hermitian eigendecomposition of identity) ---
+
+template <typename TenT>
+void test_eigh_identity(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EIGH
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT matrix;
+  tci::eye(ctx, 2, matrix);
+
+  tci::real_ten_t<TenT> eigenvals;
+  TenT eigenvecs;
+  tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs);
+
+  TCICT_ASSERT(tci::order(ctx, eigenvals) == 1);
+  TCICT_ASSERT(tci::size(ctx, eigenvals) == 2);
+
+  using RealTenT = tci::real_ten_t<TenT>;
+  TCICT_ASSERT_CLOSE(real_part<RealTenT>(tci::get_elem(ctx, eigenvals, {0})), 1.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<RealTenT>(tci::get_elem(ctx, eigenvals, {1})), 1.0, eps);
+  TCICT_ASSERT(tci::order(ctx, eigenvecs) == 2);
+}
+
+// --- exp: identity matrix ---
+
+template <typename TenT>
+void test_exp_identity(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXP
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT identity;
+  tci::eye(ctx, 3, identity);
+
+  TenT result;
+  tci::exp(ctx, identity, 1, result);
+
+  // exp(I) = e*I
+  double expected_e = std::exp(1.0);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, result, {1, 1})), expected_e, eps);
+  TCICT_ASSERT_CLOSE(std::abs(tci::get_elem(ctx, result, {0, 1})), 0.0, eps);
+}
+
+// --- exp: diagonal matrix ---
+
+template <typename TenT>
+void test_exp_diagonal(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXP
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT diagonal;
+  tci::zeros(ctx, {2, 2}, diagonal);
+  tci::set_elem(ctx, diagonal, {0, 0}, make_elem<TenT>(1.0));
+  tci::set_elem(ctx, diagonal, {1, 1}, make_elem<TenT>(2.0));
+
+  TenT result;
+  tci::exp(ctx, diagonal, 1, result);
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, result, {0, 0})), std::exp(1.0), eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, result, {1, 1})), std::exp(2.0), eps);
+  TCICT_ASSERT_CLOSE(std::abs(tci::get_elem(ctx, result, {0, 1})), 0.0, eps);
+  TCICT_ASSERT_CLOSE(std::abs(tci::get_elem(ctx, result, {1, 0})), 0.0, eps);
+}
+
+// --- exp: zero matrix → identity ---
+
+template <typename TenT>
+void test_exp_zero(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXP
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT zero_matrix;
+  tci::zeros(ctx, {2, 2}, zero_matrix);
+
+  TenT result;
+  tci::exp(ctx, zero_matrix, 1, result);
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, result, {0, 0})), 1.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, result, {1, 1})), 1.0, eps);
+  TCICT_ASSERT_CLOSE(std::abs(tci::get_elem(ctx, result, {0, 1})), 0.0, eps);
+}
+
+// --- exp: anti-Hermitian → unitary ---
+
+template <typename TenT>
+void test_exp_anti_hermitian(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXP
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT anti_herm;
+  tci::zeros(ctx, {2, 2}, anti_herm);
+  tci::set_elem(ctx, anti_herm, {0, 1}, make_elem<TenT>(1.0));
+  tci::set_elem(ctx, anti_herm, {1, 0}, make_elem<TenT>(-1.0));
+
+  TenT result;
+  tci::exp(ctx, anti_herm, 1, result);
+
+  // exp(anti-Hermitian) should be unitary: column norms = 1
+  auto e00 = tci::get_elem(ctx, result, {0, 0});
+  auto e10 = tci::get_elem(ctx, result, {1, 0});
+  double col0_norm_sq = std::norm(e00) + std::norm(e10);
+  TCICT_ASSERT_CLOSE(col0_norm_sq, 1.0, eps);
+}
+
+// --- exp: error conditions ---
+
+template <typename TenT>
+void test_exp_errors(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXP
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT non_square, result;
+  tci::zeros(ctx, {2, 3}, non_square);
+  TCICT_ASSERT_THROWS(std::invalid_argument, tci::exp(ctx, non_square, 1, result));
+
+  TenT square;
+  tci::zeros(ctx, {2, 2}, square);
+  TCICT_ASSERT_THROWS(std::invalid_argument, tci::exp(ctx, square, 3, result));
+}
+
+// --- inverse ---
+
+template <typename TenT>
+void test_inverse(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_INVERSE
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT matrix;
+  tci::zeros(ctx, {2, 2}, matrix);
+  // [[4,7],[2,6]] → inv = [[0.6,-0.7],[-0.2,0.4]]
+  tci::set_elem(ctx, matrix, {0, 0}, make_elem<TenT>(4.0));
+  tci::set_elem(ctx, matrix, {0, 1}, make_elem<TenT>(7.0));
+  tci::set_elem(ctx, matrix, {1, 0}, make_elem<TenT>(2.0));
+  tci::set_elem(ctx, matrix, {1, 1}, make_elem<TenT>(6.0));
+
+  TenT inv;
+  TCICT_ASSERT_NOTHROW(tci::inverse(ctx, matrix, 1, inv));
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, inv, {0, 0})), 0.6, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, inv, {0, 1})), -0.7, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, inv, {1, 0})), -0.2, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, inv, {1, 1})), 0.4, eps);
+}
+
+// --- inverse: non-square error ---
+
+template <typename TenT>
+void test_inverse_errors(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_INVERSE
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT non_square, result;
+  tci::zeros(ctx, {2, 3}, non_square);
+  TCICT_ASSERT_THROWS(std::invalid_argument, tci::inverse(ctx, non_square, 1, result));
+}
+
 }}  // namespace tcict::tests
