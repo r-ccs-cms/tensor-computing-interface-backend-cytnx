@@ -1,4 +1,5 @@
 #include <doctest/doctest.h>
+#define TCI_NO_DEPRECATED_API
 #include <tci/tci.h>
 #include <tcict/tcict.h>
 
@@ -96,6 +97,9 @@ TCICT_DOCTEST_CASE("manipulation", test_expand_outofplace, CplxTensor)
 TCICT_DOCTEST_CASE("manipulation", test_expand_invalid_throws, CplxTensor)
 TCICT_DOCTEST_CASE("manipulation", test_diag_vec_to_mat, CplxTensor)
 TCICT_DOCTEST_CASE("manipulation", test_diag_mat_to_vec, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_stack_basic, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_stack_last_axis, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_stack_errors, CplxTensor)
 
 // --- Linear algebra ---
 TCICT_DOCTEST_CASE("linear_algebra", test_norm_identity, CplxTensor)
@@ -121,3 +125,13 @@ TCICT_DOCTEST_CASE("linear_algebra", test_exp_anti_hermitian, CplxTensor)
 TCICT_DOCTEST_CASE("linear_algebra", test_exp_errors, CplxTensor)
 TCICT_DOCTEST_CASE("linear_algebra", test_inverse, CplxTensor)
 TCICT_DOCTEST_CASE("linear_algebra", test_inverse_errors, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_scale_inplace, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_scale_outofplace, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_scale_by_zero, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_trace_partial, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_svd_basic, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_svd_reconstruction, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_eigvals_diagonal, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_eigvals_errors, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_eigvalsh_diagonal, CplxTensor)
+TCICT_DOCTEST_CASE("linear_algebra", test_eigvalsh_errors, CplxTensor)
