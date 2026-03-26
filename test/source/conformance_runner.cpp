@@ -13,6 +13,7 @@
   }
 
 using CplxTensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using RealTensor = tci::CytnxTensor<cytnx::cytnx_double>;
 
 // --- Construction ---
 TCICT_DOCTEST_CASE("construction", test_zeros, CplxTensor)
@@ -38,6 +39,35 @@ TCICT_DOCTEST_CASE("getters", test_size_bytes_2x2, CplxTensor)
 // --- Miscellaneous ---
 TCICT_DOCTEST_CASE("miscellaneous", test_close_identical, CplxTensor)
 TCICT_DOCTEST_CASE("miscellaneous", test_close_different, CplxTensor)
+
+// --- Construction (allocate, clear, move) ---
+TCICT_DOCTEST_CASE("construction", test_allocate_3d, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_allocate_2d, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_allocate_1d, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_clear_basic, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_clear_empty, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_clear_and_reallocate, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_move_inplace, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_move_outofplace, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_move_empty, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_move_preserves_values, CplxTensor)
+
+// --- I/O ---
+TCICT_DOCTEST_CASE("io", test_save_load_roundtrip, CplxTensor)
+TCICT_DOCTEST_CASE("io", test_load_data_integrity, CplxTensor)
+
+// --- Tensor manipulation ---
+TCICT_DOCTEST_CASE("manipulation", test_shrink_inplace, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_shrink_outofplace, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_shrink_complex_values, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_real_extraction, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_imag_extraction, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_real_imag_inplace, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_cplx_conj_inplace, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_cplx_conj_outofplace, CplxTensor)
+TCICT_DOCTEST_CASE("manipulation", test_to_cplx_outofplace, RealTensor)
+TCICT_DOCTEST_CASE("manipulation", test_to_cplx_inplace, RealTensor)
+TCICT_DOCTEST_CASE("manipulation", test_to_cplx_complex_to_complex, CplxTensor)
 
 // --- Linear algebra ---
 TCICT_DOCTEST_CASE("linear_algebra", test_norm_identity, CplxTensor)
