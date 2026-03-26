@@ -326,4 +326,177 @@ void test_to_cplx_complex_to_complex(tci_test_fixture<TenT>& fix) {
   TCICT_ASSERT_CLOSE(imag_part<TenT>(elem11), 1.73, eps);
 }
 
+// --- for_each: element doubling ---
+
+template <typename TenT>
+void test_for_each_doubling(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_FOR_EACH
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  using Elem = tci::elem_t<TenT>;
+
+  TenT tensor;
+  tci::zeros(ctx, {2, 3}, tensor);
+  tci::set_elem(ctx, tensor, {0, 0}, make_elem<TenT>(1.0));
+  tci::set_elem(ctx, tensor, {0, 1}, make_elem<TenT>(2.0));
+  tci::set_elem(ctx, tensor, {0, 2}, make_elem<TenT>(3.0));
+  tci::set_elem(ctx, tensor, {1, 0}, make_elem<TenT>(4.0));
+  tci::set_elem(ctx, tensor, {1, 1}, make_elem<TenT>(5.0));
+  tci::set_elem(ctx, tensor, {1, 2}, make_elem<TenT>(6.0));
+
+  tci::for_each(ctx, tensor, [](Elem& elem) { elem = elem * 2.0; });
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, tensor, {0, 0})), 2.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, tensor, {0, 2})), 6.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, tensor, {1, 2})), 12.0, eps);
+}
+
+// --- for_each: iteration and summation ---
+
+template <typename TenT>
+void test_for_each_summation(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_FOR_EACH
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  using Elem = tci::elem_t<TenT>;
+
+  TenT tensor;
+  tci::zeros(ctx, {2, 2}, tensor);
+  tci::set_elem(ctx, tensor, {0, 0}, make_elem<TenT>(1.0));
+  tci::set_elem(ctx, tensor, {0, 1}, make_elem<TenT>(2.0));
+  tci::set_elem(ctx, tensor, {1, 0}, make_elem<TenT>(3.0));
+  tci::set_elem(ctx, tensor, {1, 1}, make_elem<TenT>(4.0));
+
+  int count = 0;
+  Elem sum = make_elem<TenT>(0.0);
+  tci::for_each(ctx, tensor, [&count, &sum](Elem& elem) {
+    count++;
+    sum = sum + elem;
+  });
+
+  TCICT_ASSERT(count == 4);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(sum), 10.0, eps);
+}
+
+// --- for_each: scalar multiplication with capture ---
+
+template <typename TenT>
+void test_for_each_capture(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_FOR_EACH
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  using Elem = tci::elem_t<TenT>;
+
+  TenT tensor;
+  tci::fill(ctx, {2, 2}, make_elem<TenT>(3.0, 1.0), tensor);
+
+  double multiplier = 0.5;
+  tci::for_each(ctx, tensor, [multiplier](Elem& elem) { elem = elem * multiplier; });
+
+  auto result = tci::get_elem(ctx, tensor, {0, 0});
+  TCICT_ASSERT_CLOSE(real_part<TenT>(result), 1.5, eps);
+  TCICT_ASSERT_CLOSE(imag_part<TenT>(result), 0.5, eps);
+}
+
+// --- for_each: const version ---
+
+template <typename TenT>
+void test_for_each_const(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_FOR_EACH
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  using Elem = tci::elem_t<TenT>;
+
+  TenT tensor;
+  tci::fill(ctx, {3}, make_elem<TenT>(2.0, 3.0), tensor);
+
+  Elem sum = make_elem<TenT>(0.0);
+  tci::for_each(ctx, static_cast<const TenT&>(tensor),
+                [&sum](const Elem& elem) { sum = sum + elem; });
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(sum), 6.0, eps);
+  TCICT_ASSERT_CLOSE(imag_part<TenT>(sum), 9.0, eps);
+}
+
+// --- for_each: element-wise inversion ---
+
+template <typename TenT>
+void test_for_each_inversion(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_FOR_EACH
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  using Elem = tci::elem_t<TenT>;
+
+  TenT tensor;
+  tci::fill(ctx, {2, 2}, make_elem<TenT>(0.5), tensor);
+
+  tci::for_each(ctx, tensor, [](Elem& elem) {
+    if (std::abs(elem) > 1e-12) {
+      elem = Elem(1.0, 0.0) / elem;
+    }
+  });
+
+  auto result = tci::get_elem(ctx, tensor, {0, 0});
+  TCICT_ASSERT_CLOSE(real_part<TenT>(result), 2.0, eps);
+}
+
+// --- for_each_with_coors: mutable ---
+
+template <typename TenT>
+void test_for_each_with_coors(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_FOR_EACH_WITH_COORS
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  using Elem = tci::elem_t<TenT>;
+
+  TenT a = tci::template eye<TenT>(ctx, 2);
+
+  tci::for_each_with_coors(
+      ctx, a, [](Elem& elem, const tci::elem_coors_t<TenT>& coors) {
+        if (coors[0] == coors[1]) {
+          elem = static_cast<Elem>(2.0);
+        }
+      });
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, a, {0, 0})), 2.0, eps);
+}
+
+// --- for_each_with_coors: const version ---
+
+template <typename TenT>
+void test_for_each_with_coors_const(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_FOR_EACH_WITH_COORS
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  using Elem = tci::elem_t<TenT>;
+
+  TenT a = tci::template eye<TenT>(ctx, 2);
+  const TenT& const_a = a;
+
+  double sum_diagonal = 0.0;
+  tci::for_each_with_coors(
+      ctx, const_a,
+      [&sum_diagonal](const Elem& elem, const tci::elem_coors_t<TenT>& coors) {
+        if (coors[0] == coors[1]) {
+          sum_diagonal += real_part<TenT>(elem);
+        }
+      });
+
+  TCICT_ASSERT_CLOSE(sum_diagonal, 2.0, eps);
+}
+
 }}  // namespace tcict::tests
