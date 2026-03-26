@@ -39,6 +39,12 @@ TCICT_DOCTEST_CASE("getters", test_size_bytes_2x2, CplxTensor)
 // --- Miscellaneous ---
 TCICT_DOCTEST_CASE("miscellaneous", test_close_identical, CplxTensor)
 TCICT_DOCTEST_CASE("miscellaneous", test_close_different, CplxTensor)
+TCICT_DOCTEST_CASE("miscellaneous", test_to_range, CplxTensor)
+TCICT_DOCTEST_CASE("miscellaneous", test_show, CplxTensor)
+TCICT_DOCTEST_CASE("miscellaneous", test_convert_same_context, CplxTensor)
+TCICT_DOCTEST_CASE("miscellaneous", test_convert_different_context, CplxTensor)
+TCICT_DOCTEST_CASE("miscellaneous", test_convert_data_integrity, CplxTensor)
+TCICT_DOCTEST_CASE("miscellaneous", test_version, RealTensor)
 
 // --- Construction (allocate, clear, move) ---
 TCICT_DOCTEST_CASE("construction", test_allocate_3d, CplxTensor)
