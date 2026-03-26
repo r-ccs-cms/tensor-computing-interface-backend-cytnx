@@ -208,4 +208,109 @@ void test_normalize_edge_cases(tci_test_fixture<TenT>& fix) {
   TCICT_ASSERT_CLOSE(std::abs(norm_zero), 0.0, eps);
 }
 
+// --- norm: 2x2 identity ---
+
+template <typename TenT>
+void test_norm_2x2(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_NORM
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT identity;
+  tci::eye(ctx, 2, identity);
+  auto norm_val = tci::norm(ctx, identity);
+  TCICT_ASSERT_CLOSE(norm_val, std::sqrt(2.0), eps);
+}
+
+// --- contract: matrix multiplication via Einstein notation ---
+
+template <typename TenT>
+void test_contract_matmul(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_CONTRACT
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT a, b, c;
+  tci::zeros(ctx, {2, 2}, a);
+  tci::zeros(ctx, {2, 2}, b);
+
+  // A = [[1,2],[3,4]], B = [[5,6],[7,8]]
+  tci::set_elem(ctx, a, {0, 0}, make_elem<TenT>(1.0));
+  tci::set_elem(ctx, a, {0, 1}, make_elem<TenT>(2.0));
+  tci::set_elem(ctx, a, {1, 0}, make_elem<TenT>(3.0));
+  tci::set_elem(ctx, a, {1, 1}, make_elem<TenT>(4.0));
+  tci::set_elem(ctx, b, {0, 0}, make_elem<TenT>(5.0));
+  tci::set_elem(ctx, b, {0, 1}, make_elem<TenT>(6.0));
+  tci::set_elem(ctx, b, {1, 0}, make_elem<TenT>(7.0));
+  tci::set_elem(ctx, b, {1, 1}, make_elem<TenT>(8.0));
+
+  tci::contract(ctx, a, "ij", b, "jk", c, "ik");
+
+  // A*B = [[19,22],[43,50]]
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, c, {0, 0})), 19.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, c, {0, 1})), 22.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, c, {1, 0})), 43.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, c, {1, 1})), 50.0, eps);
+}
+
+// --- contract: dot product ---
+
+template <typename TenT>
+void test_contract_dot_product(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_CONTRACT
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT a, b, c;
+  tci::zeros(ctx, {3}, a);
+  tci::zeros(ctx, {3}, b);
+
+  // a = [1,2,3], b = [4,5,6]
+  tci::set_elem(ctx, a, {0}, make_elem<TenT>(1.0));
+  tci::set_elem(ctx, a, {1}, make_elem<TenT>(2.0));
+  tci::set_elem(ctx, a, {2}, make_elem<TenT>(3.0));
+  tci::set_elem(ctx, b, {0}, make_elem<TenT>(4.0));
+  tci::set_elem(ctx, b, {1}, make_elem<TenT>(5.0));
+  tci::set_elem(ctx, b, {2}, make_elem<TenT>(6.0));
+
+  tci::contract(ctx, a, "i", b, "i", c, "");
+
+  // dot = 1*4 + 2*5 + 3*6 = 32
+  auto c_shape = tci::shape(ctx, c);
+  TCICT_ASSERT(c_shape.size() == 1);
+  TCICT_ASSERT(c_shape[0] == 1);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, c, {0})), 32.0, eps);
+}
+
+// --- contract: outer product ---
+
+template <typename TenT>
+void test_contract_outer_product(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_CONTRACT
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT a, b, c;
+  tci::zeros(ctx, {2}, a);
+  tci::zeros(ctx, {3}, b);
+
+  tci::set_elem(ctx, a, {0}, make_elem<TenT>(1.0));
+  tci::set_elem(ctx, a, {1}, make_elem<TenT>(2.0));
+  tci::set_elem(ctx, b, {0}, make_elem<TenT>(3.0));
+  tci::set_elem(ctx, b, {1}, make_elem<TenT>(4.0));
+  tci::set_elem(ctx, b, {2}, make_elem<TenT>(5.0));
+
+  tci::contract(ctx, a, "i", b, "j", c, "ij");
+
+  auto c_shape = tci::shape(ctx, c);
+  TCICT_ASSERT(c_shape[0] == 2);
+  TCICT_ASSERT(c_shape[1] == 3);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, c, {0, 0})), 3.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, c, {1, 2})), 10.0, eps);
+}
+
 }}  // namespace tcict::tests

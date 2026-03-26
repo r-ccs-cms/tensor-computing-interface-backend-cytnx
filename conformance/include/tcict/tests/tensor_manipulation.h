@@ -499,4 +499,330 @@ void test_for_each_with_coors_const(tci_test_fixture<TenT>& fix) {
   TCICT_ASSERT_CLOSE(sum_diagonal, 2.0, eps);
 }
 
+// --- reshape (in-place) ---
+
+template <typename TenT>
+void test_reshape(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_RESHAPE
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT tensor;
+  tci::fill(ctx, {2, 3, 4}, make_elem<TenT>(1.0), tensor);
+
+  tci::shape_t<TenT> new_shape = {6, 4};
+  TCICT_ASSERT_NOTHROW(tci::reshape(ctx, tensor, new_shape));
+  TCICT_ASSERT(tci::shape(ctx, tensor) == new_shape);
+  TCICT_ASSERT(tci::size(ctx, tensor) == 24);
+}
+
+// --- transpose (out-of-place) ---
+
+template <typename TenT>
+void test_transpose(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_TRANSPOSE
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT tensor, transposed;
+  tci::fill(ctx, {2, 3, 4}, make_elem<TenT>(1.0), tensor);
+
+  tci::List<tci::bond_idx_t<TenT>> new_order = {2, 0, 1};
+  TCICT_ASSERT_NOTHROW(tci::transpose(ctx, tensor, new_order, transposed));
+
+  tci::shape_t<TenT> expected_shape = {4, 2, 3};
+  TCICT_ASSERT(tci::shape(ctx, transposed) == expected_shape);
+}
+
+// --- concatenate: basic 2D ---
+
+template <typename TenT>
+void test_concatenate_basic(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_CONCATENATE
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT t1, t2, result;
+  tci::fill(ctx, {2, 3}, make_elem<TenT>(1.0), t1);
+  tci::fill(ctx, {2, 3}, make_elem<TenT>(2.0), t2);
+
+  tci::List<TenT> tensors = {t1, t2};
+
+  // Vertical concatenation
+  TCICT_ASSERT_NOTHROW(tci::concatenate(ctx, tensors, 0, result));
+  tci::shape_t<TenT> expected_v = {4, 3};
+  TCICT_ASSERT(tci::shape(ctx, result) == expected_v);
+
+  // Horizontal concatenation
+  TCICT_ASSERT_NOTHROW(tci::concatenate(ctx, tensors, 1, result));
+  tci::shape_t<TenT> expected_h = {2, 6};
+  TCICT_ASSERT(tci::shape(ctx, result) == expected_h);
+}
+
+// --- concatenate: multi-tensor with value verification ---
+
+template <typename TenT>
+void test_concatenate_values(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_CONCATENATE
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT a, b, c, d;
+  tci::fill(ctx, {2, 3, 4}, make_elem<TenT>(1.0), a);
+  tci::fill(ctx, {2, 1, 4}, make_elem<TenT>(2.0), b);
+  tci::fill(ctx, {2, 2, 4}, make_elem<TenT>(3.0), c);
+
+  tci::List<TenT> tensors = {a, b, c};
+  TCICT_ASSERT_NOTHROW(tci::concatenate(ctx, tensors, 1, d));
+
+  tci::shape_t<TenT> expected = {2, 6, 4};
+  TCICT_ASSERT(tci::shape(ctx, d) == expected);
+
+  // Verify element positions
+  auto el_b = tci::get_elem(ctx, b, {0, 0, 0});
+  auto el_d3 = tci::get_elem(ctx, d, {0, 3, 0});
+  TCICT_ASSERT(el_b == el_d3);
+}
+
+// --- concatenate: error cases ---
+
+template <typename TenT>
+void test_concatenate_errors(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_CONCATENATE
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT tensor, result;
+  tci::fill(ctx, {2, 3, 4}, make_elem<TenT>(1.0), tensor);
+
+  tci::List<TenT> single = {tensor};
+  TCICT_ASSERT_THROWS(std::invalid_argument, tci::concatenate(ctx, single, 3, result));
+
+  tci::List<TenT> empty;
+  TCICT_ASSERT_THROWS(std::invalid_argument, tci::concatenate(ctx, empty, 0, result));
+}
+
+// --- extract_sub (out-of-place) ---
+
+template <typename TenT>
+void test_extract_sub(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXTRACT_SUB
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT a, sub;
+  tci::zeros(ctx, {3, 4, 2}, a);
+  tci::set_elem(ctx, a, {1, 0, 0}, make_elem<TenT>(42.0));
+  tci::set_elem(ctx, a, {2, 1, 1}, make_elem<TenT>(13.0));
+
+  tci::List<tci::Pair<tci::elem_coor_t<TenT>, tci::elem_coor_t<TenT>>>
+      coor_pairs = {{1, 3}, {0, 2}, {0, 2}};
+  TCICT_ASSERT_NOTHROW(tci::extract_sub(ctx, a, coor_pairs, sub));
+
+  tci::shape_t<TenT> expected = {2, 2, 2};
+  TCICT_ASSERT(tci::shape(ctx, sub) == expected);
+
+  // (1,0,0) in original maps to (0,0,0) in sub
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, sub, {0, 0, 0})), 42.0, eps);
+  // (2,1,1) in original maps to (1,1,1) in sub
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, sub, {1, 1, 1})), 13.0, eps);
+}
+
+// --- extract_sub: error handling ---
+
+template <typename TenT>
+void test_extract_sub_errors(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXTRACT_SUB
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT a;
+  tci::zeros(ctx, {3, 3}, a);
+
+  // Wrong number of coordinate pairs
+  tci::List<tci::Pair<tci::elem_coor_t<TenT>, tci::elem_coor_t<TenT>>>
+      wrong_count = {{0, 2}, {0, 2}, {0, 1}};
+  TCICT_ASSERT_THROWS(std::exception, tci::extract_sub(ctx, a, wrong_count));
+
+  // Invalid range (start >= end)
+  tci::List<tci::Pair<tci::elem_coor_t<TenT>, tci::elem_coor_t<TenT>>>
+      invalid_range = {{2, 1}, {0, 2}};
+  TCICT_ASSERT_THROWS(std::exception, tci::extract_sub(ctx, a, invalid_range));
+}
+
+// --- replace_sub (in-place) ---
+
+template <typename TenT>
+void test_replace_sub_inplace(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_REPLACE_SUB
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT a, sub;
+  tci::zeros(ctx, {3, 4, 2}, a);
+  tci::zeros(ctx, {2, 2, 2}, sub);
+  tci::set_elem(ctx, sub, {0, 0, 0}, make_elem<TenT>(42.0));
+  tci::set_elem(ctx, sub, {1, 1, 1}, make_elem<TenT>(13.0));
+
+  tci::elem_coors_t<TenT> begin_pt = {1, 2, 0};
+  TCICT_ASSERT_NOTHROW(tci::replace_sub(ctx, a, sub, begin_pt));
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, a, {1, 2, 0})), 42.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, a, {2, 3, 1})), 13.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, a, {0, 0, 0})), 0.0, eps);
+}
+
+// --- replace_sub (out-of-place) ---
+
+template <typename TenT>
+void test_replace_sub_outofplace(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_REPLACE_SUB
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT a, sub, result;
+  tci::zeros(ctx, {4, 4}, a);
+  tci::set_elem(ctx, a, {0, 0}, make_elem<TenT>(99.0));
+
+  tci::fill(ctx, {2, 2}, make_elem<TenT>(1.0), sub);
+
+  tci::elem_coors_t<TenT> begin_pt = {1, 1};
+  TCICT_ASSERT_NOTHROW(tci::replace_sub(ctx, a, sub, begin_pt, result));
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, result, {1, 1})), 1.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, result, {0, 0})), 99.0, eps);
+  // Original unchanged
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, a, {1, 1})), 0.0, eps);
+}
+
+// --- replace_sub: error cases ---
+
+template <typename TenT>
+void test_replace_sub_errors(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_REPLACE_SUB
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT a, sub;
+  tci::zeros(ctx, {3, 3}, a);
+
+  // Dimension mismatch
+  tci::zeros(ctx, {2, 2, 2}, sub);
+  TCICT_ASSERT_THROWS(std::exception, tci::replace_sub(ctx, a, sub, {0, 0}));
+
+  // Out of bounds
+  TenT sub2;
+  tci::zeros(ctx, {2, 2}, sub2);
+  TCICT_ASSERT_THROWS(std::exception, tci::replace_sub(ctx, a, sub2, {2, 2}));
+}
+
+// --- expand (in-place) ---
+
+template <typename TenT>
+void test_expand_inplace(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXPAND
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT a;
+  tci::zeros(ctx, {2, 2, 2}, a);
+
+  tci::Map<tci::bond_idx_t<TenT>, tci::bond_dim_t<TenT>> bond_map = {{1, 2}, {0, 1}};
+  TCICT_ASSERT_NOTHROW(tci::expand(ctx, a, bond_map));
+
+  tci::shape_t<TenT> expected = {3, 4, 2};
+  TCICT_ASSERT(tci::shape(ctx, a) == expected);
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, a, {2, 3, 0})), 0.0, eps);
+}
+
+// --- expand (out-of-place) ---
+
+template <typename TenT>
+void test_expand_outofplace(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXPAND
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT a, expanded;
+  tci::zeros(ctx, {2, 2, 2}, a);
+  tci::set_elem(ctx, a, {1, 1, 1}, make_elem<TenT>(5.0));
+
+  tci::Map<tci::bond_idx_t<TenT>, tci::bond_dim_t<TenT>> bond_map = {{1, 2}, {0, 1}};
+  TCICT_ASSERT_NOTHROW(tci::expand(ctx, a, bond_map, expanded));
+
+  tci::shape_t<TenT> expected = {3, 4, 2};
+  TCICT_ASSERT(tci::shape(ctx, expanded) == expected);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, expanded, {1, 1, 1})), 5.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, expanded, {2, 3, 0})), 0.0, eps);
+}
+
+// --- expand: invalid bond throws ---
+
+template <typename TenT>
+void test_expand_invalid_throws(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_EXPAND
+  return;
+#endif
+  auto& ctx = fix.context();
+  TenT a;
+  tci::zeros(ctx, {2, 2}, a);
+
+  tci::Map<tci::bond_idx_t<TenT>, tci::bond_dim_t<TenT>> invalid_map = {{3, 1}};
+  TCICT_ASSERT_THROWS(std::exception, tci::expand(ctx, a, invalid_map));
+}
+
+// --- diag: vector to matrix ---
+
+template <typename TenT>
+void test_diag_vec_to_mat(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_DIAG
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT vector;
+  tci::zeros(ctx, {3}, vector);
+  tci::set_elem(ctx, vector, {0}, make_elem<TenT>(1.0));
+  tci::set_elem(ctx, vector, {1}, make_elem<TenT>(2.0));
+  tci::set_elem(ctx, vector, {2}, make_elem<TenT>(3.0));
+
+  tci::diag(ctx, vector);
+
+  TCICT_ASSERT(tci::order(ctx, vector) == 2);
+  TCICT_ASSERT(tci::shape(ctx, vector)[0] == 3);
+  TCICT_ASSERT(tci::shape(ctx, vector)[1] == 3);
+
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, vector, {0, 0})), 1.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, vector, {1, 1})), 2.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, vector, {2, 2})), 3.0, eps);
+  TCICT_ASSERT_CLOSE(std::abs(tci::get_elem(ctx, vector, {0, 1})), 0.0, eps);
+}
+
+// --- diag: matrix to vector ---
+
+template <typename TenT>
+void test_diag_mat_to_vec(tci_test_fixture<TenT>& fix) {
+#ifdef TCICT_SKIP_DIAG
+  return;
+#endif
+  auto& ctx = fix.context();
+  auto eps = fix.epsilon();
+  TenT identity;
+  tci::eye(ctx, 3, identity);
+
+  tci::diag(ctx, identity);
+
+  TCICT_ASSERT(tci::order(ctx, identity) == 1);
+  TCICT_ASSERT(tci::size(ctx, identity) == 3);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, identity, {0})), 1.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, identity, {1})), 1.0, eps);
+  TCICT_ASSERT_CLOSE(real_part<TenT>(tci::get_elem(ctx, identity, {2})), 1.0, eps);
+}
+
 }}  // namespace tcict::tests
