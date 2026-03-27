@@ -1548,10 +1548,11 @@ namespace tci {
     detail::for_each_recursive_const_typed(in, std::forward<Func>(f), 0, coords, shape);
   }
 
-  // move - move tensor contents (out-of-place)
+  // move - move tensor contents (out-of-place), invalidates source
   template <typename TenT> TenT move(context_handle_t<TenT>& ctx, TenT& from) {
     TenT result;
     result.backend = std::move(from.backend);
+    from = TenT();
     return result;
   }
 
