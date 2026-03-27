@@ -18,6 +18,7 @@ using RealTensor = tci::CytnxTensor<cytnx::cytnx_double>;
 
 // --- Construction ---
 TCICT_DOCTEST_CASE("construction", test_zeros, CplxTensor)
+TCICT_DOCTEST_CASE("construction", test_fill, CplxTensor)
 TCICT_DOCTEST_CASE("construction", test_eye, CplxTensor)
 TCICT_DOCTEST_CASE("construction", test_random_inplace, CplxTensor)
 TCICT_DOCTEST_CASE("construction", test_random_outofplace, CplxTensor)
