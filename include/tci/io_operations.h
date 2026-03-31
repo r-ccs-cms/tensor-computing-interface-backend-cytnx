@@ -38,20 +38,6 @@ namespace tci {
   }  // namespace detail
 
   /**
-   * @brief Load tensor from storage (in-place version)
-   *
-   * @tparam TenT Tensor type
-   * @tparam Storage Storage type (e.g., file path, memory buffer)
-   * @param ctx Context handle for the tensor library
-   * @param strg Storage object to load from
-   * @param a Output tensor
-   */
-  template <typename TenT, typename Storage>
-  inline void load(context_handle_t<TenT>& ctx, Storage&& strg, TenT& a) {
-    detail::storage_adapter<TenT, std::decay_t<Storage>>::load(ctx, std::forward<Storage>(strg), a);
-  }
-
-  /**
    * @brief Load tensor from storage (out-of-place version)
    *
    * @tparam TenT Tensor type

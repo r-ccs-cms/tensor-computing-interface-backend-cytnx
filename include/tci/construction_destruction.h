@@ -23,21 +23,6 @@ namespace tci {
   template <typename TenT> TenT allocate(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape);
 
   /**
-   * @brief Create a tensor filled with zeros (in-place version)
-   *
-   * @deprecated Reserved for future GPU support. Use out-of-place version instead:
-   *             auto result = tci::zeros(ctx, shape);
-   *
-   * @tparam TenT Tensor type
-   * @param ctx Context handle for the tensor library
-   * @param shape Shape of the tensor
-   * @param a Output tensor
-   */
-  template <typename TenT>
-  [[deprecated("Reserved for future GPU support. Use: auto result = tci::zeros(ctx, shape);")]]
-  void zeros(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, TenT& a);
-
-  /**
    * @brief Create a tensor filled with zeros (out-of-place version)
    *
    * @tparam TenT Tensor type
@@ -62,24 +47,6 @@ namespace tci {
   template <typename TenT, typename RandomIt, typename Func>
   TenT assign_from_range(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandomIt first,
                          Func&& coors2idx);
-
-  /**
-   * @brief Create a tensor from a container/range (deprecated - use assign_from_range)
-   *
-   * @deprecated Use assign_from_range instead. This API will be removed in the next major version
-   * @tparam TenT Tensor type
-   * @tparam RandomIt Random access iterator type
-   * @tparam Func Function type for coordinate to index mapping
-   * @param ctx Context handle for the tensor library
-   * @param shape Shape of the tensor
-   * @param init_elems_begin Iterator to beginning of elements
-   * @param coors2idx Function to convert coordinates to linear index
-   * @return TenT Created tensor
-   */
-  template <typename TenT, typename RandomIt, typename Func> [[deprecated(
-      "Use assign_from_range instead. This API will be removed in the next major version")]]
-  TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
-                             RandomIt init_elems_begin, Func&& coors2idx);
 
   // Template function implementations for assign_from_range
   // Generic implementation that works with any tensor type
@@ -111,14 +78,6 @@ namespace tci {
 
     assign_recursive({}, 0);
     return a;
-  }
-
-  // Deprecated: Forward to assign_from_range
-  template <typename TenT, typename RandomIt, typename Func>
-  TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
-                             RandomIt init_elems_begin, Func&& coors2idx) {
-    return assign_from_range<TenT, RandomIt, Func>(ctx, shape, init_elems_begin,
-                                                   std::forward<Func>(coors2idx));
   }
 
   /**
@@ -158,38 +117,6 @@ namespace tci {
   }
 
   /**
-   * @brief Create a tensor with random values (in-place version)
-   *
-   * @tparam TenT Tensor type
-   * @tparam RandNumGen Random number generator type
-   * @param ctx Context handle for the tensor library
-   * @param shape Shape of the tensor
-   * @param gen Random number generator
-   * @param a Output tensor
-   * @deprecated Use return-value version instead: auto result = random(ctx, shape, gen)
-   */
-  template <typename TenT, typename RandNumGen>
-  [[deprecated("Use return-value version instead: auto result = random(ctx, shape, gen)")]]
-  void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen, TenT& a) {
-    a = random<TenT>(ctx, shape, std::forward<RandNumGen>(gen));
-  }
-
-  /**
-   * @brief Create an identity matrix (in-place version)
-   *
-   * @deprecated Reserved for future GPU support. Use out-of-place version instead:
-   *             auto result = tci::eye(ctx, N);
-   *
-   * @tparam TenT Tensor type
-   * @param ctx Context handle for the tensor library
-   * @param N Size of the square matrix
-   * @param a Output tensor
-   */
-  template <typename TenT>
-  [[deprecated("Reserved for future GPU support. Use: auto result = tci::eye(ctx, N);")]]
-  void eye(context_handle_t<TenT>& ctx, const bond_dim_t<TenT> N, TenT& a);
-
-  /**
    * @brief Create an identity matrix (out-of-place version)
    *
    * @tparam TenT Tensor type
@@ -198,22 +125,6 @@ namespace tci {
    * @return TenT Identity matrix
    */
   template <typename TenT> TenT eye(context_handle_t<TenT>& ctx, const bond_dim_t<TenT> N);
-
-  /**
-   * @brief Fill tensor with a constant value (in-place version)
-   *
-   * @deprecated Reserved for future GPU support. Use out-of-place version instead:
-   *             auto result = tci::fill(ctx, shape, v);
-   *
-   * @tparam TenT Tensor type
-   * @param ctx Context handle for the tensor library
-   * @param shape Shape of the tensor
-   * @param v Fill value
-   * @param a Output tensor
-   */
-  template <typename TenT>
-  [[deprecated("Reserved for future GPU support. Use: auto result = tci::fill(ctx, shape, v);")]]
-  void fill(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, const elem_t<TenT> v, TenT& a);
 
   /**
    * @brief Fill tensor with a constant value (out-of-place version)

@@ -73,24 +73,6 @@ namespace tci {
   }
 
   /**
-   * @brief Copy tensor elements to a container/range (deprecated - use to_range)
-   *
-   * @deprecated Use to_range instead. This API will be removed in the next major version
-   * @tparam TenT Tensor type
-   * @tparam RandomIt Random access iterator type
-   * @tparam Func Function type for coordinate to index mapping
-   * @param ctx Context handle for the tensor library
-   * @param a Input tensor
-   * @param first Iterator to beginning of destination range
-   * @param coors2idx Function to convert coordinates to linear index
-   */
-  template <typename TenT, typename RandomIt, typename Func>
-  [[deprecated("Use to_range instead. This API will be removed in the next major version")]]
-  void to_container(context_handle_t<TenT>& ctx, const TenT& a, RandomIt first, Func&& coors2idx) {
-    to_range(ctx, a, first, std::forward<Func>(coors2idx));
-  }
-
-  /**
    * @brief Print tensor contents in human-readable format
    *
    * @tparam TenT Tensor type
@@ -116,21 +98,6 @@ namespace tci {
    */
   template <typename TenT>
   bool close(context_handle_t<TenT>& ctx, const TenT& a, const TenT& b, const real_t<TenT> epsilon);
-
-  /**
-   * @brief Check if two tensors are equal within tolerance (deprecated - use close)
-   *
-   * @deprecated Use close instead. This API will be removed in the next major version
-   * @tparam TenT Tensor type
-   * @param ctx Context handle for the tensor library
-   * @param a First tensor
-   * @param b Second tensor
-   * @param epsilon Tolerance for comparison
-   * @return bool True if tensors are equal within tolerance
-   */
-  template <typename TenT>
-  [[deprecated("Use close instead. This API will be removed in the next major version")]]
-  bool eq(context_handle_t<TenT>& ctx, const TenT& a, const TenT& b, const real_t<TenT> epsilon);
 
   /**
    * @brief Convert tensor between different types

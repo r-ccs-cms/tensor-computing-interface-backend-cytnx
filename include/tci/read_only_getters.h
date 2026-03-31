@@ -18,13 +18,6 @@ namespace tci {
   template <typename TenT> order_t<TenT> order(context_handle_t<TenT>& ctx, const TenT& a);
 
   /**
-   * @brief Get the rank (number of dimensions) of a tensor (deprecated, use order)
-   */
-  template <typename TenT>
-  [[deprecated("Use tci::order instead. This API will be removed in the next major version")]]
-  order_t<TenT> rank(context_handle_t<TenT>& ctx, const TenT& a);
-
-  /**
    * @brief Get the shape (dimensions) of a tensor
    *
    * @tparam TenT Tensor type

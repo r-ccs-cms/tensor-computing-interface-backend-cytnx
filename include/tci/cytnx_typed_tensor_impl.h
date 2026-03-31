@@ -108,31 +108,6 @@ namespace tci {
     }
   }
 
-  // Additional functions for TenT
-
-  template <typename TenT>
-  [[deprecated("Reserved for future GPU support. Use: auto result = tci::zeros(ctx, shape);")]]
-  void zeros(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, TenT& a) {
-    fill(ctx, shape, elem_t<TenT>(0), a);
-  }
-
-  template <typename TenT>
-  [[deprecated("Reserved for future GPU support. Use: auto result = tci::eye(ctx, N);")]]
-  void eye(context_handle_t<TenT>& ctx, bond_dim_t<TenT> dim, TenT& a) {
-    a.backend = cytnx::eye(dim, detail::elem_to_cytnx_type<elem_t<TenT>>(), ctx);
-  }
-
-  template <typename TenT>
-  [[deprecated("Reserved for future GPU support. Use: auto result = tci::fill(ctx, shape, v);")]]
-  void fill(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, elem_t<TenT> value, TenT& a) {
-    a = allocate<TenT>(ctx, shape);
-    auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
-    auto* data = a.backend.storage().template data<elem_t<TenT>>();
-    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
-      data[i] = value;
-    }
-  }
-
   template <typename TenT> void set_elem(context_handle_t<TenT>& ctx, TenT& a,
                                          const elem_coors_t<TenT>& coors, elem_t<TenT> elem) {
     std::vector<cytnx::cytnx_uint64> cytnx_coors;

@@ -15,6 +15,7 @@
 //   tci::foo(ctx, ...)                        // let the compiler deduce TenT
 
 #include "tci/cytnx_typed_tensor_impl.h"
+#include "tci/io_operations.h"
 #include "tci/miscellaneous.h"
 
 namespace tci {
@@ -30,7 +31,48 @@ namespace tci {
   "Use TenT-based API: replace template parameter ElemT with TenT = CytnxTensor<ElemT>"
 
   // ============================================================
-  // Construction and Destruction
+  // Construction and Destruction — TenT in-place / renamed API
+  // ============================================================
+
+  template <typename TenT>
+  [[deprecated("Reserved for future GPU support. Use: auto result = tci::fill(ctx, shape, v);")]]
+  void fill(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, elem_t<TenT> value, TenT& a) {
+    a = allocate<TenT>(ctx, shape);
+    auto total_size = static_cast<cytnx::cytnx_uint64>(a.backend.storage().size());
+    auto* data = a.backend.storage().template data<elem_t<TenT>>();
+    for (cytnx::cytnx_uint64 i = 0; i < total_size; ++i) {
+      data[i] = value;
+    }
+  }
+
+  template <typename TenT>
+  [[deprecated("Reserved for future GPU support. Use: auto result = tci::zeros(ctx, shape);")]]
+  void zeros(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, TenT& a) {
+    fill(ctx, shape, elem_t<TenT>(0), a);
+  }
+
+  template <typename TenT>
+  [[deprecated("Reserved for future GPU support. Use: auto result = tci::eye(ctx, N);")]]
+  void eye(context_handle_t<TenT>& ctx, bond_dim_t<TenT> dim, TenT& a) {
+    a.backend = cytnx::eye(dim, detail::elem_to_cytnx_type<elem_t<TenT>>(), ctx);
+  }
+
+  template <typename TenT, typename RandNumGen>
+  [[deprecated("Use return-value version instead: auto result = random(ctx, shape, gen)")]]
+  void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen, TenT& a) {
+    a = random<TenT>(ctx, shape, std::forward<RandNumGen>(gen));
+  }
+
+  template <typename TenT, typename RandomIt, typename Func>
+  [[deprecated("Use assign_from_range instead. This API will be removed in the next major version")]]
+  TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
+                             RandomIt init_elems_begin, Func&& coors2idx) {
+    return assign_from_range<TenT, RandomIt, Func>(ctx, shape, init_elems_begin,
+                                                   std::forward<Func>(coors2idx));
+  }
+
+  // ============================================================
+  // Construction and Destruction — ElemT wrappers
   // ============================================================
 
   template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>
@@ -837,5 +879,33 @@ namespace tci {
   }
 
 #undef TCI_DEPRECATED_ELEMT_API
+
+  // ============================================================
+  // Miscellaneous — TenT deprecated
+  // ============================================================
+
+  template <typename TenT, typename RandomIt, typename Func>
+  [[deprecated("Use to_range instead. This API will be removed in the next major version")]]
+  void to_container(context_handle_t<TenT>& ctx, const TenT& a, RandomIt first, Func&& coors2idx) {
+    to_range(ctx, a, first, std::forward<Func>(coors2idx));
+  }
+
+  // ============================================================
+  // I/O — TenT deprecated
+  // ============================================================
+
+  template <typename TenT, typename Storage>
+  [[deprecated("Use return-value version instead: auto result = tci::load<TenT>(ctx, strg)")]]
+  inline void load(context_handle_t<TenT>& ctx, Storage&& strg, TenT& a) {
+    a = load<TenT>(ctx, std::forward<Storage>(strg));
+  }
+
+  // ============================================================
+  // Deprecated type aliases
+  // ============================================================
+
+  template <typename TenT> using rank_t
+      [[deprecated("Use tci::order_t instead. This API will be removed in the next major version")]]
+      = typename detail::rank_type_fallback<TenT>::type;
 
 }  // namespace tci

@@ -50,10 +50,6 @@ namespace tci {
 
   template <typename TenT> using order_t = typename detail::order_type_fallback<TenT>::type;
 
-  template <typename TenT> using rank_t
-      [[deprecated("Use tci::order_t instead. This API will be removed in the next major version")]]
-      = typename detail::rank_type_fallback<TenT>::type;
-
   template <typename TenT> using shape_t = typename tensor_traits<TenT>::shape_t;
 
   template <typename TenT> using bond_dim_t = typename tensor_traits<TenT>::bond_dim_t;
