@@ -851,6 +851,11 @@ namespace tci {
     auto a_reshaped = a.backend.reshape(
         {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
 
+    // Compute ||A||_F^2 before truncation for trunc_err calculation.
+    // ||A||_F^2 = sum(s_i^2) for all pre-truncation singular values.
+    double frobenius_sq = cytnx::linalg::Norm(a_reshaped).template item<double>();
+    frobenius_sq *= frobenius_sq;
+
     // Perform SVD with chi_max constraint
     // Cytnx's Svd_truncate uses LAPACK zgesdd (divide-and-conquer) which
     // can fail on ill-conditioned matrices.  Fall back to Gesvd_truncate
@@ -917,17 +922,25 @@ namespace tci {
       bond_dim = new_bond_dim;
     }
 
-    // Calculate truncation error
-    if (bond_dim > 0) {
+    // Calculate truncation error per TCI spec:
+    // epsilon = sum(s_discarded^2) / sum(s_all^2)
+    //         = (||A||_F^2 - sum(s_kept^2)) / ||A||_F^2
+    if (frobenius_sq > 0.0 && bond_dim > 0) {
+      double kept_s2 = 0.0;
       if (s_backend.dtype() == cytnx::Type.Double) {
         auto* s_data = s_backend.template ptr_as<double>();
-        trunc_err = s_data[bond_dim - 1];
+        for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
+          kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
+        }
       } else if (s_backend.dtype() == cytnx::Type.Float) {
         auto* s_data = s_backend.template ptr_as<float>();
-        trunc_err = static_cast<double>(s_data[bond_dim - 1]);
-      } else {
-        trunc_err = 0.0;
+        for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
+          kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
+        }
       }
+      trunc_err = (frobenius_sq - kept_s2) / frobenius_sq;
+      // Clamp to [0, 1] to guard against floating-point roundoff
+      if (trunc_err < 0.0) trunc_err = 0.0;
     } else {
       trunc_err = 0.0;
     }
