@@ -925,24 +925,32 @@ namespace tci {
     // Calculate truncation error per TCI spec:
     // epsilon = sum(s_discarded^2) / sum(s_all^2)
     //         = (||A||_F^2 - sum(s_kept^2)) / ||A||_F^2
-    if (frobenius_sq > 0.0 && bond_dim > 0) {
+    {
       double kept_s2 = 0.0;
-      if (s_backend.dtype() == cytnx::Type.Double) {
-        auto* s_data = s_backend.template ptr_as<double>();
-        for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
-          kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
-        }
-      } else if (s_backend.dtype() == cytnx::Type.Float) {
-        auto* s_data = s_backend.template ptr_as<float>();
-        for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
-          kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
+      bool computed = false;
+      if (frobenius_sq > 0.0 && bond_dim > 0) {
+        if (s_backend.dtype() == cytnx::Type.Double) {
+          auto* s_data = s_backend.template ptr_as<double>();
+          for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
+            kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
+          }
+          computed = true;
+        } else if (s_backend.dtype() == cytnx::Type.Float) {
+          auto* s_data = s_backend.template ptr_as<float>();
+          for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
+            kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
+          }
+          computed = true;
         }
       }
-      trunc_err = (frobenius_sq - kept_s2) / frobenius_sq;
-      // Clamp to [0, 1] to guard against floating-point roundoff
-      if (trunc_err < 0.0) trunc_err = 0.0;
-    } else {
-      trunc_err = 0.0;
+      if (computed) {
+        trunc_err = (frobenius_sq - kept_s2) / frobenius_sq;
+        // Clamp to [0, 1] to guard against floating-point roundoff
+        if (trunc_err < 0.0) trunc_err = 0.0;
+        if (trunc_err > 1.0) trunc_err = 1.0;
+      } else {
+        trunc_err = 0.0;
+      }
     }
 
     // Extract real singular values
