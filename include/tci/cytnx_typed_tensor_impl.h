@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cytnx.hpp>
+#include <algorithm>
 #include <limits>
 #include <vector>
 
@@ -944,10 +945,7 @@ namespace tci {
         }
       }
       if (computed) {
-        trunc_err = (frobenius_sq - kept_s2) / frobenius_sq;
-        // Clamp to [0, 1] to guard against floating-point roundoff
-        if (trunc_err < 0.0) trunc_err = 0.0;
-        if (trunc_err > 1.0) trunc_err = 1.0;
+        trunc_err = std::clamp((frobenius_sq - kept_s2) / frobenius_sq, 0.0, 1.0);
       } else {
         trunc_err = 0.0;
       }
