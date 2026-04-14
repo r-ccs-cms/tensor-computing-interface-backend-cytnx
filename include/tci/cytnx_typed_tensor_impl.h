@@ -856,14 +856,18 @@ namespace tci {
     // can fail on ill-conditioned matrices.  Fall back to Gesvd_truncate
     // (zgesvd, QR iteration) on convergence failure.
     std::vector<cytnx::Tensor> svd_result;
+    bool used_fallback = false;
     try {
       svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
-    } catch (...) {
+    } catch (const std::exception &) {
+      used_fallback = true;
       svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
     }
 
     if (svd_result.size() < 3) {
-      throw std::runtime_error("trunc_svd: unexpected result size from Svd_truncate");
+      throw std::runtime_error(
+          std::string("trunc_svd: unexpected result size from ") +
+          (used_fallback ? "Gesvd_truncate" : "Svd_truncate"));
     }
 
     // Extract S, U, Vt (order: S, U, V†)
