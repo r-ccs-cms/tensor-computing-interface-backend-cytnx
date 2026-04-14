@@ -852,9 +852,15 @@ namespace tci {
         {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
 
     // Perform SVD with chi_max constraint
-    // Note: Cytnx's Svd_truncate doesn't support target_trunc_err or chi_min directly,
-    // so we apply chi_max first and then manually truncate based on target_trunc_err and chi_min
-    auto svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
+    // Cytnx's Svd_truncate uses LAPACK zgesdd (divide-and-conquer) which
+    // can fail on ill-conditioned matrices.  Fall back to Gesvd_truncate
+    // (zgesvd, QR iteration) on convergence failure.
+    std::vector<cytnx::Tensor> svd_result;
+    try {
+      svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
+    } catch (...) {
+      svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
+    }
 
     if (svd_result.size() < 3) {
       throw std::runtime_error("trunc_svd: unexpected result size from Svd_truncate");
