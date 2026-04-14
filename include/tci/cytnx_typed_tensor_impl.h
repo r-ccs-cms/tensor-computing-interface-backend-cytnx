@@ -859,7 +859,7 @@ namespace tci {
     bool used_fallback = false;
     try {
       svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
-    } catch (const std::exception &) {
+    } catch (...) {
       used_fallback = true;
       svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
     }
