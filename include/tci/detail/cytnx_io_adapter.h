@@ -139,13 +139,15 @@ namespace tci::detail {
       ensure_parent_exists(path);
 
       if (path.extension() == ".cytn") {
+        // cytnx Save appends .cytn when the path has no extension,
+        // so strip it here to get the correct output path.
         auto base = path;
         base.replace_extension();
         a.Save(base.string());
       } else {
+        // cytnx Save writes directly to the given path when it
+        // already has an extension (e.g. ".dat", ".bin").
         a.Save(path.string());
-        const auto produced = path.string() + ".cytn";
-        rename_or_copy(produced, path);
       }
     }
 
