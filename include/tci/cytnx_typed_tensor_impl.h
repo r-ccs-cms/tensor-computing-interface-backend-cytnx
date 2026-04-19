@@ -857,23 +857,35 @@ namespace tci {
     double frobenius_sq = cytnx::linalg::Norm(a_reshaped).template item<double>();
     frobenius_sq *= frobenius_sq;
 
-    // Perform SVD with chi_max constraint
-    // Cytnx's Svd_truncate uses LAPACK zgesdd (divide-and-conquer) which
-    // can fail on ill-conditioned matrices.  Fall back to Gesvd_truncate
-    // (zgesvd, QR iteration) on convergence failure.
+    // Perform SVD with chi_max constraint.
+    //
+    // Svd_truncate (zgesdd, divide-and-conquer) is faster for large
+    // matrices but can fail on ill-conditioned ones.  Gesvd_truncate
+    // (zgesvd, QR iteration) is always stable.
+    //
+    // For small matrices the speed difference is negligible and the
+    // try/catch overhead of the fallback path is proportionally large,
+    // so we use the stable path directly.  The threshold is chosen so
+    // that zgesdd's asymptotic advantage (~2x for large N) outweighs the
+    // exception-handling cost.
+    constexpr cytnx::cytnx_uint64 kGesddMinDim = 64;
+    auto min_dim = std::min(left_dim, right_dim);
+
     std::vector<cytnx::Tensor> svd_result;
-    bool used_fallback = false;
-    try {
-      svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
-    } catch (...) {
-      used_fallback = true;
+    if (min_dim >= kGesddMinDim) {
+      // Large matrix: try fast divide-and-conquer, fall back on failure.
+      try {
+        svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
+      } catch (...) {
+        svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
+      }
+    } else {
+      // Small matrix: use stable QR-iteration path directly.
       svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
     }
 
     if (svd_result.size() < 3) {
-      throw std::runtime_error(
-          std::string("trunc_svd: unexpected result size from ") +
-          (used_fallback ? "Gesvd_truncate" : "Svd_truncate"));
+      throw std::runtime_error("trunc_svd: unexpected result size from SVD");
     }
 
     // Extract S, U, Vt (order: S, U, V†)
