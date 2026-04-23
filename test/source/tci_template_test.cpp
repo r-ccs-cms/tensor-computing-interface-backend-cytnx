@@ -43,7 +43,8 @@ TEST_CASE("Template Function const Type Issues") {
     shape_t<Ten> shape = {2, 2};
 
     Ten a;
-    CHECK_NOTHROW(random(ctx, shape, []() { return 0.5; }, a));
+    auto half_gen = []() { return 0.5; };
+    CHECK_NOTHROW(random(ctx, shape, half_gen, a));
 
     // Verify the tensor was created with correct shape
     auto result_shape = tci::shape(ctx, a);

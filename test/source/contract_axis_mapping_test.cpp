@@ -11,10 +11,13 @@ TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
   ContextHandle context;
   tci::create_context(context);
 
+  // Named (lvalue) so it binds to tci::random's RandNumGen& parameter (TCI v1 spec).
+  auto ones_gen = []() { return 1.0; };
+
   SUBCASE("Simple 2D contract test") {
     // Test basic contract behavior
-    auto A = tci::random<Tensor>(context, tci::shape_t<Tensor>{3, 4}, []() { return 1.0; });
-    auto B = tci::random<Tensor>(context, tci::shape_t<Tensor>{4, 5}, []() { return 1.0; });
+    auto A = tci::random<Tensor>(context, tci::shape_t<Tensor>{3, 4}, ones_gen);
+    auto B = tci::random<Tensor>(context, tci::shape_t<Tensor>{4, 5}, ones_gen);
 
     Tensor C;
     tci::contract(context, A, {0, -1}, B, {-1, 1}, C, {0, 1});
@@ -32,8 +35,8 @@ TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
 
     // Create tensors with exact same shapes as in iTEBD test
     auto theta
-        = tci::random<Tensor>(context, tci::shape_t<Tensor>{5, 2, 2, 5}, []() { return 1.0; });
-    auto u = tci::random<Tensor>(context, tci::shape_t<Tensor>{2, 2, 2, 2}, []() { return 1.0; });
+        = tci::random<Tensor>(context, tci::shape_t<Tensor>{5, 2, 2, 5}, ones_gen);
+    auto u = tci::random<Tensor>(context, tci::shape_t<Tensor>{2, 2, 2, 2}, ones_gen);
 
     auto theta_shape = tci::shape(context, theta);
     auto u_shape = tci::shape(context, u);
@@ -84,8 +87,8 @@ TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
     std::cout << "\n=== Step-by-step Axis Analysis ===" << std::endl;
 
     // Simpler test to understand axis mapping
-    auto A = tci::random<Tensor>(context, tci::shape_t<Tensor>{2, 3}, []() { return 1.0; });
-    auto B = tci::random<Tensor>(context, tci::shape_t<Tensor>{3, 4}, []() { return 1.0; });
+    auto A = tci::random<Tensor>(context, tci::shape_t<Tensor>{2, 3}, ones_gen);
+    auto B = tci::random<Tensor>(context, tci::shape_t<Tensor>{3, 4}, ones_gen);
 
     std::cout << "Test 1: A{0, -1} × B{-1, 1} = C{0, 1}" << std::endl;
     std::cout << "A(2,3) × B(3,4) should give C(2,4)" << std::endl;

@@ -59,8 +59,8 @@ namespace tci {
 
   template <typename TenT, typename RandNumGen>
   [[deprecated("Use return-value version instead: auto result = random(ctx, shape, gen)")]]
-  void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen, TenT& a) {
-    a = random<TenT>(ctx, shape, std::forward<RandNumGen>(gen));
+  void random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen& gen, TenT& a) {
+    a = random<TenT>(ctx, shape, gen);
   }
 
   template <typename TenT, typename RandomIt, typename Func>
@@ -143,16 +143,16 @@ namespace tci {
             std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>
   [[deprecated(TCI_DEPRECATED_ELEMT_API)]]
   CytnxTensor<ElemT> random(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                            const shape_t<CytnxTensor<ElemT>>& shape, RandNumGen&& gen) {
-    return random<CytnxTensor<ElemT>>(ctx, shape, std::forward<RandNumGen>(gen));
+                            const shape_t<CytnxTensor<ElemT>>& shape, RandNumGen& gen) {
+    return random<CytnxTensor<ElemT>>(ctx, shape, gen);
   }
 
   template <typename ElemT, typename RandNumGen,
             std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>
   [[deprecated(TCI_DEPRECATED_ELEMT_API)]]
   void random(context_handle_t<CytnxTensor<ElemT>>& ctx, const shape_t<CytnxTensor<ElemT>>& shape,
-              RandNumGen&& gen, CytnxTensor<ElemT>& a) {
-    random<CytnxTensor<ElemT>>(ctx, shape, std::forward<RandNumGen>(gen), a);
+              RandNumGen& gen, CytnxTensor<ElemT>& a) {
+    random<CytnxTensor<ElemT>>(ctx, shape, gen, a);
   }
 
   template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>

@@ -91,7 +91,7 @@ namespace tci {
    * @return TenT Random-filled tensor
    */
   template <typename TenT, typename RandNumGen>
-  TenT random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen&& gen) {
+  TenT random(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape, RandNumGen& gen) {
     TenT result = allocate<TenT>(ctx, shape);
 
     // Use coordinate-based approach to avoid storage compatibility issues
