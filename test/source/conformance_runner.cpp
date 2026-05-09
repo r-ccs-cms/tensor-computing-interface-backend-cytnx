@@ -11,7 +11,6 @@
 #include <doctest/doctest.h>
 #define TCI_NO_DEPRECATED_API
 #include <tci/tci.h>
-#include <cytnx.hpp>
 
 #include <tcict/adapters/doctest.h>
 
