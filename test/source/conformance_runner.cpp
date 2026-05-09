@@ -15,8 +15,12 @@
 
 #include <tcict/adapters/doctest.h>
 
+using CytnxRealF = tci::CytnxTensor<cytnx::cytnx_float>;
 using CytnxRealD = tci::CytnxTensor<cytnx::cytnx_double>;
+using CytnxCplxF = tci::CytnxTensor<cytnx::cytnx_complex64>;
 using CytnxCplxD = tci::CytnxTensor<cytnx::cytnx_complex128>;
 
+TCICT_DOCTEST_REGISTER_REAL(float, CytnxRealF)
 TCICT_DOCTEST_REGISTER_REAL(double, CytnxRealD)
+TCICT_DOCTEST_REGISTER_CPLX(cfloat, CytnxCplxF)
 TCICT_DOCTEST_REGISTER_CPLX(cdouble, CytnxCplxD)
