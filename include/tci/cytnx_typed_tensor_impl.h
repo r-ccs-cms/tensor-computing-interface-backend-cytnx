@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cytnx.hpp>
 #include <algorithm>
+#include <cytnx.hpp>
 #include <limits>
 #include <vector>
 
@@ -1927,10 +1927,6 @@ namespace tci {
       if (is_float) {
         cytnx::Tensor iH = reshaped * cytnx::cytnx_complex64(0.0f, 1.0f);
         result = cytnx::linalg::ExpH(iH, cytnx::cytnx_complex64(0.0f, -1.0f));
-        // ExpH may promote to complex128, convert back if needed
-        if (result.dtype() != original_dtype) {
-          result = result.astype(original_dtype);
-        }
       } else {
         cytnx::Tensor iH = reshaped * cytnx::cytnx_complex128(0.0, 1.0);
         result = cytnx::linalg::ExpH(iH, cytnx::cytnx_complex128(0.0, -1.0));
@@ -1938,6 +1934,17 @@ namespace tci {
     } else {
       // General case
       result = cytnx::linalg::ExpM(reshaped);
+    }
+
+    // exp(M) of a real matrix is mathematically real, but the eigendecomposition
+    // path (Eig/ExpM, ExpH) always returns a complex tensor. Project back to the
+    // real dtype the user requested; complex-to-real astype is unsupported in
+    // Cytnx, so the .real() step is required before any precision-aligning cast.
+    if (cytnx::Type.is_complex(result.dtype()) && !cytnx::Type.is_complex(original_dtype)) {
+      result = result.real();
+    }
+    if (result.dtype() != original_dtype) {
+      result = result.astype(original_dtype);
     }
 
     // Reshape back to original shape
@@ -1992,10 +1999,6 @@ namespace tci {
       if (is_float) {
         cytnx::Tensor iH = reshaped * cytnx::cytnx_complex64(0.0f, 1.0f);
         result = cytnx::linalg::ExpH(iH, cytnx::cytnx_complex64(0.0f, -1.0f));
-        // ExpH may promote to complex128, convert back if needed
-        if (result.dtype() != original_dtype) {
-          result = result.astype(original_dtype);
-        }
       } else {
         cytnx::Tensor iH = reshaped * cytnx::cytnx_complex128(0.0, 1.0);
         result = cytnx::linalg::ExpH(iH, cytnx::cytnx_complex128(0.0, -1.0));
@@ -2003,6 +2006,17 @@ namespace tci {
     } else {
       // General case
       result = cytnx::linalg::ExpM(reshaped);
+    }
+
+    // exp(M) of a real matrix is mathematically real, but the eigendecomposition
+    // path (Eig/ExpM, ExpH) always returns a complex tensor. Project back to the
+    // real dtype the user requested; complex-to-real astype is unsupported in
+    // Cytnx, so the .real() step is required before any precision-aligning cast.
+    if (cytnx::Type.is_complex(result.dtype()) && !cytnx::Type.is_complex(original_dtype)) {
+      result = result.real();
+    }
+    if (result.dtype() != original_dtype) {
+      result = result.astype(original_dtype);
     }
 
     // Reshape back to original shape
