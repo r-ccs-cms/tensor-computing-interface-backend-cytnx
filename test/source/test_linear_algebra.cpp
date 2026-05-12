@@ -58,6 +58,53 @@ TEST_CASE("TCI Matrix exponential - complex64 dtype preservation") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("TCI Matrix exponential - in-place real dtype preservation (double)") {
+  // Regression for: in-place tci::exp on a real-typed tensor must return a real
+  // backend so tci::get_elem reads correct values via at<double>. The
+  // out-of-place tcict conformance tests do not exercise the in-place overload,
+  // and the eigendecomposition path returns a complex tensor that previously
+  // leaked into the user's real backend.
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_double>> ctx;
+  tci::create_context(ctx);
+
+  tci::CytnxTensor<cytnx::cytnx_double> diagonal;
+  tci::zeros(ctx, {2, 2}, diagonal);
+  tci::set_elem(ctx, diagonal, {0, 0}, 1.0);
+  tci::set_elem(ctx, diagonal, {1, 1}, 2.0);
+
+  tci::exp(ctx, diagonal, 1);
+
+  CHECK(diagonal.backend.dtype() == cytnx::Type.Double);
+  CHECK(std::abs(tci::get_elem(ctx, diagonal, {0, 0}) - std::exp(1.0)) < 1e-10);
+  CHECK(std::abs(tci::get_elem(ctx, diagonal, {1, 1}) - std::exp(2.0)) < 1e-10);
+  CHECK(std::abs(tci::get_elem(ctx, diagonal, {0, 1})) < 1e-10);
+  CHECK(std::abs(tci::get_elem(ctx, diagonal, {1, 0})) < 1e-10);
+
+  tci::destroy_context(ctx);
+}
+
+TEST_CASE("TCI Matrix exponential - in-place real dtype preservation (float)") {
+  // Regression for the float-specific failure mode: the previous implementation
+  // hit `astype(Float)` on a complex result inside the anti-Hermitian path,
+  // which Cytnx rejects ("not support type with dtype=4"). The unified
+  // post-block now takes the real part first so the precision-aligning cast is
+  // real-to-real and never throws. Numerical correctness for cytnx_float is
+  // upstream-blocked on Cytnx single-precision Eigh and is covered by the
+  // double-precision cases above.
+  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_float>> ctx;
+  tci::create_context(ctx);
+
+  tci::CytnxTensor<cytnx::cytnx_float> anti_herm;
+  tci::zeros(ctx, {2, 2}, anti_herm);
+  tci::set_elem(ctx, anti_herm, {0, 1}, 1.0f);
+  tci::set_elem(ctx, anti_herm, {1, 0}, -1.0f);
+
+  CHECK_NOTHROW(tci::exp(ctx, anti_herm, 1));
+  CHECK(anti_herm.backend.dtype() == cytnx::Type.Float);
+
+  tci::destroy_context(ctx);
+}
+
 TEST_CASE("TCI Matrix inverse - singular matrix error") {
   tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
