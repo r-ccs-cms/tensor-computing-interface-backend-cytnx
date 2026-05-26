@@ -63,8 +63,8 @@ namespace tci {
     a = random<TenT>(ctx, shape, gen);
   }
 
-  template <typename TenT, typename RandomIt, typename Func>
-  [[deprecated("Use assign_from_range instead. This API will be removed in the next major version")]]
+  template <typename TenT, typename RandomIt, typename Func> [[deprecated(
+      "Use assign_from_range instead. This API will be removed in the next major version")]]
   TenT assign_from_container(context_handle_t<TenT>& ctx, const shape_t<TenT>& shape,
                              RandomIt init_elems_begin, Func&& coors2idx) {
     return assign_from_range<TenT, RandomIt, Func>(ctx, shape, init_elems_begin,

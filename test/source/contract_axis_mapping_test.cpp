@@ -34,8 +34,7 @@ TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
     std::cout << "\n=== 4D Time Evolution Contract Test ===" << std::endl;
 
     // Create tensors with exact same shapes as in iTEBD test
-    auto theta
-        = tci::random<Tensor>(context, tci::shape_t<Tensor>{5, 2, 2, 5}, ones_gen);
+    auto theta = tci::random<Tensor>(context, tci::shape_t<Tensor>{5, 2, 2, 5}, ones_gen);
     auto u = tci::random<Tensor>(context, tci::shape_t<Tensor>{2, 2, 2, 2}, ones_gen);
 
     auto theta_shape = tci::shape(context, theta);

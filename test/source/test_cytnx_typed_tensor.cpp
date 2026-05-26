@@ -4,8 +4,8 @@
 #include <cytnx.hpp>
 #include <filesystem>
 
-#include "tci/tci.h"
 #include "tci/miscellaneous.h"
+#include "tci/tci.h"
 #include "tci/tensor_linear_algebra.h"
 
 TEST_CASE("CytnxTensor - Type Traits") {
@@ -604,7 +604,7 @@ TEST_CASE("CytnxTensor - Miscellaneous functions") {
     if (cytnx::Device.Ngpus > 0) {
       CHECK(ctx >= cytnx::Device.cuda);  // GPU context
     } else {
-      CHECK(ctx == cytnx::Device.cpu);   // CPU context
+      CHECK(ctx == cytnx::Device.cpu);  // CPU context
     }
 
     // Destroy context (should not throw)

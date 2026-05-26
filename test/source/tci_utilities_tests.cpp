@@ -22,9 +22,7 @@ TEST_CASE("TCI_VERBOSE Environment Variable Support") {
   }
 
   SUBCASE("Timer functionality") {
-    CHECK_NOTHROW({
-      Timer t("test_timer");
-    });
+    CHECK_NOTHROW({ Timer t("test_timer"); });
   }
 
   SUBCASE("Function entry logging") {
@@ -54,9 +52,8 @@ TEST_CASE("Integration with TCI_VERBOSE") {
     CHECK_NOTHROW(convert(ctx, a, ctx2, c));
 
     std::vector<std::complex<double>> container(4);
-    auto row_major_map = [](const elem_coors_t<Ten>& coors) -> std::ptrdiff_t {
-      return coors[0] * 2 + coors[1];
-    };
+    auto row_major_map
+        = [](const elem_coors_t<Ten>& coors) -> std::ptrdiff_t { return coors[0] * 2 + coors[1]; };
     CHECK_NOTHROW(to_container(ctx, a, container.begin(), row_major_map));
 
     destroy_context(ctx2);
