@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <cytnx.hpp>
 #include <limits>
 #include <vector>
@@ -522,7 +523,8 @@ namespace tci {
         = [](size_t rank, const std::vector<bond_label_t<TenT>>& axes_list, const char* which) {
             std::vector<cytnx::cytnx_uint64> axes;
             axes.reserve(axes_list.size());
-            std::vector<bool> seen(rank, false);
+            // uint8_t flag vector instead of std::vector<bool> to avoid proxy reference semantics.
+            std::vector<std::uint8_t> seen(rank, 0);
             for (auto axis : axes_list) {
               if (axis < 0 || static_cast<size_t>(axis) >= rank) {
                 std::ostringstream oss;
@@ -536,7 +538,7 @@ namespace tci {
               if (seen[idx]) {
                 throw std::invalid_argument("contract: duplicate axis index detected");
               }
-              seen[idx] = true;
+              seen[idx] = 1;
               axes.push_back(static_cast<cytnx::cytnx_uint64>(idx));
             }
             return axes;
@@ -550,8 +552,9 @@ namespace tci {
     }
 
     auto collect_free_axes = [](size_t rank, const std::vector<cytnx::cytnx_uint64>& contracted) {
-      std::vector<bool> used(rank, false);
-      for (auto idx : contracted) used[idx] = true;
+      // uint8_t flag vector instead of std::vector<bool> to avoid proxy reference semantics.
+      std::vector<std::uint8_t> used(rank, 0);
+      for (auto idx : contracted) used[idx] = 1;
       std::vector<cytnx::cytnx_uint64> free_axes;
       free_axes.reserve(rank - contracted.size());
       for (size_t i = 0; i < rank; ++i) {
@@ -571,13 +574,14 @@ namespace tci {
         throw std::invalid_argument("contract: output axis specification mismatch");
       }
 
-      std::vector<bool> seen(total_free, false);
+      // uint8_t flag vector instead of std::vector<bool> to avoid proxy reference semantics.
+      std::vector<std::uint8_t> seen(total_free, 0);
       permute_order.reserve(total_free);
       for (auto axis : bd_labs_c) {
         if (axis < 0 || static_cast<size_t>(axis) >= total_free || seen[axis]) {
           throw std::invalid_argument("contract: invalid output axis permutation");
         }
-        seen[axis] = true;
+        seen[axis] = 1;
         permute_order.push_back(static_cast<cytnx::cytnx_uint64>(axis));
       }
     }

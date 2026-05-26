@@ -56,9 +56,11 @@ namespace tci {
                          Func&& coors2idx) {
     TenT a = allocate<TenT>(ctx, shape);
 
-    // Generate all coordinate combinations and assign values
-    std::function<void(elem_coors_t<TenT>, std::size_t)> assign_recursive;
-    assign_recursive = [&](elem_coors_t<TenT> current_coords, std::size_t dim) {
+    // Generate all coordinate combinations and assign values.
+    // Self-referencing lambda (Y-combinator form) avoids std::function's
+    // type erasure and heap allocation for the recursive call.
+    auto assign_recursive
+        = [&](auto& self, elem_coors_t<TenT> current_coords, std::size_t dim) -> void {
       if (dim == shape.size()) {
         // Base case: all dimensions set, assign the element
         auto index = std::invoke(coors2idx, current_coords);
@@ -70,13 +72,13 @@ namespace tci {
         // Recursive case: iterate through current dimension
         for (bond_dim_t<TenT> i = 0; i < shape[dim]; ++i) {
           current_coords.push_back(i);
-          assign_recursive(current_coords, dim + 1);
+          self(self, current_coords, dim + 1);
           current_coords.pop_back();
         }
       }
     };
 
-    assign_recursive({}, 0);
+    assign_recursive(assign_recursive, {}, 0);
     return a;
   }
 
