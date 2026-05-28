@@ -288,9 +288,13 @@ function(configure_asan_odr_detection target)
                 -fno-common                    # Prevent common symbol merging
             )
 
-      # Set runtime environment variables via CMake
+      # Set runtime environment variables via CMake.
+      # detect_container_overflow=0 suppresses a libc++/Cytnx ASan boundary
+      # false positive on std::vector destruction when Cytnx bulk APIs run
+      # under ASan-instrumented libc++; the project's ASan use is ODR-focused
+      # and this check is orthogonal to that purpose.
       set_target_properties(${target} PROPERTIES
-                ENVIRONMENT "ASAN_OPTIONS=detect_odr_violation=$<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2,1>:abort_on_error=1:halt_on_error=1"
+                ENVIRONMENT "ASAN_OPTIONS=detect_odr_violation=$<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2,1>:detect_container_overflow=0:abort_on_error=1:halt_on_error=1"
             )
 
       message(STATUS "ASAN ODR detection level: $<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2 (strict),1 (normal)>")

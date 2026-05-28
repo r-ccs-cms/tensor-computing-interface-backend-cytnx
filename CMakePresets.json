@@ -129,7 +129,7 @@
       "configurePreset": "brew-debug",
       "environment": {
         "CTEST_OUTPUT_ON_FAILURE": "1",
-        "ASAN_OPTIONS": "detect_odr_violation=1:abort_on_error=0:halt_on_error=0:log_path=./asan_odr_debug"
+        "ASAN_OPTIONS": "detect_odr_violation=1:detect_container_overflow=0:abort_on_error=0:halt_on_error=0:log_path=./asan_odr_debug"
       }
     },
     {
