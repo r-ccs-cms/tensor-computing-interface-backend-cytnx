@@ -52,6 +52,8 @@ TEST_CASE("extract_sub on transposed (non-contiguous) tensor") {
       CHECK(val == doctest::Approx(expected_M(c, 1 + r)));
     }
   }
+
+  tci::destroy_context(ctx);
 }
 
 TEST_CASE("replace_sub on transposed (non-contiguous) tensor") {
@@ -100,4 +102,6 @@ TEST_CASE("replace_sub on transposed (non-contiguous) tensor") {
       }
     }
   }
+
+  tci::destroy_context(ctx);
 }

@@ -1287,8 +1287,7 @@ namespace tci {
       if (start >= end || end > original_shape[i]) {
         throw std::invalid_argument("Invalid coordinate range");
       }
-      accs.push_back(cytnx::Accessor::range(static_cast<cytnx::cytnx_int64>(start),
-                                            static_cast<cytnx::cytnx_int64>(end), 1));
+      accs.push_back(cytnx::Accessor::range(start, end));
     }
 
     (void)ctx;
@@ -1323,9 +1322,7 @@ namespace tci {
     std::vector<cytnx::Accessor> accs;
     accs.reserve(begin_pt.size());
     for (std::size_t i = 0; i < begin_pt.size(); ++i) {
-      accs.push_back(
-          cytnx::Accessor::range(static_cast<cytnx::cytnx_int64>(begin_pt[i]),
-                                 static_cast<cytnx::cytnx_int64>(begin_pt[i] + sub_shape[i]), 1));
+      accs.push_back(cytnx::Accessor::range(begin_pt[i], begin_pt[i] + sub_shape[i]));
     }
 
     (void)ctx;
