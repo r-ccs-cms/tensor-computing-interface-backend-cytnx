@@ -1180,8 +1180,7 @@ namespace tci {
 
   // Tensor Manipulation functions - independent implementations needed
 
-  // expand, extract_sub, replace_sub helper functions
-  // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
+  // expand helper function
   namespace {
     void copy_original_data_recursive(const cytnx::Tensor& src, cytnx::Tensor& dst, std::size_t dim,
                                       std::vector<cytnx::cytnx_uint64> current_coords,
@@ -1200,49 +1199,6 @@ namespace tci {
       }
     }
 
-    void extract_elements_recursive(
-        const cytnx::Tensor& src, cytnx::Tensor& dst, std::size_t dim,
-        std::vector<cytnx::cytnx_uint64> src_coords, std::vector<cytnx::cytnx_uint64> dst_coords,
-        const List<Pair<cytnx::cytnx_uint64, cytnx::cytnx_uint64>>& coor_pairs) {
-      if (dim == coor_pairs.size()) {
-        // Base case: copy element
-        auto elem = src.at(src_coords);
-        dst.at(dst_coords) = elem;
-        return;
-      }
-
-      auto [start, end] = coor_pairs[dim];
-      for (cytnx::cytnx_uint64 i = start; i < end; ++i) {
-        src_coords.push_back(i);
-        dst_coords.push_back(i - start);
-        extract_elements_recursive(src, dst, dim + 1, src_coords, dst_coords, coor_pairs);
-        src_coords.pop_back();
-        dst_coords.pop_back();
-      }
-    }
-
-    void replace_elements_recursive(cytnx::Tensor& main_tensor, const cytnx::Tensor& sub_tensor,
-                                    std::size_t dim,
-                                    const std::vector<cytnx::cytnx_uint64>& begin_pt,
-                                    std::vector<cytnx::cytnx_uint64>& sub_coords,
-                                    const std::vector<cytnx::cytnx_uint64>& sub_shape) {
-      if (dim == sub_shape.size()) {
-        // Base case: copy element from sub to main
-        std::vector<cytnx::cytnx_uint64> main_coords;
-        for (std::size_t i = 0; i < begin_pt.size(); ++i) {
-          main_coords.push_back(begin_pt[i] + sub_coords[i]);
-        }
-        auto elem = sub_tensor.at(sub_coords);
-        main_tensor.at(main_coords) = elem;
-        return;
-      }
-
-      for (cytnx::cytnx_uint64 i = 0; i < sub_shape[dim]; ++i) {
-        sub_coords[dim] = i;
-        replace_elements_recursive(main_tensor, sub_tensor, dim + 1, begin_pt, sub_coords,
-                                   sub_shape);
-      }
-    }
   }  // anonymous namespace
 
   template <typename TenT>
@@ -1312,7 +1268,6 @@ namespace tci {
   }
 
   // extract_sub
-  // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
   template <typename TenT>
   void extract_sub(context_handle_t<TenT>& ctx, TenT& inout,
                    const List<Pair<elem_coor_t<TenT>, elem_coor_t<TenT>>>& coor_pairs) {
@@ -1322,23 +1277,22 @@ namespace tci {
       throw std::invalid_argument("Number of coordinate pairs must match tensor rank");
     }
 
-    // Calculate new shape
-    std::vector<cytnx::cytnx_uint64> new_shape;
+    // Map each coordinate pair to a Cytnx Accessor::range covering [start, end).
+    // The range accessor (not the single-index accessor `cytnx::Accessor::Singl`)
+    // is used unconditionally so that size-1 axes are preserved instead of
+    // being collapsed away by Cytnx's single-index dimension-removal path.
+    std::vector<cytnx::Accessor> accs;
+    accs.reserve(coor_pairs.size());
     for (std::size_t i = 0; i < coor_pairs.size(); ++i) {
       auto [start, end] = coor_pairs[i];
       if (start >= end || end > original_shape[i]) {
         throw std::invalid_argument("Invalid coordinate range");
       }
-      new_shape.push_back(end - start);
+      accs.push_back(cytnx::Accessor::range(start, end));
     }
 
-    // Create result tensor
-    cytnx::Tensor result = cytnx::zeros(new_shape, inout.backend.dtype(), ctx);
-
-    // Extract sub-tensor by copying elements
-    extract_elements_recursive(inout.backend, result, 0, {}, {}, coor_pairs);
-
-    inout.backend = std::move(result);
+    (void)ctx;
+    inout.backend = inout.backend.get(accs);
   }
 
   template <typename TenT>
@@ -1349,7 +1303,6 @@ namespace tci {
   }
 
   // replace_sub
-  // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
   template <typename TenT> void replace_sub(context_handle_t<TenT>& ctx, TenT& inout,
                                             const TenT& sub, const elem_coors_t<TenT>& begin_pt) {
     auto main_shape = inout.backend.shape();
@@ -1359,16 +1312,24 @@ namespace tci {
       throw std::invalid_argument("Dimension mismatch");
     }
 
-    // Check bounds
+    // Check bounds. Written as two unsigned comparisons rather than
+    // `begin_pt[i] + sub_shape[i] > main_shape[i]` so cytnx_uint64
+    // overflow cannot wrap the sum past zero and false-pass the check.
     for (std::size_t i = 0; i < begin_pt.size(); ++i) {
-      if (begin_pt[i] + sub_shape[i] > main_shape[i]) {
+      if (begin_pt[i] > main_shape[i] || sub_shape[i] > main_shape[i] - begin_pt[i]) {
         throw std::invalid_argument("Sub-tensor exceeds bounds");
       }
     }
 
-    // Replace elements recursively
-    std::vector<cytnx::cytnx_uint64> sub_coords(sub_shape.size(), 0);
-    replace_elements_recursive(inout.backend, sub.backend, 0, begin_pt, sub_coords, sub_shape);
+    // Map [begin_pt[i], begin_pt[i] + sub_shape[i]) per axis to Cytnx accessors.
+    std::vector<cytnx::Accessor> accs;
+    accs.reserve(begin_pt.size());
+    for (std::size_t i = 0; i < begin_pt.size(); ++i) {
+      accs.push_back(cytnx::Accessor::range(begin_pt[i], begin_pt[i] + sub_shape[i]));
+    }
+
+    (void)ctx;
+    inout.backend.set(accs, sub.backend);
   }
 
   template <typename TenT> void replace_sub(context_handle_t<TenT>& ctx, const TenT& in,
