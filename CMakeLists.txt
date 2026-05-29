@@ -289,10 +289,27 @@ function(configure_asan_odr_detection target)
             )
 
       # Set runtime environment variables via CMake.
-      # detect_container_overflow=0 suppresses a libc++/Cytnx ASan boundary
-      # false positive on std::vector destruction when Cytnx bulk APIs run
-      # under ASan-instrumented libc++; the project's ASan use is ODR-focused
-      # and this check is orthogonal to that purpose.
+      #
+      # detect_container_overflow=0 suppresses an ASan false positive raised
+      # at std::vector<std::vector<...>> destruction inside Cytnx's bulk
+      # Tensor::get / set path; the project's ASan use is ODR-focused
+      # (ENABLE_ASAN_ODR) so this check is orthogonal.
+      #
+      # NOTE: this disables detect_container_overflow for the entire test
+      # binary's runtime. The trade-off is that libc++ std::vector
+      # capacity/size misuse in the project's own test code will no longer
+      # be caught by this specific ASan check. Other ASan checks
+      # (heap-buffer-overflow, use-after-free, ODR violation, etc.) remain
+      # active.
+      #
+      # Per-TU narrowing via -D__SANITIZER_DISABLE_CONTAINER_OVERFLOW__ on
+      # the cytnx target was tried and verified ineffective: libc++ 17+ no
+      # longer honors that macro, having replaced it with a per-allocator
+      # opt-out via __asan_annotate_container_with_allocator. Specializing
+      # the allocator hook for std::allocator (Cytnx's default) would affect
+      # every std::vector in the test binary, which is no narrower than
+      # this runtime knob. Revisit if Cytnx adopts a custom allocator with
+      # that specialization opted out.
       set_target_properties(${target} PROPERTIES
                 ENVIRONMENT "ASAN_OPTIONS=detect_odr_violation=$<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2,1>:detect_container_overflow=0:abort_on_error=1:halt_on_error=1"
             )
