@@ -1180,8 +1180,7 @@ namespace tci {
 
   // Tensor Manipulation functions - independent implementations needed
 
-  // expand, extract_sub, replace_sub helper functions
-  // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
+  // expand helper function
   namespace {
     void copy_original_data_recursive(const cytnx::Tensor& src, cytnx::Tensor& dst, std::size_t dim,
                                       std::vector<cytnx::cytnx_uint64> current_coords,
