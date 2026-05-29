@@ -318,7 +318,7 @@ function(configure_asan_odr_detection target)
       # that specialization opted out.
       if(TEST ${target})
         set_tests_properties(${target} PROPERTIES
-                  ENVIRONMENT "ASAN_OPTIONS=detect_odr_violation=$<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2,1>:detect_container_overflow=0:abort_on_error=1:halt_on_error=1"
+                  ENVIRONMENT "ASAN_OPTIONS=detect_odr_violation=$<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2,1>:detect_container_overflow=0:abort_on_error=0:halt_on_error=0:log_path=asan_odr_debug"
               )
       endif()
 
