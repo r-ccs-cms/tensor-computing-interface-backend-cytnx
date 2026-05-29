@@ -288,7 +288,13 @@ function(configure_asan_odr_detection target)
                 -fno-common                    # Prevent common symbol merging
             )
 
-      # Set runtime environment variables via CMake.
+      # Set runtime environment variables on the CTest test, if one with
+      # the same name as the target has been registered via add_test().
+      # CTest does not inherit ENVIRONMENT from target properties, so this
+      # must be attached to the registered test name (not the executable
+      # target). Library targets and unregistered executables fall through
+      # without any environment change; the call site that wants the env
+      # is the test/ subdirectory where TCITests is add_test'd.
       #
       # detect_container_overflow=0 suppresses an ASan false positive raised
       # at std::vector<std::vector<...>> destruction inside Cytnx's bulk
@@ -310,9 +316,11 @@ function(configure_asan_odr_detection target)
       # every std::vector in the test binary, which is no narrower than
       # this runtime knob. Revisit if Cytnx adopts a custom allocator with
       # that specialization opted out.
-      set_target_properties(${target} PROPERTIES
-                ENVIRONMENT "ASAN_OPTIONS=detect_odr_violation=$<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2,1>:detect_container_overflow=0:abort_on_error=1:halt_on_error=1"
-            )
+      if(TEST ${target})
+        set_tests_properties(${target} PROPERTIES
+                  ENVIRONMENT "ASAN_OPTIONS=detect_odr_violation=$<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2,1>:detect_container_overflow=0:abort_on_error=1:halt_on_error=1"
+              )
+      endif()
 
       message(STATUS "ASAN ODR detection level: $<IF:$<BOOL:${ENABLE_ASAN_ODR_STRICT}>,2 (strict),1 (normal)>")
 
