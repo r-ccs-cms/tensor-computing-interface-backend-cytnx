@@ -1311,9 +1311,11 @@ namespace tci {
       throw std::invalid_argument("Dimension mismatch");
     }
 
-    // Check bounds
+    // Check bounds. Written as two unsigned comparisons rather than
+    // `begin_pt[i] + sub_shape[i] > main_shape[i]` so cytnx_uint64
+    // overflow cannot wrap the sum past zero and false-pass the check.
     for (std::size_t i = 0; i < begin_pt.size(); ++i) {
-      if (begin_pt[i] + sub_shape[i] > main_shape[i]) {
+      if (begin_pt[i] > main_shape[i] || sub_shape[i] > main_shape[i] - begin_pt[i]) {
         throw std::invalid_argument("Sub-tensor exceeds bounds");
       }
     }
