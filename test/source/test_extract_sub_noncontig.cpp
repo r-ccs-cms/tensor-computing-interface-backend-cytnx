@@ -87,7 +87,7 @@ TEST_CASE("replace_sub on transposed (non-contiguous) tensor") {
   REQUIRE(tci::shape(ctx, M)[0] == 5);
   REQUIRE(tci::shape(ctx, M)[1] == 4);
 
-  // Replaced positions: M_t[1..3, 1..3) == sub
+  // Replaced positions: M_t[1, 3) x [1, 3) == sub
   for (std::size_t a = 0; a < 5; ++a) {
     for (std::size_t b = 0; b < 4; ++b) {
       auto val

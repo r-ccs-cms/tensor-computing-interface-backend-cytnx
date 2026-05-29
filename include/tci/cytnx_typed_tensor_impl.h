@@ -1278,8 +1278,9 @@ namespace tci {
     }
 
     // Map each coordinate pair to a Cytnx Accessor::range covering [start, end).
-    // Using Range (never Singl) keeps size-1 axes from being collapsed away
-    // by Cytnx's single-index dim-removal path.
+    // The range accessor (not the single-index accessor `cytnx::Accessor::Singl`)
+    // is used unconditionally so that size-1 axes are preserved instead of
+    // being collapsed away by Cytnx's single-index dimension-removal path.
     std::vector<cytnx::Accessor> accs;
     accs.reserve(coor_pairs.size());
     for (std::size_t i = 0; i < coor_pairs.size(); ++i) {
