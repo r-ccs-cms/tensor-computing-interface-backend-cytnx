@@ -117,6 +117,39 @@ if(BLAS_FOUND AND LAPACK_FOUND)
   endif()
 endif()
 
+# ---- SVD fast-path capability (TCICYTNX_USE_GESDD) ----
+# trunc_svd can use the gesdd (divide-and-conquer) path, which is ~2x faster
+# for large matrices but, on failure, behaves differently per BLAS backend:
+# OpenBLAS/MKL return a nonzero LAPACK info (surfaced as a catchable C++
+# exception), whereas some backends (notably ARMPL) call abort() internally.
+# An abort is a signal the try/catch fallback in trunc_svd cannot recover from.
+#
+# We therefore opt into gesdd only for vendors known to report failures
+# catchably, and default to the always-stable gesvd path everywhere else
+# (ARMPL and any unrecognized vendor). This keeps the vendor name out of the
+# C++ algorithm code: the source only sees the neutral TCICYTNX_USE_GESDD capability.
+# Users can override the auto-decision explicitly with -DTCICYTNX_USE_GESDD=ON/OFF.
+set(_gesdd_default OFF)
+if(BLA_VENDOR MATCHES "OpenBLAS" OR BLA_VENDOR MATCHES "Intel")
+  set(_gesdd_default ON)
+endif()
+option(TCICYTNX_USE_GESDD "Use the gesdd divide-and-conquer SVD fast path in trunc_svd" ${_gesdd_default})
+message(STATUS "TCICYTNX_USE_GESDD (gesdd SVD fast path): ${TCICYTNX_USE_GESDD} (BLA_VENDOR=${BLA_VENDOR})")
+
+# Warn only in the unverified-risky quadrant: the fast path is enabled for a
+# vendor not on the known-catchable list.  This is the one combination where the
+# user's opt-in may be uninformed -- including a stale cache value that survived
+# a BLA_VENDOR switch (option() does not re-evaluate the default on reconfigure).
+# Known-good vendors stay silent (no warning fatigue); the safe OFF default
+# (ARMPL / unknown) has nothing to warn about.
+if(TCICYTNX_USE_GESDD AND NOT (BLA_VENDOR MATCHES "OpenBLAS" OR BLA_VENDOR MATCHES "Intel"))
+  message(WARNING
+    "TCICYTNX_USE_GESDD=ON for unverified BLAS vendor '${BLA_VENDOR}': if its gesdd "
+    "aborts on failure instead of returning a nonzero info, the svd/trunc_svd try-catch "
+    "fallback cannot recover (an abort is a signal, not a C++ exception). "
+    "Set -DTCICYTNX_USE_GESDD=OFF if unsure.")
+endif()
+
 if(USE_CUDA)
   # Prevent Cytnx from overriding CMAKE_CUDA_ARCHITECTURES to "native"
   # which fails when no GPU is detected at configure time
@@ -335,6 +368,13 @@ configure_asan_odr_detection(${PROJECT_NAME})
 
 # Link dependencies
 target_link_libraries(${PROJECT_NAME} PUBLIC cytnx)
+
+# Propagate the gesdd fast-path decision to the templates in
+# cytnx_typed_tensor_impl.h.  PUBLIC so downstream consumers that instantiate
+# trunc_svd see the same capability as the library itself.
+if(TCICYTNX_USE_GESDD)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC TCICYTNX_USE_GESDD)
+endif()
 
 # If ARPACK was built as an imported target, link it directly to TCI
 # This ensures that ARPACK's INTERFACE_LINK_LIBRARIES (including ifcore) are properly propagated

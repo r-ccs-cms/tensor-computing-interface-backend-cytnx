@@ -125,3 +125,60 @@ TEST_CASE("TCI Matrix inverse - singular matrix error") {
 
   tci::destroy_context(ctx);
 }
+
+// Backend-specific coverage for the gesdd fast path.
+//
+// tci::svd / tci::trunc_svd route through the gesdd (divide-and-conquer)
+// backend routine only when the smaller matrix dimension is >= kGesddMinDim
+// (64), and only when the build-time TCICYTNX_USE_GESDD capability is enabled.
+// The conformance fixtures are all small (<= 4x6) and therefore only ever
+// exercise the gesvd path.  This is a cytnx-backend implementation detail, not
+// part of the TCI spec, so the >= 64 case is covered here rather than in the
+// conformance suite.
+//
+// A 64x64 identity has all singular values exactly 1, giving a deterministic
+// check.  Under TCICYTNX_USE_GESDD=ON (the OpenBLAS/MKL default) this drives
+// the gesdd branch; under OFF it drives gesvd.  The assertions hold either way,
+// so the test is valid in both build configurations while adding the missing
+// gesdd-branch coverage on the default development build.
+TEST_CASE("TCI SVD - large matrix exercises gesdd path (64x64 identity)") {
+  using Ten = tci::CytnxTensor<cytnx::cytnx_double>;
+  tci::context_handle_t<Ten> ctx;
+  tci::create_context(ctx);
+
+  // n == kGesddMinDim: the smallest dimension that takes the gesdd branch.
+  constexpr int n = 64;
+  Ten a;
+  tci::eye(ctx, n, a);
+
+  SUBCASE("full svd: identity has 64 singular values all equal to 1") {
+    Ten u, v_dag;
+    tci::real_ten_t<Ten> s_diag;
+    tci::svd(ctx, a, 1, u, s_diag, v_dag);
+
+    auto s_shape = tci::shape(ctx, s_diag);
+    REQUIRE(s_shape.size() == 1);
+    CHECK(s_shape[0] == n);
+    for (cytnx::cytnx_uint64 i = 0; i < static_cast<cytnx::cytnx_uint64>(n); ++i) {
+      CHECK(tci::get_elem(ctx, s_diag, {i}) == doctest::Approx(1.0));
+    }
+  }
+
+  SUBCASE("trunc svd: keep all 64, singular values all 1, zero truncation error") {
+    Ten u, v_dag;
+    tci::real_ten_t<Ten> s_diag;
+    tci::real_t<Ten> trunc_err;
+    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(n),
+                   static_cast<tci::real_t<Ten>>(0.0));
+
+    auto s_shape = tci::shape(ctx, s_diag);
+    REQUIRE(s_shape.size() == 1);
+    CHECK(s_shape[0] == n);
+    for (cytnx::cytnx_uint64 i = 0; i < static_cast<cytnx::cytnx_uint64>(n); ++i) {
+      CHECK(tci::get_elem(ctx, s_diag, {i}) == doctest::Approx(1.0));
+    }
+    CHECK(trunc_err == doctest::Approx(0.0));
+  }
+
+  tci::destroy_context(ctx);
+}

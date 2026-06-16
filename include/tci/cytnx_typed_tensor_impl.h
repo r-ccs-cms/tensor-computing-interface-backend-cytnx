@@ -649,8 +649,41 @@ namespace tci {
     auto a_reshaped = a.backend.reshape(
         {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
 
-    // Perform full SVD
-    auto svd_result = cytnx::linalg::Svd(a_reshaped, true);  // Return U, S, Vt
+    // Perform full SVD.
+    //
+    // Svd uses gesdd (divide-and-conquer) internally, which is ~2x faster for
+    // large matrices but can fail on ill-conditioned inputs.  How that failure
+    // surfaces is backend-dependent: OpenBLAS/MKL return a nonzero LAPACK info
+    // that Cytnx turns into a catchable C++ exception, but some backends
+    // (notably ARMPL) call abort() inside the routine.  An abort is a signal,
+    // not an exception, so the try/catch fallback below cannot recover from it.
+    //
+    // TCICYTNX_USE_GESDD therefore gates the gesdd path; it is decided at build time
+    // from the BLAS vendor (see CMakeLists.txt), mirroring trunc_svd.  Gesvd
+    // (gesvd, QR iteration) is always stable and is the default everywhere else.
+    // Both return {S, U, V†} in the same order.
+    std::vector<cytnx::Tensor> svd_result;
+#ifdef TCICYTNX_USE_GESDD
+    // For small matrices the speed difference is negligible and the try/catch
+    // overhead is proportionally large, so use the stable path directly.
+    constexpr cytnx::cytnx_uint64 kGesddMinDim = 64;
+    auto min_dim = std::min(left_dim, right_dim);
+    if (min_dim >= kGesddMinDim) {
+      // Large matrix: try fast divide-and-conquer, fall back on failure.
+      try {
+        svd_result = cytnx::linalg::Svd(a_reshaped, true);
+      } catch (...) {
+        svd_result = cytnx::linalg::Gesvd(a_reshaped, true, true);
+      }
+    } else {
+      // Small matrix: use stable QR-iteration path directly.
+      svd_result = cytnx::linalg::Gesvd(a_reshaped, true, true);
+    }
+#else
+    // gesdd's failure mode is not catchable on this backend (e.g. ARMPL aborts
+    // instead of returning a nonzero info), so always use the stable gesvd path.
+    svd_result = cytnx::linalg::Gesvd(a_reshaped, true, true);
+#endif
 
     if (svd_result.size() < 3) {
       throw std::runtime_error("svd: unexpected result size from Svd");
@@ -863,19 +896,26 @@ namespace tci {
 
     // Perform SVD with chi_max constraint.
     //
-    // Svd_truncate (zgesdd, divide-and-conquer) is faster for large
-    // matrices but can fail on ill-conditioned ones.  Gesvd_truncate
-    // (zgesvd, QR iteration) is always stable.
+    // The gesdd (divide-and-conquer) path via Svd_truncate is ~2x faster for
+    // large matrices but can fail on ill-conditioned inputs.  How that failure
+    // surfaces is backend-dependent: OpenBLAS/MKL return a nonzero LAPACK info
+    // that Cytnx turns into a catchable C++ exception, but some backends
+    // (notably ARMPL) call abort() inside the routine.  An abort is a signal,
+    // not an exception, so the try/catch fallback below cannot recover from it.
     //
-    // For small matrices the speed difference is negligible and the
-    // try/catch overhead of the fallback path is proportionally large,
-    // so we use the stable path directly.  The threshold is chosen so
-    // that zgesdd's asymptotic advantage (~2x for large N) outweighs the
-    // exception-handling cost.
+    // TCICYTNX_USE_GESDD is therefore opted into only for backends known to report
+    // failures catchably.  The decision is made at build time (see
+    // CMakeLists.txt) from the BLAS vendor, so the abort-prone vendor name
+    // never leaks into this algorithm code.  Gesvd_truncate (gesvd, QR
+    // iteration) is always stable and is the default everywhere else.
+    std::vector<cytnx::Tensor> svd_result;
+#ifdef TCICYTNX_USE_GESDD
+    // For small matrices the speed difference is negligible and the try/catch
+    // overhead is proportionally large, so use the stable path directly.  The
+    // threshold is chosen so that gesdd's asymptotic advantage (~2x for large
+    // N) outweighs the exception-handling cost.
     constexpr cytnx::cytnx_uint64 kGesddMinDim = 64;
     auto min_dim = std::min(left_dim, right_dim);
-
-    std::vector<cytnx::Tensor> svd_result;
     if (min_dim >= kGesddMinDim) {
       // Large matrix: try fast divide-and-conquer, fall back on failure.
       try {
@@ -887,6 +927,11 @@ namespace tci {
       // Small matrix: use stable QR-iteration path directly.
       svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
     }
+#else
+    // gesdd's failure mode is not catchable on this backend (e.g. ARMPL aborts
+    // instead of returning a nonzero info), so always use the stable gesvd path.
+    svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
+#endif
 
     if (svd_result.size() < 3) {
       throw std::runtime_error("trunc_svd: unexpected result size from SVD");
