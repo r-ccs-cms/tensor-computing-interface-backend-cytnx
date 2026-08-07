@@ -940,35 +940,49 @@ namespace tci {
     auto u_backend = svd_result[1];
     auto vt_backend = svd_result[2];
 
-    // Apply target_trunc_err: find the largest index where s[i] > target_trunc_err
+    // Apply target_trunc_err: grow chi in descending order of singular value
+    // until epsilon(chi) <= target_trunc_err, where the spec's relative
+    // truncation error is
+    //
+    //   epsilon(chi) = sum_{i>=chi} s_i^2 / sum_{i<kappa} s_i^2.
+    //
+    // target_trunc_err bounds that ratio, which is dimensionless. Comparing
+    // s_i against it instead would tie the retained chi to the overall scale
+    // of `a` — the same matrix scaled by a constant would truncate differently
+    // — and would duplicate the role the spec assigns to s_min.
+    //
+    // frobenius_sq is the denominator: it is taken from `a` before any
+    // truncation, so weight already discarded by the s_min / chi_max cut in
+    // the SVD above needs no separate accounting. Everything outside the
+    // retained prefix is discarded by definition.
     bond_dim_t<TenT> bond_dim = s_backend.shape()[0];
     bond_dim_t<TenT> new_bond_dim = bond_dim;
 
-    if (target_trunc_err > 0.0 && bond_dim > chi_min) {
-      // Find truncation point based on target_trunc_err
+    if (target_trunc_err > 0.0 && bond_dim > chi_min && frobenius_sq > 0.0) {
+      auto select_chi = [&](const auto* s_data) {
+        double kept_s2 = 0.0;
+        for (bond_dim_t<TenT> i = 0; i < chi_min; ++i) {
+          kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
+        }
+        // On entry to each iteration kept_s2 == sum_{i<chi} s_i^2.
+        for (bond_dim_t<TenT> chi = chi_min; chi < bond_dim; ++chi) {
+          if ((frobenius_sq - kept_s2) / frobenius_sq <= target_trunc_err) {
+            return chi;
+          }
+          kept_s2 += static_cast<double>(s_data[chi]) * static_cast<double>(s_data[chi]);
+        }
+        return bond_dim;
+      };
       if (s_backend.dtype() == cytnx::Type.Double) {
-        auto* s_data = s_backend.template ptr_as<double>();
-        for (bond_dim_t<TenT> i = chi_min; i < bond_dim; ++i) {
-          if (s_data[i] <= target_trunc_err) {
-            new_bond_dim = i;
-            break;
-          }
-        }
+        new_bond_dim = select_chi(s_backend.template ptr_as<double>());
       } else if (s_backend.dtype() == cytnx::Type.Float) {
-        auto* s_data = s_backend.template ptr_as<float>();
-        for (bond_dim_t<TenT> i = chi_min; i < bond_dim; ++i) {
-          if (s_data[i] <= static_cast<float>(target_trunc_err)) {
-            new_bond_dim = i;
-            break;
-          }
-        }
+        new_bond_dim = select_chi(s_backend.template ptr_as<float>());
       }
-      // Ensure we keep at least chi_min dimensions
-      new_bond_dim = std::max(new_bond_dim, chi_min);
     }
 
-    // Apply chi_min constraint
-    new_bond_dim = std::max(new_bond_dim, chi_min);
+    // Retain at least chi_min, but never more than survived the s_min / chi_max
+    // cut: the spec forbids restoring values below s_min to satisfy chi_min.
+    new_bond_dim = std::min(std::max(new_bond_dim, chi_min), bond_dim);
 
     // Truncate tensors if needed
     if (new_bond_dim < bond_dim) {
