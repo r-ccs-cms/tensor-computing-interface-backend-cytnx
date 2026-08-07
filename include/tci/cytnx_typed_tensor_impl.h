@@ -848,7 +848,9 @@ namespace tci {
     q.backend = q_backend_final.reshape(q_cytnx_shape);
   }
 
-  // Truncated SVD - (chi_max, s_min)
+  // Truncated SVD - (chi_max, s_min). The spec's fixed-maximum-bond-dimension
+  // form, defined there as the general form with chi_min = 1 and
+  // target_trunc_err = 0, which is how it delegates below.
   template <typename TenT>
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
@@ -860,7 +862,8 @@ namespace tci {
               target_trunc_err, s_min);
   }
 
-  // Truncated SVD - (chi_min, chi_max, target_trunc_err, s_min): full control
+  // Truncated SVD - (chi_min, chi_max, target_trunc_err, s_min). The spec's
+  // general truncation strategy; the (chi_max, s_min) form above delegates to it.
   template <typename TenT>
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
