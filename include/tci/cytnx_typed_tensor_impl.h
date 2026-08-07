@@ -696,8 +696,12 @@ namespace tci {
 
     bond_dim_t<TenT> bond_dim = s_backend.shape()[0];
 
-    // Extract real singular values
-    cytnx::Tensor s_real = s_backend.dtype() == cytnx::Type.Double ? s_backend : s_backend.real();
+    // Extract real singular values. Cytnx hands back a real S whose precision
+    // follows the input, so only a complex S needs converting — and the guard
+    // has to be exactly that, because Storage::real() rejects non-complex
+    // storage rather than passing it through.
+    cytnx::Tensor s_real =
+        cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
 
     // Reshape U
     shape_t<TenT> u_shape;
@@ -891,7 +895,13 @@ namespace tci {
 
     // Compute ||A||_F^2 before truncation for trunc_err calculation.
     // ||A||_F^2 = sum(s_i^2) for all pre-truncation singular values.
-    double frobenius_sq = cytnx::linalg::Norm(a_reshaped).template item<double>();
+    //
+    // Read at the input's own real precision. Norm follows the input dtype, and
+    // Tensor::item<T> reaches Storage_base::at<T>, which casts the raw pointer
+    // and checks the dtype only when the cytnx::User_debug global is set, which
+    // it is not by default — so asking a Float norm for a double reinterprets
+    // its four bytes rather than converting them, and says nothing about it.
+    double frobenius_sq = cytnx::linalg::Norm(a_reshaped).template item<real_t<TenT>>();
     frobenius_sq *= frobenius_sq;
 
     // Perform SVD with chi_max constraint.
@@ -1013,7 +1023,8 @@ namespace tci {
     }
 
     // Extract real singular values
-    cytnx::Tensor s_real = s_backend.dtype() == cytnx::Type.Double ? s_backend : s_backend.real();
+    cytnx::Tensor s_real =
+        cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
 
     // Reshape U
     shape_t<TenT> u_shape;
