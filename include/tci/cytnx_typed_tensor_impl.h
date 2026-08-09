@@ -968,8 +968,17 @@ namespace tci {
           kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
         }
         // On entry to each iteration kept_s2 == sum_{i<chi} s_i^2.
+        //
+        // Compared at real_t<TenT>, the precision trunc_err is reported in.
+        // The accumulation runs in double whatever the element type, so on a
+        // single-precision instantiation the quotient carries bits that the
+        // reported value cannot: comparing before narrowing would answer about
+        // a number this call never hands back, and a caller feeding a reported
+        // epsilon in as target_trunc_err would then be told it is too small.
         for (bond_dim_t<TenT> chi = chi_min; chi < bond_dim; ++chi) {
-          if ((frobenius_sq - kept_s2) / frobenius_sq <= target_trunc_err) {
+          const auto epsilon =
+              static_cast<real_t<TenT>>((frobenius_sq - kept_s2) / frobenius_sq);
+          if (epsilon <= target_trunc_err) {
             return chi;
           }
           kept_s2 += static_cast<double>(s_data[chi]) * static_cast<double>(s_data[chi]);
