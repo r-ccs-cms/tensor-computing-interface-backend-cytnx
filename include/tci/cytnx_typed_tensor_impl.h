@@ -969,15 +969,14 @@ namespace tci {
         }
         // On entry to each iteration kept_s2 == sum_{i<chi} s_i^2.
         //
-        // Compared at real_t<TenT>, the precision trunc_err is reported in.
-        // The accumulation runs in double whatever the element type, so on a
-        // single-precision instantiation the quotient carries bits that the
-        // reported value cannot: comparing before narrowing would answer about
-        // a number this call never hands back, and a caller feeding a reported
-        // epsilon in as target_trunc_err would then be told it is too small.
+        // Narrowed to real_t<TenT> before the comparison, because that is the
+        // type target_trunc_err is declared in. The accumulation runs in double
+        // whatever the element type, so on a single-precision instantiation the
+        // quotient carries bits the parameter cannot represent; comparing
+        // without narrowing would settle the test on a distinction no caller
+        // can express in the argument it passes.
         for (bond_dim_t<TenT> chi = chi_min; chi < bond_dim; ++chi) {
-          const auto epsilon =
-              static_cast<real_t<TenT>>((frobenius_sq - kept_s2) / frobenius_sq);
+          const auto epsilon = static_cast<real_t<TenT>>((frobenius_sq - kept_s2) / frobenius_sq);
           if (epsilon <= target_trunc_err) {
             return chi;
           }
