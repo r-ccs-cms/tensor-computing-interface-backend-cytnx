@@ -848,7 +848,7 @@ namespace tci {
     q.backend = q_backend_final.reshape(q_cytnx_shape);
   }
 
-  // Truncated SVD - overload (2): chi_max, s_min
+  // Truncated SVD - (chi_max, s_min)
   template <typename TenT>
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
@@ -860,19 +860,7 @@ namespace tci {
               target_trunc_err, s_min);
   }
 
-  // Truncated SVD - overload (1): target_trunc_err, s_min
-  template <typename TenT>
-  void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
-                 TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
-                 const real_t<TenT> target_trunc_err, const real_t<TenT> s_min) {
-    // Call full version with chi_min=1, chi_max=∞ (represented by a very large value)
-    constexpr bond_dim_t<TenT> chi_min = 1;
-    constexpr bond_dim_t<TenT> chi_max = std::numeric_limits<bond_dim_t<TenT>>::max();
-    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
-              target_trunc_err, s_min);
-  }
-
-  // Truncated SVD - overload (3): full control
+  // Truncated SVD - (chi_min, chi_max, target_trunc_err, s_min): full control
   template <typename TenT>
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,

@@ -97,6 +97,27 @@ TEST_CASE("Deprecated APIs produce warnings") {
     CHECK(tci::size(ctx, u) > 0);
   }
 
+  SUBCASE("deprecated: trunc_svd(target_trunc_err, s_min) - not a spec_v1 form") {
+    // Create a simple 2x2 matrix
+    std::vector<Real> data = {1.0, 0.0, 0.0, 2.0};
+    auto coors2idx = [](const std::vector<tci::bond_dim_t<Tensor>>& coors) -> size_t {
+      return coors[0] * 2 + coors[1];
+    };
+    auto matrix = tci::assign_from_range<Tensor>(ctx, {2, 2}, data.begin(), coors2idx);
+
+    Tensor u, v_dag;
+    RealTensor s_diag;
+    Real trunc_err;
+
+    // Using deprecated API - should show warning (9 parameters, both trailing arguments real,
+    // which is what picks this overload over (chi_max, s_min)). TenT is spelled out: left to
+    // deduction the ElemT wrapper is the more specialized candidate and wins, so the warning
+    // would come from that wrapper's own deprecation rather than this overload's.
+    tci::trunc_svd<Tensor>(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, 1e-2, 1e-10);
+
+    CHECK(tci::size(ctx, u) > 0);
+  }
+
   // Note: get_elem void overload is not deprecated, it's reserved for future GPU support
   // and produces a runtime warning instead of a compile-time warning
 }
