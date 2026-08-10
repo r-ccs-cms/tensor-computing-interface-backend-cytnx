@@ -688,7 +688,8 @@ namespace tci {
                                   chi_max, target_trunc_err, s_min);
   }
 
-  // Deprecated old parameter-order overloads (wrapping the already-deprecated TenT versions)
+  // ElemT wrappers whose TenT counterpart is itself deprecated (old parameter orders, and forms
+  // the spec does not declare)
   template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>
   [[deprecated(TCI_DEPRECATED_ELEMT_API)]]
   void trunc_svd(context_handle_t<CytnxTensor<ElemT>>& ctx, const CytnxTensor<ElemT>& a,
