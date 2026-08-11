@@ -134,11 +134,12 @@ TEST_CASE("TCI Matrix inverse - singular matrix error") {
 // quantity derived by subtracting one from the other is noise once the real
 // difference falls below it. Each subcase drives that noise one way.
 //
-// Both fixtures are diag(1, x) with chi_max at the full rank and s_min zero, so
-// the SVD cuts nothing and every discarded value is one the selection dropped.
-// x is chosen per subcase to put epsilon(chi=1) = x^2/(1 + x^2) near the float
-// rounding of ||A||_F, where the distortion is measurable; the target then
-// separates the formulations, sitting between the epsilon each computes.
+// Each fixture is diagonal, with its trailing singular values sized to put the
+// discarded weight near that rounding, where the distortion is measurable. The
+// targets then separate the formulations, sitting between the epsilon each
+// computes. The first two subcases leave chi_max at the full rank so every
+// discarded value is one the selection dropped; the third puts chi_max below it
+// so the SVD cuts one first.
 //
 // The precision of ||A||_F is a cytnx-backend detail, not a TCI spec form, so
 // this is covered here rather than in the conformance suite.
@@ -147,18 +148,22 @@ TEST_CASE("TCI trunc_svd - float epsilon survives the norm's own rounding") {
   tci::context_handle_t<Ten> ctx;
   tci::create_context(ctx);
 
-  auto retained_at = [&](float x, double target) {
+  // diag(svs) truncated to chi_max, then to whatever `target` allows. Returns
+  // how many singular values survived both.
+  auto retained_at = [&](const std::vector<float>& svs, int chi_max, double target) {
+    const auto n = static_cast<cytnx::cytnx_uint64>(svs.size());
     Ten a;
-    tci::zeros(ctx, {2, 2}, a);
-    tci::set_elem(ctx, a, {0, 0}, 1.0f);
-    tci::set_elem(ctx, a, {1, 1}, x);
+    tci::zeros(ctx, {n, n}, a);
+    for (cytnx::cytnx_uint64 i = 0; i < n; ++i) {
+      tci::set_elem(ctx, a, {i, i}, svs[i]);
+    }
 
     Ten u, v_dag;
     tci::real_ten_t<Ten> s_diag;
     tci::real_t<Ten> trunc_err;
     tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
-                   static_cast<tci::bond_dim_t<Ten>>(2), static_cast<tci::real_t<Ten>>(target),
-                   static_cast<tci::real_t<Ten>>(0.0));
+                   static_cast<tci::bond_dim_t<Ten>>(chi_max),
+                   static_cast<tci::real_t<Ten>>(target), static_cast<tci::real_t<Ten>>(0.0));
     auto s_shape = tci::shape(ctx, s_diag);
     REQUIRE(s_shape.size() == 1);
     return s_shape[0];
@@ -171,8 +176,8 @@ TEST_CASE("TCI trunc_svd - float epsilon survives the norm's own rounding") {
     // by. That form truncates at both targets, returning a chi whose error
     // exceeds the one asked for. The checks bracket the boundary from either
     // side, so they pin where it lies rather than only bounding it.
-    CHECK(retained_at(1e-3f, 9.8e-7) == 2);
-    CHECK(retained_at(1e-3f, 1.1e-6) == 1);
+    CHECK(retained_at({1.0f, 1e-3f}, 2, 9.8e-7) == 2);
+    CHECK(retained_at({1.0f, 1e-3f}, 2, 1.1e-6) == 1);
   }
 
   SUBCASE("no weight is invented when the SVD cut nothing") {
@@ -180,8 +185,18 @@ TEST_CASE("TCI trunc_svd - float epsilon survives the norm's own rounding") {
     // the returned singular values by 1.192e-7 even though the SVD returned all
     // of them. Read as weight the SVD cut, that doubles epsilon(chi=1) from
     // 1.192e-7 to 2.384e-7 and holds chi at 2 where the bound already allows 1.
-    CHECK(retained_at(0.000345271f, 1.5e-7) == 1);
-    CHECK(retained_at(0.000345271f, 1.0e-7) == 2);
+    CHECK(retained_at({1.0f, 0.000345271f}, 2, 1.5e-7) == 1);
+    CHECK(retained_at({1.0f, 0.000345271f}, 2, 1.0e-7) == 2);
+  }
+
+  SUBCASE("weight the SVD itself cut still counts toward epsilon") {
+    // chi_max = 2 makes the SVD drop 1e-4 before trunc_svd sees it, so this is
+    // the one path that reads the discarded values Cytnx returns. Their weight
+    // is 1e-8, below the norm's ~1e-7 rounding, so any epsilon measured against
+    // ||A||_F loses it: epsilon(chi=1) reads as 9.99999e-7 rather than
+    // 1.00999e-6, and the first target is then wrongly met at chi = 1.
+    CHECK(retained_at({1.0f, 1e-3f, 1e-4f}, 2, 1.005e-6) == 2);
+    CHECK(retained_at({1.0f, 1e-3f, 1e-4f}, 2, 1.02e-6) == 1);
   }
 
   tci::destroy_context(ctx);
