@@ -884,17 +884,6 @@ namespace tci {
     auto a_reshaped = a.backend.reshape(
         {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
 
-    // Compute ||A||_F^2 before truncation for trunc_err calculation.
-    // ||A||_F^2 = sum(s_i^2) for all pre-truncation singular values.
-    //
-    // Read at the input's own real precision. Norm follows the input dtype, and
-    // Tensor::item<T> reaches Storage_base::at<T>, which casts the raw pointer
-    // and checks the dtype only when the cytnx::User_debug global is set, which
-    // it is not by default — so asking a Float norm for a double reinterprets
-    // its four bytes rather than converting them, and says nothing about it.
-    double frobenius_sq = cytnx::linalg::Norm(a_reshaped).template item<real_t<TenT>>();
-    frobenius_sq *= frobenius_sq;
-
     // Perform SVD with chi_max constraint.
     //
     // The gesdd (divide-and-conquer) path via Svd_truncate is ~2x faster for
@@ -909,6 +898,14 @@ namespace tci {
     // CMakeLists.txt) from the BLAS vendor, so the abort-prone vendor name
     // never leaks into this algorithm code.  Gesvd_truncate (gesvd, QR
     // iteration) is always stable and is the default everywhere else.
+    //
+    // Both are asked for return_err = 2, which appends the singular values the
+    // s_min / chi_max cut removed. epsilon below is then assembled from
+    // singular values alone, in double, rather than measured against a
+    // separately computed ||A||_F: that norm follows the input dtype, so on a
+    // single-precision instantiation it carries ~1e-7 relative error, and a
+    // discarded weight derived by subtracting a double-accumulated sum from it
+    // is that rounding once the real weight falls below it.
     std::vector<cytnx::Tensor> svd_result;
 #ifdef TCICYTNX_USE_GESDD
     // For small matrices the speed difference is negligible and the try/catch
@@ -920,21 +917,22 @@ namespace tci {
     if (min_dim >= kGesddMinDim) {
       // Large matrix: try fast divide-and-conquer, fall back on failure.
       try {
-        svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
+        svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 2, 1);
       } catch (...) {
-        svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
+        svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 2, 1);
       }
     } else {
       // Small matrix: use stable QR-iteration path directly.
-      svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
+      svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 2, 1);
     }
 #else
     // gesdd's failure mode is not catchable on this backend (e.g. ARMPL aborts
     // instead of returning a nonzero info), so always use the stable gesvd path.
-    svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
+    svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 2, 1);
 #endif
 
-    if (svd_result.size() < 3) {
+    // S, U, V† and the discarded singular values return_err = 2 appends.
+    if (svd_result.size() < 4) {
       throw std::runtime_error("trunc_svd: unexpected result size from SVD");
     }
 
@@ -979,42 +977,40 @@ namespace tci {
     // of `a` — the same matrix scaled by a constant would truncate differently
     // — and would duplicate the role the spec assigns to s_min.
     //
-    // frobenius_sq is the denominator: taken from `a` before any truncation, it
-    // is the sum over all kappa singular values the spec's ratio divides by.
+    // Every term comes from the singular values, summed in double:
     //
-    // The numerator is assembled from two terms rather than derived as
-    // frobenius_sq - kept_s2, because that one subtraction would carry
-    // frobenius_sq's own error into the whole discarded weight. frobenius_sq is
-    // read at real_t<TenT> (see above), so on a single-precision instantiation
-    // it is off by ~1e-7 relative — which swamps a tail smaller than that. For
-    // float singular values [1, 1e-3] the one-subtraction form yields 9.54e-7
-    // where epsilon is 1.0e-6, enough to accept a chi whose error exceeds
-    // target_trunc_err.
+    //   total_s2      over the values the SVD returned
+    //   svd_cut_s2    over the values its s_min / chi_max cut removed
+    //   kept_s2       over the retained prefix, sum_{i<chi} s_i^2
     //
-    //   total_s2 - kept_s2  the weight among the returned singular values that
-    //                       the retained prefix leaves out. Both terms are
-    //                       accumulated in double from the same array, so this
-    //                       subtraction carries no error frobenius_sq holds.
-    //   svd_cut_s2          the weight the SVD's own s_min / chi_max cut
-    //                       removed before returning, which no returned
-    //                       singular value accounts for.
+    // so the ratio is (svd_cut_s2 + (total_s2 - kept_s2)) / (total_s2 +
+    // svd_cut_s2), and every subtraction in it is between doubles accumulated
+    // from one array. Its accuracy is therefore relative to epsilon rather than
+    // absolute, which is what lets a small target be honoured at all: measuring
+    // the discarded weight against a separately computed ||A||_F instead puts
+    // that norm's ~1e-7 single-precision rounding into epsilon as an absolute
+    // error, in either direction, and a target below it is then decided by the
+    // rounding rather than by the data.
     //
-    // svd_cut_s2 is the term that has to read frobenius_sq against a sum in
-    // double, so it is the one the ~1e-7 lands in, in either direction. It is
-    // taken only when the SVD returned fewer than the full rank, which is the
-    // only case where a cut happened at all; asked for unconditionally, the
-    // difference would be pure rounding whenever nothing was cut, and reading
-    // that as discarded weight overstates epsilon and holds chi above what the
-    // bound allows. Within that case it is still clamped at zero, since the
-    // rounding can also exceed a small cut and turn the difference negative.
+    // svd_cut_s2 is read only when the SVD returned fewer than the full rank.
+    // That predicate is exactly Cytnx's own condition for having rewritten the
+    // discarded-values tensor: leave it false and the tensor it appends is the
+    // one-element placeholder it allocated at the input's dtype, which for a
+    // complex instantiation is not even the real type the values would have.
     double total_s2 = 0.0;
-    const bool have_s2 = sum_s2(s_backend, bond_dim, total_s2);
+    bool have_s2 = sum_s2(s_backend, bond_dim, total_s2);
     const auto full_rank = static_cast<bond_dim_t<TenT>>(std::min(left_dim, right_dim));
-    const double svd_cut_s2 = (bond_dim < full_rank) ? std::max(0.0, frobenius_sq - total_s2) : 0.0;
+    double svd_cut_s2 = 0.0;
+    if (bond_dim < full_rank) {
+      auto discarded = svd_result[3];
+      have_s2 = sum_s2(discarded, static_cast<bond_dim_t<TenT>>(discarded.shape()[0]), svd_cut_s2)
+                && have_s2;
+    }
+    const double all_s2 = total_s2 + svd_cut_s2;
 
     bond_dim_t<TenT> new_bond_dim = bond_dim;
 
-    if (target_trunc_err > 0.0 && bond_dim > chi_min && frobenius_sq > 0.0 && have_s2) {
+    if (target_trunc_err > 0.0 && bond_dim > chi_min && all_s2 > 0.0 && have_s2) {
       auto select_chi = [&](const auto* s_data) {
         double kept_s2 = 0.0;
         for (bond_dim_t<TenT> i = 0; i < chi_min; ++i) {
@@ -1030,7 +1026,7 @@ namespace tci {
         // can express in the argument it passes.
         for (bond_dim_t<TenT> chi = chi_min; chi < bond_dim; ++chi) {
           const auto epsilon
-              = static_cast<real_t<TenT>>((svd_cut_s2 + (total_s2 - kept_s2)) / frobenius_sq);
+              = static_cast<real_t<TenT>>((svd_cut_s2 + (total_s2 - kept_s2)) / all_s2);
           if (epsilon <= target_trunc_err) {
             return chi;
           }
@@ -1065,12 +1061,12 @@ namespace tci {
     //
     //   epsilon = sum(s_discarded^2) / sum(s_all^2)
     //
-    // Assembled from the same two terms the selection loop above compares
-    // against target_trunc_err, and for the reason given there.
+    // Assembled from the same terms the selection loop above compares against
+    // target_trunc_err, and for the reason given there.
     {
       double kept_s2 = 0.0;
-      if (frobenius_sq > 0.0 && bond_dim > 0 && sum_s2(s_backend, bond_dim, kept_s2)) {
-        trunc_err = std::clamp((svd_cut_s2 + (total_s2 - kept_s2)) / frobenius_sq, 0.0, 1.0);
+      if (all_s2 > 0.0 && bond_dim > 0 && sum_s2(s_backend, bond_dim, kept_s2)) {
+        trunc_err = std::clamp((svd_cut_s2 + (total_s2 - kept_s2)) / all_s2, 0.0, 1.0);
       } else {
         trunc_err = 0.0;
       }
