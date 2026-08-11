@@ -126,6 +126,55 @@ TEST_CASE("TCI Matrix inverse - singular matrix error") {
   tci::destroy_context(ctx);
 }
 
+// Backend-specific coverage for how epsilon is assembled in single precision.
+//
+// ||A||_F is read at the input's own real precision, so on a float
+// instantiation it carries ~1e-7 relative error. Deriving the discarded weight
+// as ||A||_F^2 - sum(s_kept^2) folds that error into a quantity that can itself
+// be smaller, which under-reports epsilon and lets a chi through whose true
+// error exceeds target_trunc_err.
+//
+// diag(1, 1e-3) makes the gap measurable: epsilon(chi=1) is 1e-6/(1 + 1e-6) =
+// 9.99999e-7, while the single-subtraction form yields 9.5367e-7 -- 4.6% low,
+// far above the ~1e-7 the float singular values themselves are uncertain by.
+// A target between the two therefore separates the two formulations: it must
+// reject chi = 1, and does so only when the discarded weight is assembled
+// without ||A||_F's error in it.
+//
+// The precision of ||A||_F is a cytnx-backend detail, not a TCI spec form, so
+// this is covered here rather than in the conformance suite.
+TEST_CASE("TCI trunc_svd - float target_trunc_err bound survives the norm's own error") {
+  using Ten = tci::CytnxTensor<cytnx::cytnx_float>;
+  tci::context_handle_t<Ten> ctx;
+  tci::create_context(ctx);
+
+  Ten a;
+  tci::zeros(ctx, {2, 2}, a);
+  tci::set_elem(ctx, a, {0, 0}, 1.0f);
+  tci::set_elem(ctx, a, {1, 1}, 1e-3f);
+
+  auto retained_at = [&](double target) {
+    Ten u, v_dag;
+    tci::real_ten_t<Ten> s_diag;
+    tci::real_t<Ten> trunc_err;
+    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
+                   static_cast<tci::bond_dim_t<Ten>>(2), static_cast<tci::real_t<Ten>>(target),
+                   static_cast<tci::real_t<Ten>>(0.0));
+    auto s_shape = tci::shape(ctx, s_diag);
+    REQUIRE(s_shape.size() == 1);
+    return s_shape[0];
+  };
+
+  // The two targets bracket the true epsilon(chi=1) of 9.99999e-7 from either
+  // side, which pins where the selection boundary lies rather than only that it
+  // is somewhere below 1.1e-6. The single-subtraction form puts that boundary
+  // at 9.5367e-7, so it truncates at both targets and fails the first check.
+  CHECK(retained_at(9.8e-7) == 2);
+  CHECK(retained_at(1.1e-6) == 1);
+
+  tci::destroy_context(ctx);
+}
+
 // Backend-specific coverage for the gesdd fast path.
 //
 // tci::svd / tci::trunc_svd route through the gesdd (divide-and-conquer)

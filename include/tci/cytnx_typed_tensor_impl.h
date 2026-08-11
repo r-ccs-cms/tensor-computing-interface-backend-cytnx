@@ -943,6 +943,31 @@ namespace tci {
     auto u_backend = svd_result[1];
     auto vt_backend = svd_result[2];
 
+    bond_dim_t<TenT> bond_dim = s_backend.shape()[0];
+
+    // Sum s_i^2 over the first n singular values, accumulating in double
+    // whatever precision the backend stored them in. Reports false when the
+    // dtype is neither Float nor Double, leaving the caller with no
+    // singular-value information to work from.
+    auto sum_s2 = [](cytnx::Tensor& s, bond_dim_t<TenT> n, double& out) {
+      out = 0.0;
+      if (s.dtype() == cytnx::Type.Double) {
+        auto* s_data = s.template ptr_as<double>();
+        for (bond_dim_t<TenT> i = 0; i < n; ++i) {
+          out += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
+        }
+        return true;
+      }
+      if (s.dtype() == cytnx::Type.Float) {
+        auto* s_data = s.template ptr_as<float>();
+        for (bond_dim_t<TenT> i = 0; i < n; ++i) {
+          out += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
+        }
+        return true;
+      }
+      return false;
+    };
+
     // Apply target_trunc_err: grow chi in descending order of singular value
     // until epsilon(chi) <= target_trunc_err, where the spec's relative
     // truncation error is
@@ -954,14 +979,34 @@ namespace tci {
     // of `a` — the same matrix scaled by a constant would truncate differently
     // — and would duplicate the role the spec assigns to s_min.
     //
-    // frobenius_sq is the denominator: it is taken from `a` before any
-    // truncation, so weight already discarded by the s_min / chi_max cut in
-    // the SVD above needs no separate accounting. Everything outside the
-    // retained prefix is discarded by definition.
-    bond_dim_t<TenT> bond_dim = s_backend.shape()[0];
+    // frobenius_sq is the denominator: taken from `a` before any truncation, it
+    // is the sum over all kappa singular values the spec's ratio divides by.
+    //
+    // The numerator is assembled from two terms rather than derived as
+    // frobenius_sq - kept_s2, because that one subtraction would carry
+    // frobenius_sq's own error into the whole discarded weight. frobenius_sq is
+    // read at real_t<TenT> (see above), so on a single-precision instantiation
+    // it is off by ~1e-7 relative — which swamps a tail smaller than that. For
+    // float singular values [1, 1e-3] the one-subtraction form yields 9.54e-7
+    // where epsilon is 1.0e-6, enough to accept a chi whose error exceeds
+    // target_trunc_err.
+    //
+    //   total_s2 - kept_s2  the weight among the returned singular values that
+    //                       the retained prefix leaves out. Both terms are
+    //                       accumulated in double from the same array, so this
+    //                       subtraction carries no error frobenius_sq holds.
+    //   svd_cut_s2          the weight the SVD's own s_min / chi_max cut
+    //                       removed before returning, which no returned
+    //                       singular value accounts for. Clamped at zero
+    //                       because the ~1e-7 above can exceed the cut itself
+    //                       and drive the difference negative.
+    double total_s2 = 0.0;
+    const bool have_s2 = sum_s2(s_backend, bond_dim, total_s2);
+    const double svd_cut_s2 = std::max(0.0, frobenius_sq - total_s2);
+
     bond_dim_t<TenT> new_bond_dim = bond_dim;
 
-    if (target_trunc_err > 0.0 && bond_dim > chi_min && frobenius_sq > 0.0) {
+    if (target_trunc_err > 0.0 && bond_dim > chi_min && frobenius_sq > 0.0 && have_s2) {
       auto select_chi = [&](const auto* s_data) {
         double kept_s2 = 0.0;
         for (bond_dim_t<TenT> i = 0; i < chi_min; ++i) {
@@ -976,7 +1021,8 @@ namespace tci {
         // without narrowing would settle the test on a distinction no caller
         // can express in the argument it passes.
         for (bond_dim_t<TenT> chi = chi_min; chi < bond_dim; ++chi) {
-          const auto epsilon = static_cast<real_t<TenT>>((frobenius_sq - kept_s2) / frobenius_sq);
+          const auto epsilon
+              = static_cast<real_t<TenT>>((svd_cut_s2 + (total_s2 - kept_s2)) / frobenius_sq);
           if (epsilon <= target_trunc_err) {
             return chi;
           }
@@ -1008,28 +1054,15 @@ namespace tci {
     }
 
     // Calculate truncation error per TCI spec:
-    // epsilon = sum(s_discarded^2) / sum(s_all^2)
-    //         = (||A||_F^2 - sum(s_kept^2)) / ||A||_F^2
+    //
+    //   epsilon = sum(s_discarded^2) / sum(s_all^2)
+    //
+    // Assembled from the same two terms the selection loop above compares
+    // against target_trunc_err, and for the reason given there.
     {
       double kept_s2 = 0.0;
-      bool computed = false;
-      if (frobenius_sq > 0.0 && bond_dim > 0) {
-        if (s_backend.dtype() == cytnx::Type.Double) {
-          auto* s_data = s_backend.template ptr_as<double>();
-          for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
-            kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
-          }
-          computed = true;
-        } else if (s_backend.dtype() == cytnx::Type.Float) {
-          auto* s_data = s_backend.template ptr_as<float>();
-          for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
-            kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
-          }
-          computed = true;
-        }
-      }
-      if (computed) {
-        trunc_err = std::clamp((frobenius_sq - kept_s2) / frobenius_sq, 0.0, 1.0);
+      if (frobenius_sq > 0.0 && bond_dim > 0 && sum_s2(s_backend, bond_dim, kept_s2)) {
+        trunc_err = std::clamp((svd_cut_s2 + (total_s2 - kept_s2)) / frobenius_sq, 0.0, 1.0);
       } else {
         trunc_err = 0.0;
       }
