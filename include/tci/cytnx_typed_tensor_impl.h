@@ -997,12 +997,20 @@ namespace tci {
     //                       subtraction carries no error frobenius_sq holds.
     //   svd_cut_s2          the weight the SVD's own s_min / chi_max cut
     //                       removed before returning, which no returned
-    //                       singular value accounts for. Clamped at zero
-    //                       because the ~1e-7 above can exceed the cut itself
-    //                       and drive the difference negative.
+    //                       singular value accounts for.
+    //
+    // svd_cut_s2 is the term that has to read frobenius_sq against a sum in
+    // double, so it is the one the ~1e-7 lands in, in either direction. It is
+    // taken only when the SVD returned fewer than the full rank, which is the
+    // only case where a cut happened at all; asked for unconditionally, the
+    // difference would be pure rounding whenever nothing was cut, and reading
+    // that as discarded weight overstates epsilon and holds chi above what the
+    // bound allows. Within that case it is still clamped at zero, since the
+    // rounding can also exceed a small cut and turn the difference negative.
     double total_s2 = 0.0;
     const bool have_s2 = sum_s2(s_backend, bond_dim, total_s2);
-    const double svd_cut_s2 = std::max(0.0, frobenius_sq - total_s2);
+    const auto full_rank = static_cast<bond_dim_t<TenT>>(std::min(left_dim, right_dim));
+    const double svd_cut_s2 = (bond_dim < full_rank) ? std::max(0.0, frobenius_sq - total_s2) : 0.0;
 
     bond_dim_t<TenT> new_bond_dim = bond_dim;
 

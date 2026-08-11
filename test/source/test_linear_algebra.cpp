@@ -129,31 +129,30 @@ TEST_CASE("TCI Matrix inverse - singular matrix error") {
 // Backend-specific coverage for how epsilon is assembled in single precision.
 //
 // ||A||_F is read at the input's own real precision, so on a float
-// instantiation it carries ~1e-7 relative error. Deriving the discarded weight
-// as ||A||_F^2 - sum(s_kept^2) folds that error into a quantity that can itself
-// be smaller, which under-reports epsilon and lets a chi through whose true
-// error exceeds target_trunc_err.
+// instantiation it carries ~1e-7 relative error, while the singular values are
+// summed in double. The two are therefore not comparable at that level, and any
+// quantity derived by subtracting one from the other is noise once the real
+// difference falls below it. Each subcase drives that noise one way.
 //
-// diag(1, 1e-3) makes the gap measurable: epsilon(chi=1) is 1e-6/(1 + 1e-6) =
-// 9.99999e-7, while the single-subtraction form yields 9.5367e-7 -- 4.6% low,
-// far above the ~1e-7 the float singular values themselves are uncertain by.
-// A target between the two therefore separates the two formulations: it must
-// reject chi = 1, and does so only when the discarded weight is assembled
-// without ||A||_F's error in it.
+// Both fixtures are diag(1, x) with chi_max at the full rank and s_min zero, so
+// the SVD cuts nothing and every discarded value is one the selection dropped.
+// x is chosen per subcase to put epsilon(chi=1) = x^2/(1 + x^2) near the float
+// rounding of ||A||_F, where the distortion is measurable; the target then
+// separates the formulations, sitting between the epsilon each computes.
 //
 // The precision of ||A||_F is a cytnx-backend detail, not a TCI spec form, so
 // this is covered here rather than in the conformance suite.
-TEST_CASE("TCI trunc_svd - float target_trunc_err bound survives the norm's own error") {
+TEST_CASE("TCI trunc_svd - float epsilon survives the norm's own rounding") {
   using Ten = tci::CytnxTensor<cytnx::cytnx_float>;
   tci::context_handle_t<Ten> ctx;
   tci::create_context(ctx);
 
-  Ten a;
-  tci::zeros(ctx, {2, 2}, a);
-  tci::set_elem(ctx, a, {0, 0}, 1.0f);
-  tci::set_elem(ctx, a, {1, 1}, 1e-3f);
+  auto retained_at = [&](float x, double target) {
+    Ten a;
+    tci::zeros(ctx, {2, 2}, a);
+    tci::set_elem(ctx, a, {0, 0}, 1.0f);
+    tci::set_elem(ctx, a, {1, 1}, x);
 
-  auto retained_at = [&](double target) {
     Ten u, v_dag;
     tci::real_ten_t<Ten> s_diag;
     tci::real_t<Ten> trunc_err;
@@ -165,12 +164,25 @@ TEST_CASE("TCI trunc_svd - float target_trunc_err bound survives the norm's own 
     return s_shape[0];
   };
 
-  // The two targets bracket the true epsilon(chi=1) of 9.99999e-7 from either
-  // side, which pins where the selection boundary lies rather than only that it
-  // is somewhere below 1.1e-6. The single-subtraction form puts that boundary
-  // at 9.5367e-7, so it truncates at both targets and fails the first check.
-  CHECK(retained_at(9.8e-7) == 2);
-  CHECK(retained_at(1.1e-6) == 1);
+  SUBCASE("the bound is not loosened by understating the discarded weight") {
+    // epsilon(chi=1) is 9.99999e-7. Deriving the discarded weight as the single
+    // difference ||A||_F^2 - sum(s_kept^2) reports 9.5367e-7 instead, 4.6% low
+    // -- far above the ~1e-7 the float singular values are themselves uncertain
+    // by. That form truncates at both targets, returning a chi whose error
+    // exceeds the one asked for. The checks bracket the boundary from either
+    // side, so they pin where it lies rather than only bounding it.
+    CHECK(retained_at(1e-3f, 9.8e-7) == 2);
+    CHECK(retained_at(1e-3f, 1.1e-6) == 1);
+  }
+
+  SUBCASE("no weight is invented when the SVD cut nothing") {
+    // Here the float ||A||_F rounds upward, so ||A||_F^2 exceeds the sum over
+    // the returned singular values by 1.192e-7 even though the SVD returned all
+    // of them. Read as weight the SVD cut, that doubles epsilon(chi=1) from
+    // 1.192e-7 to 2.384e-7 and holds chi at 2 where the bound already allows 1.
+    CHECK(retained_at(0.000345271f, 1.5e-7) == 1);
+    CHECK(retained_at(0.000345271f, 1.0e-7) == 2);
+  }
 
   tci::destroy_context(ctx);
 }
