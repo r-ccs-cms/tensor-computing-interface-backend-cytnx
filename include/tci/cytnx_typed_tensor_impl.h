@@ -943,6 +943,12 @@ namespace tci {
 
     bond_dim_t<TenT> bond_dim = s_backend.shape()[0];
 
+    // Every read of a singular value below goes through a host copy. ptr_as
+    // hands back the raw storage pointer, which under a CUDA context is device
+    // memory these loops cannot dereference. to() returns the tensor itself
+    // when it is already on the host, so the CPU path pays nothing for this.
+    auto s_host = s_backend.to(cytnx::Device.cpu);
+
     // The largest singular value, which the SVD returns first. Every square
     // below is taken of s_i / s_max rather than of s_i: epsilon is a ratio, so
     // the scale cancels out of it, while squaring unscaled would underflow to
@@ -954,11 +960,11 @@ namespace tci {
       if (bond_dim == 0) {
         return 0.0;
       }
-      if (s_backend.dtype() == cytnx::Type.Double) {
-        return s_backend.template ptr_as<double>()[0];
+      if (s_host.dtype() == cytnx::Type.Double) {
+        return s_host.template ptr_as<double>()[0];
       }
-      if (s_backend.dtype() == cytnx::Type.Float) {
-        return static_cast<double>(s_backend.template ptr_as<float>()[0]);
+      if (s_host.dtype() == cytnx::Type.Float) {
+        return static_cast<double>(s_host.template ptr_as<float>()[0]);
       }
       return 0.0;
     }();
@@ -1031,11 +1037,11 @@ namespace tci {
     // one-element placeholder it allocated at the input's dtype, which for a
     // complex instantiation is not even the real type the values would have.
     double total_s2 = 0.0;
-    bool have_s2 = sum_s2(s_backend, 0, bond_dim, total_s2);
+    bool have_s2 = sum_s2(s_host, 0, bond_dim, total_s2);
     const auto full_rank = static_cast<bond_dim_t<TenT>>(std::min(left_dim, right_dim));
     double svd_cut_s2 = 0.0;
     if (bond_dim < full_rank) {
-      auto discarded = svd_result[3];
+      auto discarded = svd_result[3].to(cytnx::Device.cpu);
       have_s2
           = sum_s2(discarded, 0, static_cast<bond_dim_t<TenT>>(discarded.shape()[0]), svd_cut_s2)
             && have_s2;
@@ -1070,10 +1076,10 @@ namespace tci {
         }
         return chosen;
       };
-      if (s_backend.dtype() == cytnx::Type.Double) {
-        new_bond_dim = select_chi(s_backend.template ptr_as<double>());
-      } else if (s_backend.dtype() == cytnx::Type.Float) {
-        new_bond_dim = select_chi(s_backend.template ptr_as<float>());
+      if (s_host.dtype() == cytnx::Type.Double) {
+        new_bond_dim = select_chi(s_host.template ptr_as<double>());
+      } else if (s_host.dtype() == cytnx::Type.Float) {
+        new_bond_dim = select_chi(s_host.template ptr_as<float>());
       }
     }
 
@@ -1084,7 +1090,7 @@ namespace tci {
     // The weight the selection drops, summed here because the truncation below
     // is about to remove the values it runs over.
     double tail_s2 = 0.0;
-    const bool have_tail = sum_s2(s_backend, new_bond_dim, bond_dim, tail_s2) && have_s2;
+    const bool have_tail = sum_s2(s_host, new_bond_dim, bond_dim, tail_s2) && have_s2;
 
     // Truncate tensors if needed
     if (new_bond_dim < bond_dim) {
