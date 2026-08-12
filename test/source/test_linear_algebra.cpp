@@ -238,6 +238,44 @@ TEST_CASE("TCI trunc_svd - a tail below the accumulation's resolution still coun
   tci::destroy_context(ctx);
 }
 
+// Scale invariance is a property the criterion is defined by, not a range it
+// happens to cover: epsilon is a ratio, so scaling `a` by any constant must
+// leave the retained chi alone. Squaring singular values as they come breaks
+// that at the ends of the double range -- diag(1e-200, 5e-201) squares to
+// 1e-400 and 2.5e-401, both of which underflow to zero, so the total does too
+// and the selection is skipped entirely. epsilon(chi=1) is 0.2 whatever the
+// scale, so the targets that bracket 0.2 must bracket it here as well.
+TEST_CASE("TCI trunc_svd - the relative criterion holds at extreme scales") {
+  using Ten = tci::CytnxTensor<cytnx::cytnx_double>;
+  tci::context_handle_t<Ten> ctx;
+  tci::create_context(ctx);
+
+  auto retained_at = [&](double scale, double target) {
+    Ten a;
+    tci::zeros(ctx, {2, 2}, a);
+    tci::set_elem(ctx, a, {0, 0}, 2.0 * scale);
+    tci::set_elem(ctx, a, {1, 1}, 1.0 * scale);
+
+    Ten u, v_dag;
+    tci::real_ten_t<Ten> s_diag;
+    tci::real_t<Ten> trunc_err;
+    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
+                   static_cast<tci::bond_dim_t<Ten>>(2), static_cast<tci::real_t<Ten>>(target),
+                   static_cast<tci::real_t<Ten>>(0.0));
+    auto s_shape = tci::shape(ctx, s_diag);
+    REQUIRE(s_shape.size() == 1);
+    return s_shape[0];
+  };
+
+  // epsilon(chi=1) = 1 / (4 + 1) = 0.2 at every scale.
+  for (double scale : {1.0, 1e-200, 1e200}) {
+    CHECK(retained_at(scale, 0.3) == 1);
+    CHECK(retained_at(scale, 0.1) == 2);
+  }
+
+  tci::destroy_context(ctx);
+}
+
 // Backend-specific coverage for the gesdd fast path.
 //
 // tci::svd / tci::trunc_svd route through the gesdd (divide-and-conquer)

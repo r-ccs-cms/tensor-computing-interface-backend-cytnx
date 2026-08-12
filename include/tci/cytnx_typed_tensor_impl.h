@@ -943,28 +943,56 @@ namespace tci {
 
     bond_dim_t<TenT> bond_dim = s_backend.shape()[0];
 
-    // Sum s_i^2 over [begin, end), accumulating in double whatever precision
-    // the backend stored the singular values in. Reports false when the dtype
-    // is neither Float nor Double, leaving the caller with no singular-value
-    // information to work from.
-    auto sum_s2 = [](cytnx::Tensor& s, bond_dim_t<TenT> begin, bond_dim_t<TenT> end, double& out) {
-      out = 0.0;
-      if (s.dtype() == cytnx::Type.Double) {
-        auto* s_data = s.template ptr_as<double>();
-        for (bond_dim_t<TenT> i = begin; i < end; ++i) {
-          out += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
-        }
-        return true;
+    // The largest singular value, which the SVD returns first. Every square
+    // below is taken of s_i / s_max rather than of s_i: epsilon is a ratio, so
+    // the scale cancels out of it, while squaring unscaled would underflow to
+    // zero for values under ~1e-154 and overflow above ~1e154 — and the
+    // criterion the spec defines as scale-invariant would stop being so at the
+    // ends of the double range. Scaled, no square exceeds 1, and one that
+    // underflows was contributing less than 1e-308 of the total anyway.
+    const double s_max = [&]() -> double {
+      if (bond_dim == 0) {
+        return 0.0;
       }
-      if (s.dtype() == cytnx::Type.Float) {
-        auto* s_data = s.template ptr_as<float>();
-        for (bond_dim_t<TenT> i = begin; i < end; ++i) {
-          out += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
-        }
-        return true;
+      if (s_backend.dtype() == cytnx::Type.Double) {
+        return s_backend.template ptr_as<double>()[0];
       }
-      return false;
-    };
+      if (s_backend.dtype() == cytnx::Type.Float) {
+        return static_cast<double>(s_backend.template ptr_as<float>()[0]);
+      }
+      return 0.0;
+    }();
+
+    // Sum (s_i / s_max)^2 over [begin, end), accumulating in double whatever
+    // precision the backend stored the singular values in. Reports false when
+    // the dtype is neither Float nor Double, leaving the caller with no
+    // singular-value information to work from.
+    auto sum_s2
+        = [&s_max](cytnx::Tensor& s, bond_dim_t<TenT> begin, bond_dim_t<TenT> end, double& out) {
+            out = 0.0;
+            if (s_max <= 0.0) {
+              // Every singular value is zero, so every sum over them is too; say so
+              // rather than dividing by it.
+              return s.dtype() == cytnx::Type.Double || s.dtype() == cytnx::Type.Float;
+            }
+            if (s.dtype() == cytnx::Type.Double) {
+              auto* s_data = s.template ptr_as<double>();
+              for (bond_dim_t<TenT> i = begin; i < end; ++i) {
+                const double v = static_cast<double>(s_data[i]) / s_max;
+                out += v * v;
+              }
+              return true;
+            }
+            if (s.dtype() == cytnx::Type.Float) {
+              auto* s_data = s.template ptr_as<float>();
+              for (bond_dim_t<TenT> i = begin; i < end; ++i) {
+                const double v = static_cast<double>(s_data[i]) / s_max;
+                out += v * v;
+              }
+              return true;
+            }
+            return false;
+          };
 
     // Apply target_trunc_err: grow chi in descending order of singular value
     // until epsilon(chi) <= target_trunc_err, where the spec's relative
@@ -1031,7 +1059,8 @@ namespace tci {
         double tail_s2 = 0.0;
         bond_dim_t<TenT> chosen = bond_dim;
         for (bond_dim_t<TenT> chi = bond_dim; chi > chi_min; --chi) {
-          tail_s2 += static_cast<double>(s_data[chi - 1]) * static_cast<double>(s_data[chi - 1]);
+          const double v = static_cast<double>(s_data[chi - 1]) / s_max;
+          tail_s2 += v * v;
           // tail_s2 == sum_{i >= chi-1} s_i^2, the weight retaining chi-1 drops.
           const auto epsilon = static_cast<real_t<TenT>>((svd_cut_s2 + tail_s2) / all_s2);
           if (epsilon > target_trunc_err) {
