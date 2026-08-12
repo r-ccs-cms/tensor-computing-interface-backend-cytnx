@@ -848,7 +848,9 @@ namespace tci {
     q.backend = q_backend_final.reshape(q_cytnx_shape);
   }
 
-  // Truncated SVD - (chi_max, s_min)
+  // Truncated SVD - (chi_max, s_min). The spec's fixed-maximum-bond-dimension
+  // form, defined there as the general form with chi_min = 1 and
+  // target_trunc_err = 0, which is how it delegates below.
   template <typename TenT>
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
@@ -860,7 +862,8 @@ namespace tci {
               target_trunc_err, s_min);
   }
 
-  // Truncated SVD - (chi_min, chi_max, target_trunc_err, s_min): full control
+  // Truncated SVD - (chi_min, chi_max, target_trunc_err, s_min). The spec's
+  // general truncation strategy; the (chi_max, s_min) form above delegates to it.
   template <typename TenT>
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
@@ -881,17 +884,6 @@ namespace tci {
     auto a_reshaped = a.backend.reshape(
         {static_cast<cytnx::cytnx_int64>(left_dim), static_cast<cytnx::cytnx_int64>(right_dim)});
 
-    // Compute ||A||_F^2 before truncation for trunc_err calculation.
-    // ||A||_F^2 = sum(s_i^2) for all pre-truncation singular values.
-    //
-    // Read at the input's own real precision. Norm follows the input dtype, and
-    // Tensor::item<T> reaches Storage_base::at<T>, which casts the raw pointer
-    // and checks the dtype only when the cytnx::User_debug global is set, which
-    // it is not by default — so asking a Float norm for a double reinterprets
-    // its four bytes rather than converting them, and says nothing about it.
-    double frobenius_sq = cytnx::linalg::Norm(a_reshaped).template item<real_t<TenT>>();
-    frobenius_sq *= frobenius_sq;
-
     // Perform SVD with chi_max constraint.
     //
     // The gesdd (divide-and-conquer) path via Svd_truncate is ~2x faster for
@@ -906,6 +898,14 @@ namespace tci {
     // CMakeLists.txt) from the BLAS vendor, so the abort-prone vendor name
     // never leaks into this algorithm code.  Gesvd_truncate (gesvd, QR
     // iteration) is always stable and is the default everywhere else.
+    //
+    // Both are asked for return_err = 2, which appends the singular values the
+    // s_min / chi_max cut removed. epsilon below is then assembled from
+    // singular values alone, in double, rather than measured against a
+    // separately computed ||A||_F: that norm follows the input dtype, so on a
+    // single-precision instantiation it carries ~1e-7 relative error, and a
+    // discarded weight derived by subtracting a double-accumulated sum from it
+    // is that rounding once the real weight falls below it.
     std::vector<cytnx::Tensor> svd_result;
 #ifdef TCICYTNX_USE_GESDD
     // For small matrices the speed difference is negligible and the try/catch
@@ -917,21 +917,22 @@ namespace tci {
     if (min_dim >= kGesddMinDim) {
       // Large matrix: try fast divide-and-conquer, fall back on failure.
       try {
-        svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 0, 1);
+        svd_result = cytnx::linalg::Svd_truncate(a_reshaped, chi_max, s_min, true, 2, 1);
       } catch (...) {
-        svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
+        svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 2, 1);
       }
     } else {
       // Small matrix: use stable QR-iteration path directly.
-      svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
+      svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 2, 1);
     }
 #else
     // gesdd's failure mode is not catchable on this backend (e.g. ARMPL aborts
     // instead of returning a nonzero info), so always use the stable gesvd path.
-    svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 0, 1);
+    svd_result = cytnx::linalg::Gesvd_truncate(a_reshaped, chi_max, s_min, true, true, 2, 1);
 #endif
 
-    if (svd_result.size() < 3) {
+    // S, U, V† and the discarded singular values return_err = 2 appends.
+    if (svd_result.size() < 4) {
       throw std::runtime_error("trunc_svd: unexpected result size from SVD");
     }
 
@@ -940,35 +941,160 @@ namespace tci {
     auto u_backend = svd_result[1];
     auto vt_backend = svd_result[2];
 
-    // Apply target_trunc_err: find the largest index where s[i] > target_trunc_err
     bond_dim_t<TenT> bond_dim = s_backend.shape()[0];
+
+    // Every read of a singular value below goes through a host copy. ptr_as
+    // hands back the raw storage pointer, which under a CUDA context is device
+    // memory these loops cannot dereference. to() returns the tensor itself
+    // when it is already on the host, so the CPU path pays nothing for this.
+    auto s_host = s_backend.to(cytnx::Device.cpu);
+
+    // The largest singular value, which the SVD returns first. Every square
+    // below is taken of s_i / s_max rather than of s_i: epsilon is a ratio, so
+    // the scale cancels out of it, while squaring unscaled would underflow to
+    // zero for values under ~1e-154 and overflow above ~1e154 — and the
+    // criterion the spec defines as scale-invariant would stop being so at the
+    // ends of the double range. Scaled, no square exceeds 1, and one that
+    // underflows was contributing less than 1e-308 of the total anyway.
+    const double s_max = [&]() -> double {
+      if (bond_dim == 0) {
+        return 0.0;
+      }
+      if (s_host.dtype() == cytnx::Type.Double) {
+        return s_host.template ptr_as<double>()[0];
+      }
+      if (s_host.dtype() == cytnx::Type.Float) {
+        return static_cast<double>(s_host.template ptr_as<float>()[0]);
+      }
+      return 0.0;
+    }();
+
+    // Sum (s_i / s_max)^2 over [begin, end), accumulating in double whatever
+    // precision the backend stored the singular values in. Reports false when
+    // the dtype is neither Float nor Double, leaving the caller with no
+    // singular-value information to work from.
+    auto sum_s2
+        = [&s_max](cytnx::Tensor& s, bond_dim_t<TenT> begin, bond_dim_t<TenT> end, double& out) {
+            out = 0.0;
+            if (s_max <= 0.0) {
+              // Every singular value is zero, so every sum over them is too; say so
+              // rather than dividing by it.
+              return s.dtype() == cytnx::Type.Double || s.dtype() == cytnx::Type.Float;
+            }
+            if (s.dtype() == cytnx::Type.Double) {
+              auto* s_data = s.template ptr_as<double>();
+              for (bond_dim_t<TenT> i = begin; i < end; ++i) {
+                const double v = static_cast<double>(s_data[i]) / s_max;
+                out += v * v;
+              }
+              return true;
+            }
+            if (s.dtype() == cytnx::Type.Float) {
+              auto* s_data = s.template ptr_as<float>();
+              for (bond_dim_t<TenT> i = begin; i < end; ++i) {
+                const double v = static_cast<double>(s_data[i]) / s_max;
+                out += v * v;
+              }
+              return true;
+            }
+            return false;
+          };
+
+    // Apply target_trunc_err: grow chi in descending order of singular value
+    // until epsilon(chi) <= target_trunc_err, where the spec's relative
+    // truncation error is
+    //
+    //   epsilon(chi) = sum_{i>=chi} s_i^2 / sum_{i<kappa} s_i^2.
+    //
+    // target_trunc_err bounds that ratio, which is dimensionless. Comparing
+    // s_i against it instead would tie the retained chi to the overall scale
+    // of `a` — the same matrix scaled by a constant would truncate differently
+    // — and would duplicate the role the spec assigns to s_min.
+    //
+    // Every term comes from the singular values, summed in double:
+    //
+    //   total_s2      over the values the SVD returned
+    //   svd_cut_s2    over the values its s_min / chi_max cut removed
+    //   tail_s2       over the values the selection below drops
+    //
+    // each of them a sum of (s_i / s_max)^2, per the scaling above, which
+    // cancels out of the ratio,
+    //
+    // so the ratio is (svd_cut_s2 + tail_s2) / (total_s2 + svd_cut_s2). Every
+    // discarded term is summed over the values it discards, never derived as a
+    // difference of two sums over the whole array: those are both of order
+    // all_s2, so a tail below the accumulation's ~1e-16 of it cancels away
+    // entirely. For double singular values {1, 1e-9}, total_s2 rounds to
+    // exactly the retained sum and the difference is 0 where epsilon is 1e-18.
+    //
+    // The same reasoning rules out measuring the discarded weight against a
+    // separately computed ||A||_F. Norm follows the input dtype, so on a
+    // single-precision instantiation it is off by ~1e-7 relative — nine orders
+    // above the accumulation — and a weight measured against it is the rounding
+    // rather than the weight once the weight falls below it, in either
+    // direction, so no clamp recovers it.
+    //
+    // svd_cut_s2 is read only when the SVD returned fewer than the full rank.
+    // That predicate is exactly Cytnx's own condition for having rewritten the
+    // discarded-values tensor: leave it false and the tensor it appends is the
+    // one-element placeholder it allocated at the input's dtype, which for a
+    // complex instantiation is not even the real type the values would have.
+    double total_s2 = 0.0;
+    bool have_s2 = sum_s2(s_host, 0, bond_dim, total_s2);
+    const auto full_rank = static_cast<bond_dim_t<TenT>>(std::min(left_dim, right_dim));
+    double svd_cut_s2 = 0.0;
+    if (bond_dim < full_rank) {
+      auto discarded = svd_result[3].to(cytnx::Device.cpu);
+      have_s2
+          = sum_s2(discarded, 0, static_cast<bond_dim_t<TenT>>(discarded.shape()[0]), svd_cut_s2)
+            && have_s2;
+    }
+    const double all_s2 = total_s2 + svd_cut_s2;
+
     bond_dim_t<TenT> new_bond_dim = bond_dim;
 
-    if (target_trunc_err > 0.0 && bond_dim > chi_min) {
-      // Find truncation point based on target_trunc_err
-      if (s_backend.dtype() == cytnx::Type.Double) {
-        auto* s_data = s_backend.template ptr_as<double>();
-        for (bond_dim_t<TenT> i = chi_min; i < bond_dim; ++i) {
-          if (s_data[i] <= target_trunc_err) {
-            new_bond_dim = i;
+    if (target_trunc_err > 0.0 && bond_dim > chi_min && all_s2 > 0.0 && have_s2) {
+      auto select_chi = [&](const auto* s_data) {
+        // Walk chi downward, so tail_s2 is a running sum over exactly the
+        // values dropping to that chi discards. epsilon is monotone in chi, so
+        // the last chi that met the bound is the smallest one that does.
+        //
+        // epsilon is narrowed to real_t<TenT> before the comparison, because
+        // that is the type target_trunc_err is declared in. The accumulation
+        // runs in double whatever the element type, so on a single-precision
+        // instantiation the quotient carries bits the parameter cannot
+        // represent; comparing without narrowing would settle the test on a
+        // distinction no caller can express in the argument it passes.
+        double tail_s2 = 0.0;
+        bond_dim_t<TenT> chosen = bond_dim;
+        for (bond_dim_t<TenT> chi = bond_dim; chi > chi_min; --chi) {
+          const double v = static_cast<double>(s_data[chi - 1]) / s_max;
+          tail_s2 += v * v;
+          // tail_s2 == sum_{i >= chi-1} (s_i / s_max)^2, the scaled weight
+          // that retaining chi-1 drops.
+          const auto epsilon = static_cast<real_t<TenT>>((svd_cut_s2 + tail_s2) / all_s2);
+          if (epsilon > target_trunc_err) {
             break;
           }
+          chosen = chi - 1;
         }
-      } else if (s_backend.dtype() == cytnx::Type.Float) {
-        auto* s_data = s_backend.template ptr_as<float>();
-        for (bond_dim_t<TenT> i = chi_min; i < bond_dim; ++i) {
-          if (s_data[i] <= static_cast<float>(target_trunc_err)) {
-            new_bond_dim = i;
-            break;
-          }
-        }
+        return chosen;
+      };
+      if (s_host.dtype() == cytnx::Type.Double) {
+        new_bond_dim = select_chi(s_host.template ptr_as<double>());
+      } else if (s_host.dtype() == cytnx::Type.Float) {
+        new_bond_dim = select_chi(s_host.template ptr_as<float>());
       }
-      // Ensure we keep at least chi_min dimensions
-      new_bond_dim = std::max(new_bond_dim, chi_min);
     }
 
-    // Apply chi_min constraint
-    new_bond_dim = std::max(new_bond_dim, chi_min);
+    // Retain at least chi_min, but never more than survived the s_min / chi_max
+    // cut: the spec forbids restoring values below s_min to satisfy chi_min.
+    new_bond_dim = std::min(std::max(new_bond_dim, chi_min), bond_dim);
+
+    // The weight the selection drops, summed here because the truncation below
+    // is about to remove the values it runs over.
+    double tail_s2 = 0.0;
+    const bool have_tail = sum_s2(s_host, new_bond_dim, bond_dim, tail_s2) && have_s2;
 
     // Truncate tensors if needed
     if (new_bond_dim < bond_dim) {
@@ -983,31 +1109,15 @@ namespace tci {
     }
 
     // Calculate truncation error per TCI spec:
-    // epsilon = sum(s_discarded^2) / sum(s_all^2)
-    //         = (||A||_F^2 - sum(s_kept^2)) / ||A||_F^2
-    {
-      double kept_s2 = 0.0;
-      bool computed = false;
-      if (frobenius_sq > 0.0 && bond_dim > 0) {
-        if (s_backend.dtype() == cytnx::Type.Double) {
-          auto* s_data = s_backend.template ptr_as<double>();
-          for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
-            kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
-          }
-          computed = true;
-        } else if (s_backend.dtype() == cytnx::Type.Float) {
-          auto* s_data = s_backend.template ptr_as<float>();
-          for (bond_dim_t<TenT> i = 0; i < bond_dim; ++i) {
-            kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
-          }
-          computed = true;
-        }
-      }
-      if (computed) {
-        trunc_err = std::clamp((frobenius_sq - kept_s2) / frobenius_sq, 0.0, 1.0);
-      } else {
-        trunc_err = 0.0;
-      }
+    //
+    //   epsilon = sum(s_discarded^2) / sum(s_all^2)
+    //
+    // Assembled from the same terms the selection loop above compares against
+    // target_trunc_err, and for the reason given there.
+    if (all_s2 > 0.0 && have_tail) {
+      trunc_err = std::clamp((svd_cut_s2 + tail_s2) / all_s2, 0.0, 1.0);
+    } else {
+      trunc_err = 0.0;
     }
 
     // Extract real singular values
