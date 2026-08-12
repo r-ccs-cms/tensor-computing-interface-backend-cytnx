@@ -943,22 +943,22 @@ namespace tci {
 
     bond_dim_t<TenT> bond_dim = s_backend.shape()[0];
 
-    // Sum s_i^2 over the first n singular values, accumulating in double
-    // whatever precision the backend stored them in. Reports false when the
-    // dtype is neither Float nor Double, leaving the caller with no
-    // singular-value information to work from.
-    auto sum_s2 = [](cytnx::Tensor& s, bond_dim_t<TenT> n, double& out) {
+    // Sum s_i^2 over [begin, end), accumulating in double whatever precision
+    // the backend stored the singular values in. Reports false when the dtype
+    // is neither Float nor Double, leaving the caller with no singular-value
+    // information to work from.
+    auto sum_s2 = [](cytnx::Tensor& s, bond_dim_t<TenT> begin, bond_dim_t<TenT> end, double& out) {
       out = 0.0;
       if (s.dtype() == cytnx::Type.Double) {
         auto* s_data = s.template ptr_as<double>();
-        for (bond_dim_t<TenT> i = 0; i < n; ++i) {
+        for (bond_dim_t<TenT> i = begin; i < end; ++i) {
           out += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
         }
         return true;
       }
       if (s.dtype() == cytnx::Type.Float) {
         auto* s_data = s.template ptr_as<float>();
-        for (bond_dim_t<TenT> i = 0; i < n; ++i) {
+        for (bond_dim_t<TenT> i = begin; i < end; ++i) {
           out += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
         }
         return true;
@@ -981,16 +981,21 @@ namespace tci {
     //
     //   total_s2      over the values the SVD returned
     //   svd_cut_s2    over the values its s_min / chi_max cut removed
-    //   kept_s2       over the retained prefix, sum_{i<chi} s_i^2
+    //   tail_s2       over the values the selection below drops
     //
-    // so the ratio is (svd_cut_s2 + (total_s2 - kept_s2)) / (total_s2 +
-    // svd_cut_s2), and every subtraction in it is between doubles accumulated
-    // from one array. Its accuracy is therefore relative to epsilon rather than
-    // absolute, which is what lets a small target be honoured at all: measuring
-    // the discarded weight against a separately computed ||A||_F instead puts
-    // that norm's ~1e-7 single-precision rounding into epsilon as an absolute
-    // error, in either direction, and a target below it is then decided by the
-    // rounding rather than by the data.
+    // so the ratio is (svd_cut_s2 + tail_s2) / (total_s2 + svd_cut_s2). Every
+    // discarded term is summed over the values it discards, never derived as a
+    // difference of two sums over the whole array: those are both of order
+    // all_s2, so a tail below the accumulation's ~1e-16 of it cancels away
+    // entirely. For double singular values {1, 1e-9}, total_s2 rounds to
+    // exactly the retained sum and the difference is 0 where epsilon is 1e-18.
+    //
+    // The same reasoning rules out measuring the discarded weight against a
+    // separately computed ||A||_F. Norm follows the input dtype, so on a
+    // single-precision instantiation it is off by ~1e-7 relative — nine orders
+    // above the accumulation — and a weight measured against it is the rounding
+    // rather than the weight once the weight falls below it, in either
+    // direction, so no clamp recovers it.
     //
     // svd_cut_s2 is read only when the SVD returned fewer than the full rank.
     // That predicate is exactly Cytnx's own condition for having rewritten the
@@ -998,13 +1003,14 @@ namespace tci {
     // one-element placeholder it allocated at the input's dtype, which for a
     // complex instantiation is not even the real type the values would have.
     double total_s2 = 0.0;
-    bool have_s2 = sum_s2(s_backend, bond_dim, total_s2);
+    bool have_s2 = sum_s2(s_backend, 0, bond_dim, total_s2);
     const auto full_rank = static_cast<bond_dim_t<TenT>>(std::min(left_dim, right_dim));
     double svd_cut_s2 = 0.0;
     if (bond_dim < full_rank) {
       auto discarded = svd_result[3];
-      have_s2 = sum_s2(discarded, static_cast<bond_dim_t<TenT>>(discarded.shape()[0]), svd_cut_s2)
-                && have_s2;
+      have_s2
+          = sum_s2(discarded, 0, static_cast<bond_dim_t<TenT>>(discarded.shape()[0]), svd_cut_s2)
+            && have_s2;
     }
     const double all_s2 = total_s2 + svd_cut_s2;
 
@@ -1012,27 +1018,28 @@ namespace tci {
 
     if (target_trunc_err > 0.0 && bond_dim > chi_min && all_s2 > 0.0 && have_s2) {
       auto select_chi = [&](const auto* s_data) {
-        double kept_s2 = 0.0;
-        for (bond_dim_t<TenT> i = 0; i < chi_min; ++i) {
-          kept_s2 += static_cast<double>(s_data[i]) * static_cast<double>(s_data[i]);
-        }
-        // On entry to each iteration kept_s2 == sum_{i<chi} s_i^2.
+        // Walk chi downward, so tail_s2 is a running sum over exactly the
+        // values dropping to that chi discards. epsilon is monotone in chi, so
+        // the last chi that met the bound is the smallest one that does.
         //
-        // Narrowed to real_t<TenT> before the comparison, because that is the
-        // type target_trunc_err is declared in. The accumulation runs in double
-        // whatever the element type, so on a single-precision instantiation the
-        // quotient carries bits the parameter cannot represent; comparing
-        // without narrowing would settle the test on a distinction no caller
-        // can express in the argument it passes.
-        for (bond_dim_t<TenT> chi = chi_min; chi < bond_dim; ++chi) {
-          const auto epsilon
-              = static_cast<real_t<TenT>>((svd_cut_s2 + (total_s2 - kept_s2)) / all_s2);
-          if (epsilon <= target_trunc_err) {
-            return chi;
+        // epsilon is narrowed to real_t<TenT> before the comparison, because
+        // that is the type target_trunc_err is declared in. The accumulation
+        // runs in double whatever the element type, so on a single-precision
+        // instantiation the quotient carries bits the parameter cannot
+        // represent; comparing without narrowing would settle the test on a
+        // distinction no caller can express in the argument it passes.
+        double tail_s2 = 0.0;
+        bond_dim_t<TenT> chosen = bond_dim;
+        for (bond_dim_t<TenT> chi = bond_dim; chi > chi_min; --chi) {
+          tail_s2 += static_cast<double>(s_data[chi - 1]) * static_cast<double>(s_data[chi - 1]);
+          // tail_s2 == sum_{i >= chi-1} s_i^2, the weight retaining chi-1 drops.
+          const auto epsilon = static_cast<real_t<TenT>>((svd_cut_s2 + tail_s2) / all_s2);
+          if (epsilon > target_trunc_err) {
+            break;
           }
-          kept_s2 += static_cast<double>(s_data[chi]) * static_cast<double>(s_data[chi]);
+          chosen = chi - 1;
         }
-        return bond_dim;
+        return chosen;
       };
       if (s_backend.dtype() == cytnx::Type.Double) {
         new_bond_dim = select_chi(s_backend.template ptr_as<double>());
@@ -1044,6 +1051,11 @@ namespace tci {
     // Retain at least chi_min, but never more than survived the s_min / chi_max
     // cut: the spec forbids restoring values below s_min to satisfy chi_min.
     new_bond_dim = std::min(std::max(new_bond_dim, chi_min), bond_dim);
+
+    // The weight the selection drops, summed here because the truncation below
+    // is about to remove the values it runs over.
+    double tail_s2 = 0.0;
+    const bool have_tail = sum_s2(s_backend, new_bond_dim, bond_dim, tail_s2) && have_s2;
 
     // Truncate tensors if needed
     if (new_bond_dim < bond_dim) {
@@ -1063,13 +1075,10 @@ namespace tci {
     //
     // Assembled from the same terms the selection loop above compares against
     // target_trunc_err, and for the reason given there.
-    {
-      double kept_s2 = 0.0;
-      if (all_s2 > 0.0 && bond_dim > 0 && sum_s2(s_backend, bond_dim, kept_s2)) {
-        trunc_err = std::clamp((svd_cut_s2 + (total_s2 - kept_s2)) / all_s2, 0.0, 1.0);
-      } else {
-        trunc_err = 0.0;
-      }
+    if (all_s2 > 0.0 && have_tail) {
+      trunc_err = std::clamp((svd_cut_s2 + tail_s2) / all_s2, 0.0, 1.0);
+    } else {
+      trunc_err = 0.0;
     }
 
     // Extract real singular values

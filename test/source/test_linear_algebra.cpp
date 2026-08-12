@@ -126,20 +126,21 @@ TEST_CASE("TCI Matrix inverse - singular matrix error") {
   tci::destroy_context(ctx);
 }
 
-// Backend-specific coverage for how epsilon is assembled in single precision.
+// Backend-specific coverage for the precision of epsilon in single precision.
 //
-// ||A||_F is read at the input's own real precision, so on a float
-// instantiation it carries ~1e-7 relative error, while the singular values are
-// summed in double. The two are therefore not comparable at that level, and any
-// quantity derived by subtracting one from the other is noise once the real
-// difference falls below it. Each subcase drives that noise one way.
+// trunc_svd assembles epsilon from the singular values alone, in double. What
+// it must not do is measure the discarded weight against a separately computed
+// ||A||_F: Norm follows the input dtype, so on a float instantiation that norm
+// carries ~1e-7 relative error, which enters epsilon as an absolute error and
+// leaves any target below it decided by the rounding rather than by the data.
 //
-// Each fixture is diagonal, with its trailing singular values sized to put the
-// discarded weight near that rounding, where the distortion is measurable. The
-// targets then separate the formulations, sitting between the epsilon each
-// computes. The first two subcases leave chi_max at the full rank so every
-// discarded value is one the selection dropped; the third puts chi_max below it
-// so the SVD cuts one first.
+// Each fixture is diagonal with its trailing singular values sized to put the
+// discarded weight at that scale, and each pair of targets brackets the true
+// epsilon(chi=1) from either side -- which pins where the selection boundary
+// lies rather than only bounding it. The first two leave chi_max at the full
+// rank, so every discarded value is one the selection dropped; the third puts
+// chi_max below it so the SVD cuts one first, which is the only path that reads
+// the discarded values Cytnx returns.
 //
 // The precision of ||A||_F is a cytnx-backend detail, not a TCI spec form, so
 // this is covered here rather than in the conformance suite.
@@ -169,35 +170,70 @@ TEST_CASE("TCI trunc_svd - float epsilon survives the norm's own rounding") {
     return s_shape[0];
   };
 
-  SUBCASE("the bound is not loosened by understating the discarded weight") {
-    // epsilon(chi=1) is 9.99999e-7. Deriving the discarded weight as the single
-    // difference ||A||_F^2 - sum(s_kept^2) reports 9.5367e-7 instead, 4.6% low
-    // -- far above the ~1e-7 the float singular values are themselves uncertain
-    // by. That form truncates at both targets, returning a chi whose error
-    // exceeds the one asked for. The checks bracket the boundary from either
-    // side, so they pin where it lies rather than only bounding it.
+  SUBCASE("a tail larger than the rounding is still measured, not swallowed") {
+    // epsilon(chi=1) is 9.99999e-7, an order above the rounding, so the bound
+    // must be read off the tail itself rather than off anything the norm's
+    // error can move by 4.6%.
     CHECK(retained_at({1.0f, 1e-3f}, 2, 9.8e-7) == 2);
     CHECK(retained_at({1.0f, 1e-3f}, 2, 1.1e-6) == 1);
   }
 
-  SUBCASE("no weight is invented when the SVD cut nothing") {
-    // Here the float ||A||_F rounds upward, so ||A||_F^2 exceeds the sum over
-    // the returned singular values by 1.192e-7 even though the SVD returned all
-    // of them. Read as weight the SVD cut, that doubles epsilon(chi=1) from
-    // 1.192e-7 to 2.384e-7 and holds chi at 2 where the bound already allows 1.
+  SUBCASE("a tail the size of the rounding is not confused with it") {
+    // epsilon(chi=1) is 1.19212e-7, placed deliberately at the float rounding
+    // of ||A||_F^2 itself (2^-23 = 1.192e-7): a formulation deriving the
+    // discarded weight from that norm answers with the rounding here, in
+    // whichever direction the norm happens to round.
     CHECK(retained_at({1.0f, 0.000345271f}, 2, 1.5e-7) == 1);
     CHECK(retained_at({1.0f, 0.000345271f}, 2, 1.0e-7) == 2);
   }
 
   SUBCASE("weight the SVD itself cut still counts toward epsilon") {
     // chi_max = 2 makes the SVD drop 1e-4 before trunc_svd sees it, so this is
-    // the one path that reads the discarded values Cytnx returns. Their weight
-    // is 1e-8, below the norm's ~1e-7 rounding, so any epsilon measured against
-    // ||A||_F loses it: epsilon(chi=1) reads as 9.99999e-7 rather than
-    // 1.00999e-6, and the first target is then wrongly met at chi = 1.
+    // the one path that reads the discarded values Cytnx returns. That weight
+    // is 1e-8 of the total, below the rounding and therefore unrecoverable from
+    // the norm, and it is what separates epsilon(chi=1) = 1.00999e-6 from the
+    // 9.99999e-7 the returned values alone account for.
     CHECK(retained_at({1.0f, 1e-3f, 1e-4f}, 2, 1.005e-6) == 2);
     CHECK(retained_at({1.0f, 1e-3f, 1e-4f}, 2, 1.02e-6) == 1);
   }
+
+  tci::destroy_context(ctx);
+}
+
+// The same precision concern one level down, where only double reaches.
+//
+// A discarded weight derived as a difference of two sums over the whole array
+// vanishes once it falls below the accumulation's ~1e-16 of the total, because
+// both sums round to the same double. diag(1, 1e-9) is past that edge: the
+// total rounds to exactly the retained sum, so the difference is 0 where
+// epsilon(chi=1) is 1e-18, and every positive target is then met at chi = 1.
+// Summing the dropped values directly keeps the tail representable, since 1e-18
+// is a fine double on its own -- it is only unrepresentable as an increment to
+// 1. The targets bracket 1e-18.
+TEST_CASE("TCI trunc_svd - a tail below the accumulation's resolution still counts") {
+  using Ten = tci::CytnxTensor<cytnx::cytnx_double>;
+  tci::context_handle_t<Ten> ctx;
+  tci::create_context(ctx);
+
+  Ten a;
+  tci::zeros(ctx, {2, 2}, a);
+  tci::set_elem(ctx, a, {0, 0}, 1.0);
+  tci::set_elem(ctx, a, {1, 1}, 1e-9);
+
+  auto retained_at = [&](double target) {
+    Ten u, v_dag;
+    tci::real_ten_t<Ten> s_diag;
+    tci::real_t<Ten> trunc_err;
+    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
+                   static_cast<tci::bond_dim_t<Ten>>(2), static_cast<tci::real_t<Ten>>(target),
+                   static_cast<tci::real_t<Ten>>(0.0));
+    auto s_shape = tci::shape(ctx, s_diag);
+    REQUIRE(s_shape.size() == 1);
+    return s_shape[0];
+  };
+
+  CHECK(retained_at(1e-20) == 2);
+  CHECK(retained_at(1e-17) == 1);
 
   tci::destroy_context(ctx);
 }
