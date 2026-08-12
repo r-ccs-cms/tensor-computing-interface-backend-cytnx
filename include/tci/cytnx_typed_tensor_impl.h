@@ -1017,6 +1017,9 @@ namespace tci {
     //   svd_cut_s2    over the values its s_min / chi_max cut removed
     //   tail_s2       over the values the selection below drops
     //
+    // each of them a sum of (s_i / s_max)^2, per the scaling above, which
+    // cancels out of the ratio,
+    //
     // so the ratio is (svd_cut_s2 + tail_s2) / (total_s2 + svd_cut_s2). Every
     // discarded term is summed over the values it discards, never derived as a
     // difference of two sums over the whole array: those are both of order
@@ -1067,7 +1070,8 @@ namespace tci {
         for (bond_dim_t<TenT> chi = bond_dim; chi > chi_min; --chi) {
           const double v = static_cast<double>(s_data[chi - 1]) / s_max;
           tail_s2 += v * v;
-          // tail_s2 == sum_{i >= chi-1} s_i^2, the weight retaining chi-1 drops.
+          // tail_s2 == sum_{i >= chi-1} (s_i / s_max)^2, the scaled weight
+          // that retaining chi-1 drops.
           const auto epsilon = static_cast<real_t<TenT>>((svd_cut_s2 + tail_s2) / all_s2);
           if (epsilon > target_trunc_err) {
             break;

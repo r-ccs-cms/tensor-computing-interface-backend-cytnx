@@ -3,6 +3,8 @@
 
 #include <cmath>
 #include <cytnx.hpp>
+#include <utility>
+#include <vector>
 
 TEST_CASE("TCI Eigenvalue - invalid num_of_bds_as_row") {
   tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
@@ -126,6 +128,30 @@ TEST_CASE("TCI Matrix inverse - singular matrix error") {
   tci::destroy_context(ctx);
 }
 
+// diag(svs) truncated to chi_max, then to whatever `target` allows. Returns
+// how many singular values survived both, and the error trunc_svd reports for
+// that choice.
+template <typename Ten> std::pair<cytnx::cytnx_uint64, tci::real_t<Ten>> trunc_svd_diag(
+    tci::context_handle_t<Ten>& ctx, const std::vector<tci::real_t<Ten>>& svs, int chi_max,
+    double target) {
+  const auto n = static_cast<cytnx::cytnx_uint64>(svs.size());
+  Ten a;
+  tci::zeros(ctx, {n, n}, a);
+  for (cytnx::cytnx_uint64 i = 0; i < n; ++i) {
+    tci::set_elem(ctx, a, {i, i}, svs[i]);
+  }
+
+  Ten u, v_dag;
+  tci::real_ten_t<Ten> s_diag;
+  tci::real_t<Ten> trunc_err;
+  tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
+                 static_cast<tci::bond_dim_t<Ten>>(chi_max), static_cast<tci::real_t<Ten>>(target),
+                 static_cast<tci::real_t<Ten>>(0.0));
+  auto s_shape = tci::shape(ctx, s_diag);
+  REQUIRE(s_shape.size() == 1);
+  return {s_shape[0], trunc_err};
+}
+
 // Backend-specific coverage for the precision of epsilon in single precision.
 //
 // trunc_svd assembles epsilon from the singular values alone, in double. What
@@ -142,6 +168,10 @@ TEST_CASE("TCI Matrix inverse - singular matrix error") {
 // chi_max below it so the SVD cuts one first, which is the only path that reads
 // the discarded values Cytnx returns.
 //
+// The reported trunc_err is checked alongside the retained chi, since it is
+// assembled from the same terms and is the only place the SVD-cut weight
+// becomes observable to a caller.
+//
 // The precision of ||A||_F is a cytnx-backend detail, not a TCI spec form, so
 // this is covered here rather than in the conformance suite.
 TEST_CASE("TCI trunc_svd - float epsilon survives the norm's own rounding") {
@@ -149,33 +179,18 @@ TEST_CASE("TCI trunc_svd - float epsilon survives the norm's own rounding") {
   tci::context_handle_t<Ten> ctx;
   tci::create_context(ctx);
 
-  // diag(svs) truncated to chi_max, then to whatever `target` allows. Returns
-  // how many singular values survived both.
-  auto retained_at = [&](const std::vector<float>& svs, int chi_max, double target) {
-    const auto n = static_cast<cytnx::cytnx_uint64>(svs.size());
-    Ten a;
-    tci::zeros(ctx, {n, n}, a);
-    for (cytnx::cytnx_uint64 i = 0; i < n; ++i) {
-      tci::set_elem(ctx, a, {i, i}, svs[i]);
-    }
-
-    Ten u, v_dag;
-    tci::real_ten_t<Ten> s_diag;
-    tci::real_t<Ten> trunc_err;
-    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
-                   static_cast<tci::bond_dim_t<Ten>>(chi_max),
-                   static_cast<tci::real_t<Ten>>(target), static_cast<tci::real_t<Ten>>(0.0));
-    auto s_shape = tci::shape(ctx, s_diag);
-    REQUIRE(s_shape.size() == 1);
-    return s_shape[0];
-  };
-
   SUBCASE("a tail larger than the rounding is still measured, not swallowed") {
     // epsilon(chi=1) is 9.99999e-7, an order above the rounding, so the bound
     // must be read off the tail itself rather than off anything the norm's
     // error can move by 4.6%.
-    CHECK(retained_at({1.0f, 1e-3f}, 2, 9.8e-7) == 2);
-    CHECK(retained_at({1.0f, 1e-3f}, 2, 1.1e-6) == 1);
+    auto [kept_lo, err_lo] = trunc_svd_diag<Ten>(ctx, {1.0f, 1e-3f}, 2, 9.8e-7);
+    CHECK(kept_lo == 2);
+    CHECK(err_lo == doctest::Approx(0.0));
+
+    auto [kept_hi, err_hi] = trunc_svd_diag<Ten>(ctx, {1.0f, 1e-3f}, 2, 1.1e-6);
+    CHECK(kept_hi == 1);
+    CHECK(err_hi > 9.9e-7);
+    CHECK(err_hi < 1.01e-6);
   }
 
   SUBCASE("a tail the size of the rounding is not confused with it") {
@@ -183,8 +198,14 @@ TEST_CASE("TCI trunc_svd - float epsilon survives the norm's own rounding") {
     // of ||A||_F^2 itself (2^-23 = 1.192e-7): a formulation deriving the
     // discarded weight from that norm answers with the rounding here, in
     // whichever direction the norm happens to round.
-    CHECK(retained_at({1.0f, 0.000345271f}, 2, 1.5e-7) == 1);
-    CHECK(retained_at({1.0f, 0.000345271f}, 2, 1.0e-7) == 2);
+    auto [kept_hi, err_hi] = trunc_svd_diag<Ten>(ctx, {1.0f, 0.000345271f}, 2, 1.5e-7);
+    CHECK(kept_hi == 1);
+    CHECK(err_hi > 1.1e-7);
+    CHECK(err_hi < 1.3e-7);
+
+    auto [kept_lo, err_lo] = trunc_svd_diag<Ten>(ctx, {1.0f, 0.000345271f}, 2, 1.0e-7);
+    CHECK(kept_lo == 2);
+    CHECK(err_lo == doctest::Approx(0.0));
   }
 
   SUBCASE("weight the SVD itself cut still counts toward epsilon") {
@@ -193,8 +214,19 @@ TEST_CASE("TCI trunc_svd - float epsilon survives the norm's own rounding") {
     // is 1e-8 of the total, below the rounding and therefore unrecoverable from
     // the norm, and it is what separates epsilon(chi=1) = 1.00999e-6 from the
     // 9.99999e-7 the returned values alone account for.
-    CHECK(retained_at({1.0f, 1e-3f, 1e-4f}, 2, 1.005e-6) == 2);
-    CHECK(retained_at({1.0f, 1e-3f, 1e-4f}, 2, 1.02e-6) == 1);
+    //
+    // Retaining both returned values still discards that 1e-8, so trunc_err is
+    // 1e-8 rather than zero -- the assertion that the cut weight reached the
+    // caller at all.
+    auto [kept_lo, err_lo] = trunc_svd_diag<Ten>(ctx, {1.0f, 1e-3f, 1e-4f}, 2, 1.005e-6);
+    CHECK(kept_lo == 2);
+    CHECK(err_lo > 0.5e-8);
+    CHECK(err_lo < 2e-8);
+
+    auto [kept_hi, err_hi] = trunc_svd_diag<Ten>(ctx, {1.0f, 1e-3f, 1e-4f}, 2, 1.02e-6);
+    CHECK(kept_hi == 1);
+    CHECK(err_hi > 1.0e-6);
+    CHECK(err_hi < 1.02e-6);
   }
 
   tci::destroy_context(ctx);
@@ -215,62 +247,39 @@ TEST_CASE("TCI trunc_svd - a tail below the accumulation's resolution still coun
   tci::context_handle_t<Ten> ctx;
   tci::create_context(ctx);
 
-  Ten a;
-  tci::zeros(ctx, {2, 2}, a);
-  tci::set_elem(ctx, a, {0, 0}, 1.0);
-  tci::set_elem(ctx, a, {1, 1}, 1e-9);
+  auto [kept_lo, err_lo] = trunc_svd_diag<Ten>(ctx, {1.0, 1e-9}, 2, 1e-20);
+  CHECK(kept_lo == 2);
+  CHECK(err_lo == doctest::Approx(0.0));
 
-  auto retained_at = [&](double target) {
-    Ten u, v_dag;
-    tci::real_ten_t<Ten> s_diag;
-    tci::real_t<Ten> trunc_err;
-    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
-                   static_cast<tci::bond_dim_t<Ten>>(2), static_cast<tci::real_t<Ten>>(target),
-                   static_cast<tci::real_t<Ten>>(0.0));
-    auto s_shape = tci::shape(ctx, s_diag);
-    REQUIRE(s_shape.size() == 1);
-    return s_shape[0];
-  };
-
-  CHECK(retained_at(1e-20) == 2);
-  CHECK(retained_at(1e-17) == 1);
+  auto [kept_hi, err_hi] = trunc_svd_diag<Ten>(ctx, {1.0, 1e-9}, 2, 1e-17);
+  CHECK(kept_hi == 1);
+  CHECK(err_hi > 0.9e-18);
+  CHECK(err_hi < 1.1e-18);
 
   tci::destroy_context(ctx);
 }
 
 // Scale invariance is a property the criterion is defined by, not a range it
 // happens to cover: epsilon is a ratio, so scaling `a` by any constant must
-// leave the retained chi alone. Squaring singular values as they come breaks
-// that at the ends of the double range -- diag(1e-200, 5e-201) squares to
-// 1e-400 and 2.5e-401, both of which underflow to zero, so the total does too
-// and the selection is skipped entirely. epsilon(chi=1) is 0.2 whatever the
-// scale, so the targets that bracket 0.2 must bracket it here as well.
+// leave both the retained chi and the reported error alone. Squaring singular
+// values as they come breaks that at the ends of the double range -- at scale
+// 1e-200 the fixture's diag(2e-200, 1e-200) squares to 4e-400 and 1e-400, both
+// of which underflow to zero, so the total does too and the selection is
+// skipped entirely. epsilon(chi=1) is 0.2 whatever the scale.
 TEST_CASE("TCI trunc_svd - the relative criterion holds at extreme scales") {
   using Ten = tci::CytnxTensor<cytnx::cytnx_double>;
   tci::context_handle_t<Ten> ctx;
   tci::create_context(ctx);
 
-  auto retained_at = [&](double scale, double target) {
-    Ten a;
-    tci::zeros(ctx, {2, 2}, a);
-    tci::set_elem(ctx, a, {0, 0}, 2.0 * scale);
-    tci::set_elem(ctx, a, {1, 1}, 1.0 * scale);
-
-    Ten u, v_dag;
-    tci::real_ten_t<Ten> s_diag;
-    tci::real_t<Ten> trunc_err;
-    tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
-                   static_cast<tci::bond_dim_t<Ten>>(2), static_cast<tci::real_t<Ten>>(target),
-                   static_cast<tci::real_t<Ten>>(0.0));
-    auto s_shape = tci::shape(ctx, s_diag);
-    REQUIRE(s_shape.size() == 1);
-    return s_shape[0];
-  };
-
   // epsilon(chi=1) = 1 / (4 + 1) = 0.2 at every scale.
   for (double scale : {1.0, 1e-200, 1e200}) {
-    CHECK(retained_at(scale, 0.3) == 1);
-    CHECK(retained_at(scale, 0.1) == 2);
+    auto [kept_hi, err_hi] = trunc_svd_diag<Ten>(ctx, {2.0 * scale, 1.0 * scale}, 2, 0.3);
+    CHECK(kept_hi == 1);
+    CHECK(err_hi == doctest::Approx(0.2));
+
+    auto [kept_lo, err_lo] = trunc_svd_diag<Ten>(ctx, {2.0 * scale, 1.0 * scale}, 2, 0.1);
+    CHECK(kept_lo == 2);
+    CHECK(err_lo == doctest::Approx(0.0));
   }
 
   tci::destroy_context(ctx);
