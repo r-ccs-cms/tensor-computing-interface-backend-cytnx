@@ -1570,7 +1570,8 @@ namespace tci {
 
     // Implement stacking by creating a new dimension at axis
     // First verify all tensors have the same shape
-    const auto& first_shape = ins[0].get().backend.shape();
+    const auto& first = ins[0].get().backend;
+    const auto& first_shape = first.shape();
     for (size_t i = 1; i < ins.size(); ++i) {
       if (ins[i].get().backend.shape() != first_shape) {
         throw std::invalid_argument("All tensors must have the same shape for stacking");
@@ -1592,8 +1593,7 @@ namespace tci {
 
     // Create output tensor
     TenT out;
-    out.backend
-        = cytnx::zeros(new_shape, ins[0].get().backend.dtype(), ins[0].get().backend.device());
+    out.backend = cytnx::zeros(new_shape, first.dtype(), first.device());
 
     // Copy data from each tensor
     for (size_t tensor_idx = 0; tensor_idx < ins.size(); ++tensor_idx) {
