@@ -69,7 +69,7 @@ TEST_CASE("TCI Stack Operations") {
 
   SUBCASE("Stack three 2x4 tensors along axis 1") {
     tci::shape_t<Ten> shape = {2, 4};
-    Ten a, b, c, d;
+    Ten a, b, c;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
     tci::zeros(ctx, shape, c);
@@ -78,7 +78,7 @@ TEST_CASE("TCI Stack Operations") {
     tci::set_elem(ctx, b, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
     tci::set_elem(ctx, c, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
 
-    d = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b), std::cref(c)}, 1);
+    auto d = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b), std::cref(c)}, 1);
 
     auto result_shape = tci::shape(ctx, d);
     CHECK(result_shape.size() == 3);
@@ -97,14 +97,14 @@ TEST_CASE("TCI Stack Operations") {
 
   SUBCASE("Stack two 3x3 tensors along axis 0") {
     tci::shape_t<Ten> shape = {3, 3};
-    Ten a, b, result;
+    Ten a, b;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
 
     tci::set_elem(ctx, a, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
     tci::set_elem(ctx, b, {2, 2}, cytnx::cytnx_complex128(6.0, 0.0));
 
-    result = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 0);
+    auto result = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 0);
 
     auto result_shape = tci::shape(ctx, result);
     CHECK(result_shape.size() == 3);
@@ -120,14 +120,14 @@ TEST_CASE("TCI Stack Operations") {
 
   SUBCASE("Stack along last dimension (axis 2)") {
     tci::shape_t<Ten> shape = {2, 3};
-    Ten a, b, result;
+    Ten a, b;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
 
     tci::set_elem(ctx, a, {1, 2}, cytnx::cytnx_complex128(7.0, 0.0));
     tci::set_elem(ctx, b, {1, 2}, cytnx::cytnx_complex128(8.0, 0.0));
 
-    result = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 2);
+    auto result = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 2);
 
     auto result_shape = tci::shape(ctx, result);
     CHECK(result_shape.size() == 3);
