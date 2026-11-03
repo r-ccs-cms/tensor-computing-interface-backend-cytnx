@@ -542,20 +542,6 @@ namespace tci {
 
   template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>
   [[deprecated(TCI_DEPRECATED_ELEMT_API)]]
-  void concatenate(context_handle_t<CytnxTensor<ElemT>>& ctx, const List<CytnxTensor<ElemT>>& ins,
-                   const bond_idx_t<CytnxTensor<ElemT>> axis, CytnxTensor<ElemT>& out) {
-    concatenate<CytnxTensor<ElemT>>(ctx, ins, axis, out);
-  }
-
-  template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>
-  [[deprecated(TCI_DEPRECATED_ELEMT_API)]]
-  void stack(context_handle_t<CytnxTensor<ElemT>>& ctx, const List<CytnxTensor<ElemT>>& ins,
-             const bond_idx_t<CytnxTensor<ElemT>> axis, CytnxTensor<ElemT>& out) {
-    stack<CytnxTensor<ElemT>>(ctx, ins, axis, out);
-  }
-
-  template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>
-  [[deprecated(TCI_DEPRECATED_ELEMT_API)]]
   void inverse(context_handle_t<CytnxTensor<ElemT>>& ctx, CytnxTensor<ElemT>& inout,
                const order_t<CytnxTensor<ElemT>> num_of_bds_as_row) {
     inverse<CytnxTensor<ElemT>>(ctx, inout, num_of_bds_as_row);
@@ -604,38 +590,6 @@ namespace tci {
                 const std::string_view bd_labs_str_b, CytnxTensor<ElemT>& c,
                 const std::string_view bd_labs_str_c) {
     contract<CytnxTensor<ElemT>>(ctx, a, bd_labs_str_a, b, bd_labs_str_b, c, bd_labs_str_c);
-  }
-
-  // Deprecated: in-place linear_combine
-  template <typename TenT> [[deprecated(
-      "Use return-value version instead: auto result = linear_combine(ctx, ins). "
-      "This API will be removed in the next major version")]]
-  void linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins, TenT& out) {
-    out = linear_combine(ctx, ins);
-  }
-
-  template <typename TenT> [[deprecated(
-      "Use return-value version instead: auto result = linear_combine(ctx, ins, coefs). "
-      "This API will be removed in the next major version")]]
-  void linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins,
-                      const std::vector<elem_t<TenT>>& coefs, TenT& out) {
-    out = linear_combine(ctx, ins, coefs);
-  }
-
-  template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>
-  [[deprecated(TCI_DEPRECATED_ELEMT_API)]]
-  void linear_combine(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                      const std::vector<CytnxTensor<ElemT>>& ins, CytnxTensor<ElemT>& out) {
-    linear_combine<CytnxTensor<ElemT>>(ctx, ins, out);
-  }
-
-  template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>
-  [[deprecated(TCI_DEPRECATED_ELEMT_API)]]
-  void linear_combine(context_handle_t<CytnxTensor<ElemT>>& ctx,
-                      const std::vector<CytnxTensor<ElemT>>& ins,
-                      const std::vector<elem_t<CytnxTensor<ElemT>>>& coefs,
-                      CytnxTensor<ElemT>& out) {
-    linear_combine<CytnxTensor<ElemT>>(ctx, ins, coefs, out);
   }
 
   template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>

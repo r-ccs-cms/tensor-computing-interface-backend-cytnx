@@ -76,8 +76,8 @@ TEST_CASE("TCI Stack Operations") {
     tci::set_elem(ctx, b, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
     tci::set_elem(ctx, c, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
 
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b, c};
-    tci::stack(ctx, tensors, 1, d);
+    d = tci::stack<tci::CytnxTensor<cytnx::cytnx_complex128>>(
+        ctx, {std::cref(a), std::cref(b), std::cref(c)}, 1);
 
     auto result_shape = tci::shape(ctx, d);
     CHECK(result_shape.size() == 3);
@@ -103,8 +103,8 @@ TEST_CASE("TCI Stack Operations") {
     tci::set_elem(ctx, a, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
     tci::set_elem(ctx, b, {2, 2}, cytnx::cytnx_complex128(6.0, 0.0));
 
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b};
-    tci::stack(ctx, tensors, 0, result);
+    result = tci::stack<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx,
+                                                                   {std::cref(a), std::cref(b)}, 0);
 
     auto result_shape = tci::shape(ctx, result);
     CHECK(result_shape.size() == 3);
@@ -127,8 +127,8 @@ TEST_CASE("TCI Stack Operations") {
     tci::set_elem(ctx, a, {1, 2}, cytnx::cytnx_complex128(7.0, 0.0));
     tci::set_elem(ctx, b, {1, 2}, cytnx::cytnx_complex128(8.0, 0.0));
 
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b};
-    tci::stack(ctx, tensors, 2, result);
+    result = tci::stack<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx,
+                                                                   {std::cref(a), std::cref(b)}, 2);
 
     auto result_shape = tci::shape(ctx, result);
     CHECK(result_shape.size() == 3);
@@ -143,18 +143,18 @@ TEST_CASE("TCI Stack Operations") {
   }
 
   SUBCASE("Error handling: empty tensor list") {
-    tci::CytnxTensor<cytnx::cytnx_complex128> result;
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> empty_tensors = {};
-    CHECK_THROWS_AS(tci::stack(ctx, empty_tensors, 0, result), std::invalid_argument);
+    tci::List<tci::CRef<tci::CytnxTensor<cytnx::cytnx_complex128>>> empty_tensors = {};
+    CHECK_THROWS_AS(tci::stack(ctx, empty_tensors, 0), std::invalid_argument);
   }
 
   SUBCASE("Error handling: mismatched tensor shapes") {
-    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, result;
+    tci::CytnxTensor<cytnx::cytnx_complex128> a, b;
     tci::zeros(ctx, {2, 3}, a);
     tci::zeros(ctx, {2, 4}, b);
 
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b};
-    CHECK_THROWS_AS(tci::stack(ctx, tensors, 0, result), std::invalid_argument);
+    CHECK_THROWS_AS(
+        tci::stack<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, {std::cref(a), std::cref(b)}, 0),
+        std::invalid_argument);
   }
 
   tci::destroy_context(ctx);

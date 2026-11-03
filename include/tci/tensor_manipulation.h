@@ -200,24 +200,27 @@ namespace tci {
    *
    * @tparam TenT Tensor type
    * @param ctx Context handle for the tensor library
-   * @param ins List of input tensors
+   * @param ins Non-owning const references to the input tensors; they are not copied, consumed,
+   * or modified
    * @param concat_bdidx Bond index for concatenation
-   * @param out Output concatenated tensor
+   * @return Concatenated tensor
    */
-  template <typename TenT> void concatenate(context_handle_t<TenT>& ctx, const List<TenT>& ins,
-                                            const bond_idx_t<TenT> concat_bdidx, TenT& out);
+  template <typename TenT> TenT concatenate(context_handle_t<TenT>& ctx,
+                                            const List<CRef<TenT>>& ins,
+                                            const bond_idx_t<TenT> concat_bdidx);
 
   /**
    * @brief Stack tensors along a new bond
    *
    * @tparam TenT Tensor type
    * @param ctx Context handle for the tensor library
-   * @param ins List of input tensors
+   * @param ins Non-owning const references to the input tensors; they are not copied, consumed,
+   * or modified
    * @param stack_bdidx Bond index for stacking
-   * @param out Output stacked tensor
+   * @return Stacked tensor
    */
-  template <typename TenT> void stack(context_handle_t<TenT>& ctx, const List<TenT>& ins,
-                                      const bond_idx_t<TenT> stack_bdidx, TenT& out);
+  template <typename TenT> TenT stack(context_handle_t<TenT>& ctx, const List<CRef<TenT>>& ins,
+                                      const bond_idx_t<TenT> stack_bdidx);
 
   /**
    * @brief Apply function to each element (modifying version)
