@@ -602,30 +602,30 @@ namespace tci {
 
   // Linear combination (out-of-place)
   template <typename TenT>
-  TenT linear_combine(context_handle_t<TenT>& ctx, const std::vector<TenT>& ins) {
+  TenT linear_combine(context_handle_t<TenT>& ctx, const List<CRef<TenT>>& ins) {
     TenT out;
     if (ins.empty()) {
       return out;
     }
 
-    out.backend = ins[0].backend.clone();
+    out.backend = ins[0].get().backend.clone();
     for (size_t i = 1; i < ins.size(); ++i) {
-      out.backend = out.backend + ins[i].backend;
+      out.backend = out.backend + ins[i].get().backend;
     }
     return out;
   }
 
   template <typename TenT> TenT linear_combine(context_handle_t<TenT>& ctx,
-                                               const std::vector<TenT>& ins,
+                                               const List<CRef<TenT>>& ins,
                                                const std::vector<elem_t<TenT>>& coefs) {
     TenT out;
     if (ins.empty() || ins.size() != coefs.size()) {
       return out;
     }
 
-    out.backend = ins[0].backend * coefs[0];
+    out.backend = ins[0].get().backend * coefs[0];
     for (size_t i = 1; i < ins.size(); ++i) {
-      out.backend = out.backend + ins[i].backend * coefs[i];
+      out.backend = out.backend + ins[i].get().backend * coefs[i];
     }
     return out;
   }
@@ -1495,13 +1495,14 @@ namespace tci {
 
   // concatenate
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
-  template <typename TenT> void concatenate(context_handle_t<TenT>& ctx, const List<TenT>& ins,
-                                            const bond_idx_t<TenT> axis, TenT& out) {
+  template <typename TenT> TenT concatenate(context_handle_t<TenT>& ctx,
+                                            const List<CRef<TenT>>& ins,
+                                            const bond_idx_t<TenT> axis) {
     if (ins.empty()) {
       throw std::invalid_argument("Cannot concatenate empty list of tensors");
     }
 
-    const auto& first = ins[0].backend;
+    const auto& first = ins[0].get().backend;
     auto first_shape = first.shape();
 
     if (axis >= first_shape.size()) {
@@ -1511,7 +1512,7 @@ namespace tci {
     // Check all tensors have compatible shapes
     size_t total_concat_dim = 0;
     for (size_t i = 0; i < ins.size(); ++i) {
-      const auto& tensor = ins[i].backend;
+      const auto& tensor = ins[i].get().backend;
       auto shape = tensor.shape();
 
       if (shape.size() != first_shape.size()) {
@@ -1533,11 +1534,13 @@ namespace tci {
     out_shape[axis] = total_concat_dim;
 
     // Create output tensor
+    TenT out;
     out.backend = cytnx::zeros(out_shape, first.dtype(), first.device());
 
     // Copy data from each input tensor to appropriate slice of output
     size_t offset = 0;
-    for (const auto& tensor : ins) {
+    for (const auto& ref : ins) {
+      const auto& tensor = ref.get();
       auto tensor_shape = tensor.backend.shape();
 
       // Create coordinate vectors for slicing
@@ -1554,21 +1557,23 @@ namespace tci {
       out.backend.set(accessors, tensor.backend);
       offset += tensor_shape[axis];
     }
+    return out;
   }
 
   // stack
   // Restored from git show b7ecb2a9^:source/tensor_manipulation.cpp
-  template <typename TenT> void stack(context_handle_t<TenT>& ctx, const List<TenT>& ins,
-                                      const bond_idx_t<TenT> axis, TenT& out) {
+  template <typename TenT> TenT stack(context_handle_t<TenT>& ctx, const List<CRef<TenT>>& ins,
+                                      const bond_idx_t<TenT> axis) {
     if (ins.empty()) {
       throw std::invalid_argument("Cannot stack empty list of tensors");
     }
 
     // Implement stacking by creating a new dimension at axis
     // First verify all tensors have the same shape
-    const auto& first_shape = ins[0].backend.shape();
+    const auto& first = ins[0].get().backend;
+    const auto& first_shape = first.shape();
     for (size_t i = 1; i < ins.size(); ++i) {
-      if (ins[i].backend.shape() != first_shape) {
+      if (ins[i].get().backend.shape() != first_shape) {
         throw std::invalid_argument("All tensors must have the same shape for stacking");
       }
     }
@@ -1587,7 +1592,8 @@ namespace tci {
     }
 
     // Create output tensor
-    out.backend = cytnx::zeros(new_shape, ins[0].backend.dtype(), ins[0].backend.device());
+    TenT out;
+    out.backend = cytnx::zeros(new_shape, first.dtype(), first.device());
 
     // Copy data from each tensor
     for (size_t tensor_idx = 0; tensor_idx < ins.size(); ++tensor_idx) {
@@ -1603,8 +1609,9 @@ namespace tci {
       }
 
       // Copy the tensor data to the appropriate slice using set method
-      out.backend.set(accessors, ins[tensor_idx].backend);
+      out.backend.set(accessors, ins[tensor_idx].get().backend);
     }
+    return out;
   }
 
   // ========================================================================

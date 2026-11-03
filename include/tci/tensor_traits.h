@@ -2,6 +2,7 @@
 
 #include <complex>
 #include <cstddef>
+#include <functional>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -16,6 +17,10 @@ namespace tci {
 
   // List type - currently restricted to std::vector
   template <typename T> using List = std::vector<T>;
+
+  // Non-owning const reference, used for the inputs of concatenate, stack and
+  // linear_combine (List<CRef<TenT>>)
+  template <typename T> using CRef = std::reference_wrapper<const T>;
 
   // Pair type - currently restricted to std::pair
   template <typename T, typename U> using Pair = std::pair<T, U>;

@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cytnx.hpp>
+#include <functional>
 
 // FIXME: Trace operations cause AddressSanitizer container-overflow in Cytnx internal code
 // This appears to be a bug in the Cytnx library itself (UniTensor::UniTensor constructor)
@@ -62,12 +63,13 @@ TEST_CASE("TCI Contract - duplicate label validation") {
 }
 
 TEST_CASE("TCI Stack Operations") {
-  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
+  using Ten = tci::CytnxTensor<cytnx::cytnx_complex128>;
+  tci::context_handle_t<Ten> ctx;
   tci::create_context(ctx);
 
   SUBCASE("Stack three 2x4 tensors along axis 1") {
-    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 4};
-    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c, d;
+    tci::shape_t<Ten> shape = {2, 4};
+    Ten a, b, c;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
     tci::zeros(ctx, shape, c);
@@ -76,8 +78,7 @@ TEST_CASE("TCI Stack Operations") {
     tci::set_elem(ctx, b, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
     tci::set_elem(ctx, c, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
 
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b, c};
-    tci::stack(ctx, tensors, 1, d);
+    auto d = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b), std::cref(c)}, 1);
 
     auto result_shape = tci::shape(ctx, d);
     CHECK(result_shape.size() == 3);
@@ -95,16 +96,15 @@ TEST_CASE("TCI Stack Operations") {
   }
 
   SUBCASE("Stack two 3x3 tensors along axis 0") {
-    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
-    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, result;
+    tci::shape_t<Ten> shape = {3, 3};
+    Ten a, b;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
 
     tci::set_elem(ctx, a, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
     tci::set_elem(ctx, b, {2, 2}, cytnx::cytnx_complex128(6.0, 0.0));
 
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b};
-    tci::stack(ctx, tensors, 0, result);
+    auto result = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 0);
 
     auto result_shape = tci::shape(ctx, result);
     CHECK(result_shape.size() == 3);
@@ -119,16 +119,15 @@ TEST_CASE("TCI Stack Operations") {
   }
 
   SUBCASE("Stack along last dimension (axis 2)") {
-    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {2, 3};
-    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, result;
+    tci::shape_t<Ten> shape = {2, 3};
+    Ten a, b;
     tci::zeros(ctx, shape, a);
     tci::zeros(ctx, shape, b);
 
     tci::set_elem(ctx, a, {1, 2}, cytnx::cytnx_complex128(7.0, 0.0));
     tci::set_elem(ctx, b, {1, 2}, cytnx::cytnx_complex128(8.0, 0.0));
 
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b};
-    tci::stack(ctx, tensors, 2, result);
+    auto result = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 2);
 
     auto result_shape = tci::shape(ctx, result);
     CHECK(result_shape.size() == 3);
@@ -143,18 +142,16 @@ TEST_CASE("TCI Stack Operations") {
   }
 
   SUBCASE("Error handling: empty tensor list") {
-    tci::CytnxTensor<cytnx::cytnx_complex128> result;
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> empty_tensors = {};
-    CHECK_THROWS_AS(tci::stack(ctx, empty_tensors, 0, result), std::invalid_argument);
+    tci::List<tci::CRef<Ten>> empty_tensors = {};
+    CHECK_THROWS_AS(tci::stack(ctx, empty_tensors, 0), std::invalid_argument);
   }
 
   SUBCASE("Error handling: mismatched tensor shapes") {
-    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, result;
+    Ten a, b;
     tci::zeros(ctx, {2, 3}, a);
     tci::zeros(ctx, {2, 4}, b);
 
-    tci::List<tci::CytnxTensor<cytnx::cytnx_complex128>> tensors = {a, b};
-    CHECK_THROWS_AS(tci::stack(ctx, tensors, 0, result), std::invalid_argument);
+    CHECK_THROWS_AS(tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 0), std::invalid_argument);
   }
 
   tci::destroy_context(ctx);
