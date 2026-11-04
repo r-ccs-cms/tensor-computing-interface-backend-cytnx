@@ -57,8 +57,10 @@ namespace tci {
   template <typename ElemT1, typename ElemT2>
   void convert(context_handle_t<CytnxTensor<ElemT1>>& ctx1, const CytnxTensor<ElemT1>& t1,
                context_handle_t<CytnxTensor<ElemT2>>& ctx2, CytnxTensor<ElemT2>& t2) {
-    // Handle empty tensor case
-    if (t1.backend.dtype() == cytnx::Type.Void || t1.backend.shape().size() == 0) {
+    // A default-constructed source converts to a default-constructed target. A
+    // zeroth-order source also has an empty shape, but a non-Void dtype, so it
+    // is converted below.
+    if (t1.backend.dtype() == cytnx::Type.Void) {
       t2.backend = cytnx::Tensor();
       return;
     }
