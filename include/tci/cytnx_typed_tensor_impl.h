@@ -1263,8 +1263,14 @@ namespace tci {
     if (w_diag.backend.shape().size() != 1) {
       w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    if (w_diag.backend.dtype() != cytnx::Type.ComplexDouble) {
-      w_diag.backend = w_diag.backend.astype(cytnx::Type.ComplexDouble);
+    // The complex type of TenT's precision: Eig returns ComplexDouble or
+    // ComplexFloat after the input, and a cplx_ten_t<TenT> holding storage of
+    // the other precision is read as the wrong type.
+    {
+      const auto cplx_dtype = detail::elem_to_cytnx_type<cplx_t<TenT>>();
+      if (w_diag.backend.dtype() != cplx_dtype) {
+        w_diag.backend = w_diag.backend.astype(cplx_dtype);
+      }
     }
   }
 
@@ -1331,8 +1337,14 @@ namespace tci {
     if (w_diag.backend.shape().size() != 1) {
       w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    if (w_diag.backend.dtype() != cytnx::Type.ComplexDouble) {
-      w_diag.backend = w_diag.backend.astype(cytnx::Type.ComplexDouble);
+    // The complex type of TenT's precision: Eig returns ComplexDouble or
+    // ComplexFloat after the input, and a cplx_ten_t<TenT> holding storage of
+    // the other precision is read as the wrong type.
+    {
+      const auto cplx_dtype = detail::elem_to_cytnx_type<cplx_t<TenT>>();
+      if (w_diag.backend.dtype() != cplx_dtype) {
+        w_diag.backend = w_diag.backend.astype(cplx_dtype);
+      }
     }
     // TCAPI V1: lambda_mat is a complex second-order diagonal tensor of shape
     // {I, I}, stored densely; eigvals keeps the first-order list.
@@ -1342,8 +1354,11 @@ namespace tci {
       v.backend.reshape_(
           {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    if (v.backend.dtype() != cytnx::Type.ComplexDouble) {
-      v.backend = v.backend.astype(cytnx::Type.ComplexDouble);
+    {
+      const auto cplx_dtype = detail::elem_to_cytnx_type<cplx_t<TenT>>();
+      if (v.backend.dtype() != cplx_dtype) {
+        v.backend = v.backend.astype(cplx_dtype);
+      }
     }
   }
 
