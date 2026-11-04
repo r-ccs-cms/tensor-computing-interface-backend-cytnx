@@ -33,6 +33,15 @@ namespace tci {
       }
     }
 
+    // `t` converted to the complex type of TenT's precision, cplx_ten_t<TenT>'s
+    // element type, or `t` itself when it already has it. A cplx_ten_t<TenT>
+    // whose storage has the other precision is read as the wrong type: the
+    // double 1.0 read as complex64 has the imaginary part 1.875.
+    template <typename TenT> cytnx::Tensor as_cplx_of(const cytnx::Tensor& t) {
+      const auto dtype = elem_to_cytnx_type<cplx_t<TenT>>();
+      return t.dtype() == dtype ? t : t.astype(dtype);
+    }
+
     // A TCAPI zeroth-order tensor (shape {}, one element) is held as a Cytnx
     // tensor of shape {}, which Cytnx produces only by reshaping a one-element
     // tensor: its tensor constructor rejects an empty shape ("Must at least have
@@ -348,8 +357,8 @@ namespace tci {
       // Already complex, just copy
       out.backend = in.backend.clone();
     } else {
-      // Convert real to complex
-      out.backend = in.backend.astype(cytnx::Type.ComplexDouble);
+      // Convert real to the complex type of the same precision
+      out.backend = detail::as_cplx_of<TenT>(in.backend);
     }
   }
 
@@ -781,8 +790,7 @@ namespace tci {
     // follows the input, so only a complex S needs converting — and the guard
     // has to be exactly that, because Storage::real() rejects non-complex
     // storage rather than passing it through.
-    cytnx::Tensor s_real =
-        cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
+    cytnx::Tensor s_real = cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
 
     // Reshape U
     shape_t<TenT> u_shape;
@@ -796,8 +804,9 @@ namespace tci {
     }
     u.backend = u_backend.reshape(u_cytnx_shape);
 
-    // Set S (as real tensor)
-    s_diag.backend = s_real;
+    // TCAPI V1: sigma is a real second-order diagonal tensor of shape {kappa, kappa},
+    // kappa = min(I, J). It is stored densely, as eye and diag store theirs.
+    s_diag.backend = cytnx::linalg::Diag(s_real);
 
     // Reshape V†
     shape_t<TenT> v_shape;
@@ -1202,8 +1211,7 @@ namespace tci {
     }
 
     // Extract real singular values
-    cytnx::Tensor s_real =
-        cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
+    cytnx::Tensor s_real = cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
 
     // Reshape U
     shape_t<TenT> u_shape;
@@ -1217,8 +1225,9 @@ namespace tci {
     }
     u.backend = u_backend.reshape(u_cytnx_shape);
 
-    // Set S (as real tensor)
-    s_diag.backend = s_real;
+    // TCAPI V1: sigma is a real second-order diagonal tensor of shape {chi, chi},
+    // chi the retained count. It is stored densely, as eye and diag store theirs.
+    s_diag.backend = cytnx::linalg::Diag(s_real);
 
     // Reshape V†
     shape_t<TenT> v_shape;
@@ -1263,9 +1272,7 @@ namespace tci {
     if (w_diag.backend.shape().size() != 1) {
       w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    if (w_diag.backend.dtype() != cytnx::Type.ComplexDouble) {
-      w_diag.backend = w_diag.backend.astype(cytnx::Type.ComplexDouble);
-    }
+    w_diag.backend = detail::as_cplx_of<TenT>(w_diag.backend);
   }
 
   // Eigenvalue decomposition - eigvalsh (hermitian matrix eigenvalues)
@@ -1331,17 +1338,16 @@ namespace tci {
     if (w_diag.backend.shape().size() != 1) {
       w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    if (w_diag.backend.dtype() != cytnx::Type.ComplexDouble) {
-      w_diag.backend = w_diag.backend.astype(cytnx::Type.ComplexDouble);
-    }
+    w_diag.backend = detail::as_cplx_of<TenT>(w_diag.backend);
+    // TCAPI V1: lambda_mat is a complex second-order diagonal tensor of shape
+    // {I, I}, stored densely; eigvals keeps the first-order list.
+    w_diag.backend = cytnx::linalg::Diag(w_diag.backend);
 
     if (v.backend.shape().size() != 2) {
       v.backend.reshape_(
           {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    if (v.backend.dtype() != cytnx::Type.ComplexDouble) {
-      v.backend = v.backend.astype(cytnx::Type.ComplexDouble);
-    }
+    v.backend = detail::as_cplx_of<TenT>(v.backend);
   }
 
   // Eigenvalue decomposition - eigh (hermitian matrix eigenvalues and eigenvectors)
@@ -1375,6 +1381,9 @@ namespace tci {
     if (w_diag.backend.shape().size() != 1) {
       w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
     }
+    // TCAPI V1: lambda_mat is a real second-order diagonal tensor of shape
+    // {I, I}, stored densely; eigvalsh keeps the first-order list.
+    w_diag.backend = cytnx::linalg::Diag(w_diag.backend);
 
     if (v.backend.shape().size() != 2) {
       v.backend.reshape_(

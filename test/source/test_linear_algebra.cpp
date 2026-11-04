@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include "diagonal_check.h"
+
 TEST_CASE("TCI Eigenvalue - invalid num_of_bds_as_row") {
   tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
   tci::create_context(ctx);
@@ -147,9 +149,8 @@ template <typename Ten> std::pair<cytnx::cytnx_uint64, tci::real_t<Ten>> trunc_s
   tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
                  static_cast<tci::bond_dim_t<Ten>>(chi_max), static_cast<tci::real_t<Ten>>(target),
                  static_cast<tci::real_t<Ten>>(0.0));
-  auto s_shape = tci::shape(ctx, s_diag);
-  REQUIRE(s_shape.size() == 1);
-  return {s_shape[0], trunc_err};
+  const auto kept = require_diagonal(ctx, s_diag);
+  return {static_cast<cytnx::cytnx_uint64>(kept.size()), trunc_err};
 }
 
 // Backend-specific coverage for the precision of epsilon in single precision.
@@ -315,11 +316,10 @@ TEST_CASE("TCI SVD - large matrix exercises gesdd path (64x64 identity)") {
     tci::real_ten_t<Ten> s_diag;
     tci::svd(ctx, a, 1, u, s_diag, v_dag);
 
-    auto s_shape = tci::shape(ctx, s_diag);
-    REQUIRE(s_shape.size() == 1);
-    CHECK(s_shape[0] == n);
-    for (cytnx::cytnx_uint64 i = 0; i < static_cast<cytnx::cytnx_uint64>(n); ++i) {
-      CHECK(tci::get_elem(ctx, s_diag, {i}) == doctest::Approx(1.0));
+    const auto svs = require_diagonal(ctx, s_diag);
+    CHECK(svs.size() == n);
+    for (const double s : svs) {
+      CHECK(s == doctest::Approx(1.0));
     }
   }
 
@@ -330,11 +330,10 @@ TEST_CASE("TCI SVD - large matrix exercises gesdd path (64x64 identity)") {
     tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(n),
                    static_cast<tci::real_t<Ten>>(0.0));
 
-    auto s_shape = tci::shape(ctx, s_diag);
-    REQUIRE(s_shape.size() == 1);
-    CHECK(s_shape[0] == n);
-    for (cytnx::cytnx_uint64 i = 0; i < static_cast<cytnx::cytnx_uint64>(n); ++i) {
-      CHECK(tci::get_elem(ctx, s_diag, {i}) == doctest::Approx(1.0));
+    const auto svs = require_diagonal(ctx, s_diag);
+    CHECK(svs.size() == n);
+    for (const double s : svs) {
+      CHECK(s == doctest::Approx(1.0));
     }
     CHECK(trunc_err == doctest::Approx(0.0));
   }

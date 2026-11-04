@@ -4,6 +4,7 @@
 #include <cytnx.hpp>
 #include <filesystem>
 
+#include "diagonal_check.h"
 #include "tci/miscellaneous.h"
 #include "tci/tci.h"
 #include "tci/tensor_linear_algebra.h"
@@ -555,13 +556,13 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
 
     // Verify dimensions
     auto u_shape = tci::shape(ctx, u);
-    auto s_shape = tci::shape(ctx, s_diag);
     auto v_shape = tci::shape(ctx, v_dag);
+    const auto svs = require_diagonal(ctx, s_diag);
 
     CHECK(u_shape[0] == 4);
     CHECK(v_shape[1] == 6);
-    CHECK(s_shape[0] == u_shape[1]);
-    CHECK(s_shape[0] == v_shape[0]);
+    CHECK(svs.size() == u_shape[1]);
+    CHECK(svs.size() == v_shape[0]);
   }
 
   SUBCASE("for_each on singular values with sqrt") {
@@ -583,10 +584,9 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
     // Apply sqrt to singular values
     CHECK_NOTHROW(tci::for_each(ctx, s_diag, [](Real& elem) { elem = std::sqrt(elem); }));
 
-    // Verify all elements are non-negative after sqrt
-    auto size = tci::size(ctx, s_diag);
-    for (size_t i = 0; i < size; ++i) {
-      auto val = tci::get_elem(ctx, s_diag, {static_cast<cytnx::cytnx_uint64>(i)});
+    // Verify the diagonal is non-negative after sqrt; sqrt keeps the
+    // off-diagonal zeros zero, which require_diagonal checks.
+    for (const double val : require_diagonal(ctx, s_diag)) {
       CHECK(val >= 0.0);
     }
   }
@@ -678,6 +678,52 @@ TEST_CASE("CytnxTensor - Miscellaneous functions") {
   }
 }
 
+// eig, eigvals and to_cplx on single-precision tensors return complex64
+// storage, the element type of cplx_ten_t; complex128 storage read through a
+// complex64 tensor turns the eigenvalue 1 into an imaginary part of 1.875.
+TEST_CASE_TEMPLATE("CytnxTensor - complex results keep single precision", Tensor,
+                   tci::CytnxTensor<cytnx::cytnx_float>, tci::CytnxTensor<cytnx::cytnx_complex64>) {
+  using CplxTensor = typename tci::tensor_traits<Tensor>::cplx_ten_t;
+
+  tci::context_handle_t<Tensor> ctx;
+  tci::create_context(ctx);
+
+  Tensor matrix;
+  tci::eye(ctx, 2, matrix);
+
+  SUBCASE("eig") {
+    CplxTensor eigenvals, eigenvecs;
+    tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
+    CHECK(eigenvals.backend.dtype() == cytnx::Type.ComplexFloat);
+    CHECK(eigenvecs.backend.dtype() == cytnx::Type.ComplexFloat);
+    for (const double ev : require_diagonal(ctx, eigenvals)) {
+      CHECK(ev == doctest::Approx(1.0));
+    }
+  }
+
+  SUBCASE("eigvals") {
+    CplxTensor eigenvals;
+    tci::eigvals(ctx, matrix, 1, eigenvals);
+    CHECK(eigenvals.backend.dtype() == cytnx::Type.ComplexFloat);
+    for (cytnx::cytnx_uint64 i = 0; i < 2; ++i) {
+      const auto ev = tci::get_elem(ctx, eigenvals, {i});
+      CHECK(ev.real() == doctest::Approx(1.0));
+      CHECK(ev.imag() == doctest::Approx(0.0));
+    }
+  }
+
+  SUBCASE("to_cplx") {
+    CplxTensor cplx;
+    tci::to_cplx(ctx, matrix, cplx);
+    CHECK(cplx.backend.dtype() == cytnx::Type.ComplexFloat);
+    const auto one = tci::get_elem(ctx, cplx, {0, 0});
+    CHECK(one.real() == doctest::Approx(1.0));
+    CHECK(one.imag() == doctest::Approx(0.0));
+  }
+
+  tci::destroy_context(ctx);
+}
+
 TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
   using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
   using Elem = tci::tensor_traits<Tensor>::elem_t;
@@ -708,7 +754,9 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     } else {
       // On CPU: should work
       CHECK_NOTHROW(tci::eigvals(ctx, matrix, 1, eigenvalues));
-      // Should have 2 eigenvalues
+      // Should have 2 eigenvalues, as a first-order list unlike eig's
+      // diagonal lambda_mat
+      CHECK(tci::order(ctx, eigenvalues) == 1);
       CHECK(tci::shape(ctx, eigenvalues)[0] == 2);
     }
   }
@@ -729,7 +777,9 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     // Perform symmetric eigenvalue calculation
     tci::eigvalsh(ctx, matrix, 1, eigenvalues);
 
-    // Should have 2 real eigenvalues
+    // Should have 2 real eigenvalues, as a first-order list unlike eigh's
+    // diagonal lambda_mat
+    CHECK(tci::order(ctx, eigenvalues) == 1);
     CHECK(tci::shape(ctx, eigenvalues)[0] == 2);
   }
 
@@ -743,14 +793,11 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     // Perform eigendecomposition
     tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
 
-    // Check eigenvalues
-    CHECK(tci::order(ctx, eigenvals) == 1);
-    CHECK(tci::size(ctx, eigenvals) == 2);
-
-    auto eval0 = tci::get_elem(ctx, eigenvals, {0});
-    auto eval1 = tci::get_elem(ctx, eigenvals, {1});
-    CHECK(std::abs(eval0.real() - 1.0) < 1e-10);
-    CHECK(std::abs(eval1.real() - 1.0) < 1e-10);
+    // lambda_mat is the {2, 2} diagonal tensor of the eigenvalues
+    const auto evals = require_diagonal(ctx, eigenvals);
+    REQUIRE(evals.size() == 2);
+    CHECK(std::abs(evals[0] - 1.0) < 1e-10);
+    CHECK(std::abs(evals[1] - 1.0) < 1e-10);
 
     // Check eigenvectors
     CHECK(tci::order(ctx, eigenvecs) == 2);
@@ -769,14 +816,11 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     // Perform hermitian eigendecomposition
     tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs);
 
-    // Check eigenvalues
-    CHECK(tci::order(ctx, eigenvals) == 1);
-    CHECK(tci::size(ctx, eigenvals) == 2);
-
-    auto eval0 = tci::get_elem(ctx, eigenvals, {0});
-    auto eval1 = tci::get_elem(ctx, eigenvals, {1});
-    CHECK(std::abs(eval0 - 1.0) < 1e-10);
-    CHECK(std::abs(eval1 - 1.0) < 1e-10);
+    // lambda_mat is the {2, 2} diagonal tensor of the eigenvalues
+    const auto evals = require_diagonal(ctx, eigenvals);
+    REQUIRE(evals.size() == 2);
+    CHECK(std::abs(evals[0] - 1.0) < 1e-10);
+    CHECK(std::abs(evals[1] - 1.0) < 1e-10);
 
     // Check eigenvectors
     CHECK(tci::order(ctx, eigenvecs) == 2);
