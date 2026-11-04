@@ -73,6 +73,8 @@ add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 foreach(example svd_example simple_tensor_operations)
   if(TARGET ${example})
     add_test(NAME example_${example} COMMAND ${example})
+  else()
+    message(STATUS "${example} is not built; its ctest entry is not registered")
   endif()
 endforeach()
 

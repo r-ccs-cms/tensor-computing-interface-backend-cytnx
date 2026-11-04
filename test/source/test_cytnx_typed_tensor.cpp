@@ -678,6 +678,52 @@ TEST_CASE("CytnxTensor - Miscellaneous functions") {
   }
 }
 
+// eig, eigvals and to_cplx on single-precision tensors return complex64
+// storage, the element type of cplx_ten_t; complex128 storage read through a
+// complex64 tensor turns the eigenvalue 1 into an imaginary part of 1.875.
+TEST_CASE("CytnxTensor - complex results keep single precision") {
+  using Tensor = tci::CytnxTensor<cytnx::cytnx_float>;
+  using CplxTensor = tci::tensor_traits<Tensor>::cplx_ten_t;
+
+  tci::context_handle_t<Tensor> ctx;
+  tci::create_context(ctx);
+
+  Tensor matrix;
+  tci::eye(ctx, 2, matrix);
+
+  SUBCASE("eig") {
+    CplxTensor eigenvals, eigenvecs;
+    tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
+    CHECK(eigenvals.backend.dtype() == cytnx::Type.ComplexFloat);
+    CHECK(eigenvecs.backend.dtype() == cytnx::Type.ComplexFloat);
+    for (const double ev : require_diagonal(ctx, eigenvals)) {
+      CHECK(ev == doctest::Approx(1.0));
+    }
+  }
+
+  SUBCASE("eigvals") {
+    CplxTensor eigenvals;
+    tci::eigvals(ctx, matrix, 1, eigenvals);
+    CHECK(eigenvals.backend.dtype() == cytnx::Type.ComplexFloat);
+    for (cytnx::cytnx_uint64 i = 0; i < 2; ++i) {
+      const auto ev = tci::get_elem(ctx, eigenvals, {i});
+      CHECK(ev.real() == doctest::Approx(1.0));
+      CHECK(ev.imag() == doctest::Approx(0.0));
+    }
+  }
+
+  SUBCASE("to_cplx") {
+    CplxTensor cplx;
+    tci::to_cplx(ctx, matrix, cplx);
+    CHECK(cplx.backend.dtype() == cytnx::Type.ComplexFloat);
+    const auto one = tci::get_elem(ctx, cplx, {0, 0});
+    CHECK(one.real() == doctest::Approx(1.0));
+    CHECK(one.imag() == doctest::Approx(0.0));
+  }
+
+  tci::destroy_context(ctx);
+}
+
 TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
   using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
   using Elem = tci::tensor_traits<Tensor>::elem_t;
@@ -708,7 +754,9 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     } else {
       // On CPU: should work
       CHECK_NOTHROW(tci::eigvals(ctx, matrix, 1, eigenvalues));
-      // Should have 2 eigenvalues
+      // Should have 2 eigenvalues, as a first-order list unlike eig's
+      // diagonal lambda_mat
+      CHECK(tci::order(ctx, eigenvalues) == 1);
       CHECK(tci::shape(ctx, eigenvalues)[0] == 2);
     }
   }
@@ -729,7 +777,9 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     // Perform symmetric eigenvalue calculation
     tci::eigvalsh(ctx, matrix, 1, eigenvalues);
 
-    // Should have 2 real eigenvalues
+    // Should have 2 real eigenvalues, as a first-order list unlike eigh's
+    // diagonal lambda_mat
+    CHECK(tci::order(ctx, eigenvalues) == 1);
     CHECK(tci::shape(ctx, eigenvalues)[0] == 2);
   }
 

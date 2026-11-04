@@ -33,6 +33,15 @@ namespace tci {
       }
     }
 
+    // `t` converted to the complex type of TenT's precision, cplx_ten_t<TenT>'s
+    // element type, or `t` itself when it already has it. A cplx_ten_t<TenT>
+    // whose storage has the other precision is read as the wrong type: the
+    // double 1.0 read as complex64 has the imaginary part 1.875.
+    template <typename TenT> cytnx::Tensor as_cplx_of(const cytnx::Tensor& t) {
+      const auto dtype = elem_to_cytnx_type<cplx_t<TenT>>();
+      return t.dtype() == dtype ? t : t.astype(dtype);
+    }
+
     // A TCAPI zeroth-order tensor (shape {}, one element) is held as a Cytnx
     // tensor of shape {}, which Cytnx produces only by reshaping a one-element
     // tensor: its tensor constructor rejects an empty shape ("Must at least have
@@ -348,8 +357,8 @@ namespace tci {
       // Already complex, just copy
       out.backend = in.backend.clone();
     } else {
-      // Convert real to complex
-      out.backend = in.backend.astype(cytnx::Type.ComplexDouble);
+      // Convert real to the complex type of the same precision
+      out.backend = detail::as_cplx_of<TenT>(in.backend);
     }
   }
 
@@ -1263,15 +1272,7 @@ namespace tci {
     if (w_diag.backend.shape().size() != 1) {
       w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    // The complex type of TenT's precision: Eig returns ComplexDouble or
-    // ComplexFloat after the input, and a cplx_ten_t<TenT> holding storage of
-    // the other precision is read as the wrong type.
-    {
-      const auto cplx_dtype = detail::elem_to_cytnx_type<cplx_t<TenT>>();
-      if (w_diag.backend.dtype() != cplx_dtype) {
-        w_diag.backend = w_diag.backend.astype(cplx_dtype);
-      }
-    }
+    w_diag.backend = detail::as_cplx_of<TenT>(w_diag.backend);
   }
 
   // Eigenvalue decomposition - eigvalsh (hermitian matrix eigenvalues)
@@ -1337,15 +1338,7 @@ namespace tci {
     if (w_diag.backend.shape().size() != 1) {
       w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    // The complex type of TenT's precision: Eig returns ComplexDouble or
-    // ComplexFloat after the input, and a cplx_ten_t<TenT> holding storage of
-    // the other precision is read as the wrong type.
-    {
-      const auto cplx_dtype = detail::elem_to_cytnx_type<cplx_t<TenT>>();
-      if (w_diag.backend.dtype() != cplx_dtype) {
-        w_diag.backend = w_diag.backend.astype(cplx_dtype);
-      }
-    }
+    w_diag.backend = detail::as_cplx_of<TenT>(w_diag.backend);
     // TCAPI V1: lambda_mat is a complex second-order diagonal tensor of shape
     // {I, I}, stored densely; eigvals keeps the first-order list.
     w_diag.backend = cytnx::linalg::Diag(w_diag.backend);
@@ -1354,12 +1347,7 @@ namespace tci {
       v.backend.reshape_(
           {static_cast<cytnx::cytnx_int64>(row_dim), static_cast<cytnx::cytnx_int64>(row_dim)});
     }
-    {
-      const auto cplx_dtype = detail::elem_to_cytnx_type<cplx_t<TenT>>();
-      if (v.backend.dtype() != cplx_dtype) {
-        v.backend = v.backend.astype(cplx_dtype);
-      }
-    }
+    v.backend = detail::as_cplx_of<TenT>(v.backend);
   }
 
   // Eigenvalue decomposition - eigh (hermitian matrix eigenvalues and eigenvectors)
