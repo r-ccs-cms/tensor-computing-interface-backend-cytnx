@@ -113,7 +113,7 @@ void linear_algebra_operations() {
   std::cout << std::endl;
 
   // Eigenvalue decomposition (for symmetric matrix)
-  real_ten_t<Ten> eigenvals;  // Eigenvalues are real, on the diagonal of a {n, n} tensor
+  real_ten_t<Ten> eigenvals;  // Eigenvalues are real, on the diagonal of a square tensor
   Ten eigenvecs;
   eigh(ctx, A, 1, eigenvals, eigenvecs);
 

@@ -795,8 +795,8 @@ namespace tci {
     }
     u.backend = u_backend.reshape(u_cytnx_shape);
 
-    // TCAPI V1: sigma is a real second-order diagonal tensor of shape {k, k}.
-    // It is stored densely, as eye and diag store theirs.
+    // TCAPI V1: sigma is a real second-order diagonal tensor of shape {kappa, kappa},
+    // kappa = min(I, J). It is stored densely, as eye and diag store theirs.
     s_diag.backend = cytnx::linalg::Diag(s_real);
 
     // Reshape V†
@@ -1216,8 +1216,8 @@ namespace tci {
     }
     u.backend = u_backend.reshape(u_cytnx_shape);
 
-    // TCAPI V1: sigma is a real second-order diagonal tensor of shape {k, k}.
-    // It is stored densely, as eye and diag store theirs.
+    // TCAPI V1: sigma is a real second-order diagonal tensor of shape {chi, chi},
+    // chi the retained count. It is stored densely, as eye and diag store theirs.
     s_diag.backend = cytnx::linalg::Diag(s_real);
 
     // Reshape V†

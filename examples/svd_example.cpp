@@ -33,7 +33,7 @@ int main() {
     // Perform SVD: treat first 2 bonds as rows, last bond as columns
     std::cout << "\nPerforming SVD (first 2 bonds as rows)...\n";
     tci::CytnxTensor<cytnx::cytnx_complex128> U, V_dag;
-    // Singular values are real; S_diag is the {k, k} diagonal tensor holding them
+    // Singular values are real; S_diag is the square diagonal tensor holding them
     tci::CytnxTensor<cytnx::cytnx_double> S_diag;
 
     tci::svd(ctx, A, 2, U, S_diag, V_dag);
