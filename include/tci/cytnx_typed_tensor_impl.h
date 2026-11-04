@@ -63,7 +63,8 @@ namespace tci {
     /// zeroth-order input beside a tensor of another shape would be summed
     /// instead of rejected. Beside a default-constructed tensor it would fail
     /// inside Cytnx's addition, with an error that names neither.
-    template <typename List> void require_rank0_all_or_none(const List& ins, const char* what) {
+    template <typename TenT>
+    void require_rank0_all_or_none(const List<CRef<TenT>>& ins, const char* what) {
       const bool first = is_rank0(ins[0].get().backend);
       for (const auto& in : ins) {
         if (is_rank0(in.get().backend) != first) {
@@ -578,9 +579,10 @@ namespace tci {
             result = result.permute(valid_perm);
           }
         }
-        // With no output labels TCAPI's result is zeroth-order, where
-        // Tensordot leaves shape {1}.
-        if (bd_labs_c.empty() && result.storage().size() == 1) {
+        // TCAPI V1: "Empty gamma yields a scalar", a zeroth-order tensor, where
+        // Tensordot leaves shape {1}. An empty output label list on a call that
+        // leaves bonds uncontracted then fails in the reshape, inside this try.
+        if (bd_labs_c.empty()) {
           detail::make_rank0_(result);
         }
         c.backend = std::move(result);
