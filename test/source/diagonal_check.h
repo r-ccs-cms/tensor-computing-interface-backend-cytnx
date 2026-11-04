@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <complex>
+#include <cstddef>
 #include <vector>
 
 // Requires `t` to be a square second-order tensor, checks that every
