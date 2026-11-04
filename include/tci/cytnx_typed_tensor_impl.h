@@ -40,8 +40,8 @@ namespace tci {
     // through that constructor and reject one the same way, and its element
     // printer faults on one. allocate builds one through new_backend; close and
     // linear_combine view one as shape {1} through as_rank1; show prints its
-    // element itself. The reshape overload taking cytnx_int64 is used throughout,
-    // because the cytnx_uint64 one indexes element 0 of the shape vector.
+    // element itself. Shapes are passed to reshape as cytnx_int64, because
+    // Tensor::reshape's cytnx_uint64 overload indexes element 0 of the vector.
 
     /// True for a zeroth-order tensor; false for a default-constructed one,
     /// whose shape is also empty but whose dtype is Void.
@@ -60,8 +60,9 @@ namespace tci {
     /// Throws std::invalid_argument when some but not all of `ins` are
     /// zeroth-order. as_rank1 views a zeroth-order input as shape {1}, which
     /// Cytnx's addition broadcasts against any other shape, so without this a
-    /// zeroth-order input beside a tensor of another shape, or beside a
-    /// default-constructed one, would be summed instead of rejected.
+    /// zeroth-order input beside a tensor of another shape would be summed
+    /// instead of rejected. Beside a default-constructed tensor it would fail
+    /// inside Cytnx's addition, with an error that names neither.
     template <typename List> void require_rank0_all_or_none(const List& ins, const char* what) {
       const bool first = is_rank0(ins[0].get().backend);
       for (const auto& in : ins) {
