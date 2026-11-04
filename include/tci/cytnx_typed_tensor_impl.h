@@ -6,6 +6,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "tci/construction_destruction.h"
@@ -37,8 +38,9 @@ namespace tci {
     // tensor: its tensor constructor rejects an empty shape ("Must at least have
     // one element"), its tensor addition and subtraction build their output
     // through that constructor and reject one the same way, and its element
-    // printer faults on one. The helpers below route those cases through
-    // shape {1}. The reshape overload taking cytnx_int64 is used throughout,
+    // printer faults on one. allocate builds one through new_backend; close and
+    // linear_combine view one as shape {1} through as_rank1; show prints its
+    // element itself. The reshape overload taking cytnx_int64 is used throughout,
     // because the cytnx_uint64 one indexes element 0 of the shape vector.
 
     /// True for a zeroth-order tensor; false for a default-constructed one,
@@ -55,14 +57,18 @@ namespace tci {
       return is_rank0(t) ? t.reshape(std::vector<cytnx::cytnx_int64>{1}) : t;
     }
 
-    /// Throws std::invalid_argument unless every input has the first one's
-    /// shape. Routing zeroth-order inputs through shape {1} bypasses the shape
-    /// check Cytnx's addition makes, so a {} input beside a {1} one would
-    /// otherwise be summed.
-    template <typename List> void require_identical_shapes(const List& ins) {
+    /// Throws std::invalid_argument when some but not all of `ins` are
+    /// zeroth-order. as_rank1 views a zeroth-order input as shape {1}, which
+    /// Cytnx's addition broadcasts against any other shape, so without this a
+    /// zeroth-order input beside a tensor of another shape, or beside a
+    /// default-constructed one, would be summed instead of rejected.
+    template <typename List> void require_rank0_all_or_none(const List& ins, const char* what) {
+      const bool first = is_rank0(ins[0].get().backend);
       for (const auto& in : ins) {
-        if (in.get().backend.shape() != ins[0].get().backend.shape()) {
-          throw std::invalid_argument("linear_combine: inputs must have identical shapes");
+        if (is_rank0(in.get().backend) != first) {
+          throw std::invalid_argument(std::string(what)
+                                      + ": a zeroth-order input requires every input to be "
+                                        "zeroth-order");
         }
       }
     }
@@ -571,8 +577,8 @@ namespace tci {
             result = result.permute(valid_perm);
           }
         }
-        // A full contraction leaves Tensordot's shape {1}; with no output
-        // labels TCAPI's result is zeroth-order.
+        // With no output labels TCAPI's result is zeroth-order, where
+        // Tensordot leaves shape {1}.
         if (bd_labs_c.empty() && result.storage().size() == 1) {
           detail::make_rank0_(result);
         }
@@ -672,7 +678,7 @@ namespace tci {
     if (ins.empty()) {
       return out;
     }
-    detail::require_identical_shapes(ins);
+    detail::require_rank0_all_or_none(ins, "linear_combine");
 
     out.backend = detail::as_rank1(ins[0].get().backend).clone();
     for (size_t i = 1; i < ins.size(); ++i) {
@@ -691,7 +697,7 @@ namespace tci {
     if (ins.empty() || ins.size() != coefs.size()) {
       return out;
     }
-    detail::require_identical_shapes(ins);
+    detail::require_rank0_all_or_none(ins, "linear_combine");
 
     out.backend = detail::as_rank1(ins[0].get().backend) * coefs[0];
     for (size_t i = 1; i < ins.size(); ++i) {

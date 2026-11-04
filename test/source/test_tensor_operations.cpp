@@ -62,6 +62,42 @@ TEST_CASE("TCI Contract - duplicate label validation") {
   tci::destroy_context(ctx);
 }
 
+TEST_CASE("TCI linear_combine - zeroth-order inputs") {
+  using Ten = tci::CytnxTensor<cytnx::cytnx_complex128>;
+  using Elem = cytnx::cytnx_complex128;
+  tci::context_handle_t<Ten> ctx;
+  tci::create_context(ctx);
+
+  auto s = tci::fill<Ten>(ctx, {}, Elem(2.0, -1.0));
+  auto t = tci::fill<Ten>(ctx, {}, Elem(0.5, 3.0));
+
+  SUBCASE("Zeroth-order inputs combine into a zeroth-order result") {
+    auto sum = tci::linear_combine<Ten>(ctx, {std::cref(s), std::cref(t)});
+    CHECK(tci::order(ctx, sum) == 0);
+    CHECK(tci::get_elem(ctx, sum, {}) == Elem(2.5, 2.0));
+
+    auto weighted
+        = tci::linear_combine<Ten>(ctx, {std::cref(s), std::cref(t)}, {Elem(0.0, 1.0), Elem(2.0)});
+    CHECK(tci::order(ctx, weighted) == 0);
+    CHECK(tci::get_elem(ctx, weighted, {}) == Elem(0.0, 1.0) * Elem(2.0, -1.0) + Elem(1.0, 6.0));
+  }
+
+  SUBCASE("A zeroth-order input beside another shape is rejected") {
+    auto one = tci::fill<Ten>(ctx, {1}, Elem(2.0, -1.0));
+    auto three = tci::fill<Ten>(ctx, {3}, Elem(1.0));
+    Ten empty;
+    CHECK_THROWS_AS(tci::linear_combine<Ten>(ctx, {std::cref(s), std::cref(one)}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(tci::linear_combine<Ten>(ctx, {std::cref(three), std::cref(s)}),
+                    std::invalid_argument);
+    CHECK_THROWS_AS(
+        tci::linear_combine<Ten>(ctx, {std::cref(s), std::cref(empty)}, {Elem(1.0), Elem(1.0)}),
+        std::invalid_argument);
+  }
+
+  tci::destroy_context(ctx);
+}
+
 TEST_CASE("TCI Stack Operations") {
   using Ten = tci::CytnxTensor<cytnx::cytnx_complex128>;
   tci::context_handle_t<Ten> ctx;
