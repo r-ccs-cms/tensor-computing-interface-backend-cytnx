@@ -580,8 +580,7 @@ namespace tci {
           }
         }
         // TCAPI V1: "Empty gamma yields a scalar", a zeroth-order tensor, where
-        // Tensordot leaves shape {1}. An empty output label list on a call that
-        // leaves bonds uncontracted then fails in the reshape, inside this try.
+        // Tensordot leaves shape {1}.
         if (bd_labs_c.empty()) {
           detail::make_rank0_(result);
         }
