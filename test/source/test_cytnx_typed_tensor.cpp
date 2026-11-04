@@ -681,9 +681,9 @@ TEST_CASE("CytnxTensor - Miscellaneous functions") {
 // eig, eigvals and to_cplx on single-precision tensors return complex64
 // storage, the element type of cplx_ten_t; complex128 storage read through a
 // complex64 tensor turns the eigenvalue 1 into an imaginary part of 1.875.
-TEST_CASE("CytnxTensor - complex results keep single precision") {
-  using Tensor = tci::CytnxTensor<cytnx::cytnx_float>;
-  using CplxTensor = tci::tensor_traits<Tensor>::cplx_ten_t;
+TEST_CASE_TEMPLATE("CytnxTensor - complex results keep single precision", Tensor,
+                   tci::CytnxTensor<cytnx::cytnx_float>, tci::CytnxTensor<cytnx::cytnx_complex64>) {
+  using CplxTensor = typename tci::tensor_traits<Tensor>::cplx_ten_t;
 
   tci::context_handle_t<Tensor> ctx;
   tci::create_context(ctx);
