@@ -33,7 +33,8 @@ int main() {
     // Perform SVD: treat first 2 bonds as rows, last bond as columns
     std::cout << "\nPerforming SVD (first 2 bonds as rows)...\n";
     tci::CytnxTensor<cytnx::cytnx_complex128> U, V_dag;
-    tci::CytnxTensor<cytnx::cytnx_double> S_diag;  // Singular values are real
+    // Singular values are real; S_diag is the {k, k} diagonal tensor holding them
+    tci::CytnxTensor<cytnx::cytnx_double> S_diag;
 
     tci::svd(ctx, A, 2, U, S_diag, V_dag);
 
@@ -66,8 +67,8 @@ int main() {
     // Show some singular values
     std::cout << "\nFirst few singular values:\n";
     for (int i = 0; i < std::min(5, static_cast<int>(S_shape[0])); ++i) {
-      auto sv = tci::get_elem(
-          ctx, S_diag, {static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_double>>>(i)});
+      const auto c = static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_double>>>(i);
+      auto sv = tci::get_elem(ctx, S_diag, {c, c});
       std::cout << "S[" << i << "] = " << sv << "\n";
     }
 

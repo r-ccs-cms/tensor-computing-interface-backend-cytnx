@@ -4,6 +4,7 @@
 #include <cytnx.hpp>
 #include <filesystem>
 
+#include "diagonal_check.h"
 #include "tci/miscellaneous.h"
 #include "tci/tci.h"
 #include "tci/tensor_linear_algebra.h"
@@ -555,13 +556,13 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
 
     // Verify dimensions
     auto u_shape = tci::shape(ctx, u);
-    auto s_shape = tci::shape(ctx, s_diag);
     auto v_shape = tci::shape(ctx, v_dag);
+    const auto svs = require_diagonal(ctx, s_diag);
 
     CHECK(u_shape[0] == 4);
     CHECK(v_shape[1] == 6);
-    CHECK(s_shape[0] == u_shape[1]);
-    CHECK(s_shape[0] == v_shape[0]);
+    CHECK(svs.size() == u_shape[1]);
+    CHECK(svs.size() == v_shape[0]);
   }
 
   SUBCASE("for_each on singular values with sqrt") {
@@ -583,10 +584,9 @@ TEST_CASE("CytnxTensor - trunc_svd operation") {
     // Apply sqrt to singular values
     CHECK_NOTHROW(tci::for_each(ctx, s_diag, [](Real& elem) { elem = std::sqrt(elem); }));
 
-    // Verify all elements are non-negative after sqrt
-    auto size = tci::size(ctx, s_diag);
-    for (size_t i = 0; i < size; ++i) {
-      auto val = tci::get_elem(ctx, s_diag, {static_cast<cytnx::cytnx_uint64>(i)});
+    // Verify the diagonal is non-negative after sqrt; sqrt keeps the
+    // off-diagonal zeros zero, which require_diagonal checks.
+    for (const double val : require_diagonal(ctx, s_diag)) {
       CHECK(val >= 0.0);
     }
   }
@@ -743,14 +743,11 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     // Perform eigendecomposition
     tci::eig(ctx, matrix, 1, eigenvals, eigenvecs);
 
-    // Check eigenvalues
-    CHECK(tci::order(ctx, eigenvals) == 1);
-    CHECK(tci::size(ctx, eigenvals) == 2);
-
-    auto eval0 = tci::get_elem(ctx, eigenvals, {0});
-    auto eval1 = tci::get_elem(ctx, eigenvals, {1});
-    CHECK(std::abs(eval0.real() - 1.0) < 1e-10);
-    CHECK(std::abs(eval1.real() - 1.0) < 1e-10);
+    // lambda_mat is the {2, 2} diagonal tensor of the eigenvalues
+    const auto evals = require_diagonal(ctx, eigenvals);
+    REQUIRE(evals.size() == 2);
+    CHECK(std::abs(evals[0] - 1.0) < 1e-10);
+    CHECK(std::abs(evals[1] - 1.0) < 1e-10);
 
     // Check eigenvectors
     CHECK(tci::order(ctx, eigenvecs) == 2);
@@ -769,14 +766,11 @@ TEST_CASE("CytnxTensor - Eigenvalue decomposition") {
     // Perform hermitian eigendecomposition
     tci::eigh(ctx, matrix, 1, eigenvals, eigenvecs);
 
-    // Check eigenvalues
-    CHECK(tci::order(ctx, eigenvals) == 1);
-    CHECK(tci::size(ctx, eigenvals) == 2);
-
-    auto eval0 = tci::get_elem(ctx, eigenvals, {0});
-    auto eval1 = tci::get_elem(ctx, eigenvals, {1});
-    CHECK(std::abs(eval0 - 1.0) < 1e-10);
-    CHECK(std::abs(eval1 - 1.0) < 1e-10);
+    // lambda_mat is the {2, 2} diagonal tensor of the eigenvalues
+    const auto evals = require_diagonal(ctx, eigenvals);
+    REQUIRE(evals.size() == 2);
+    CHECK(std::abs(evals[0] - 1.0) < 1e-10);
+    CHECK(std::abs(evals[1] - 1.0) < 1e-10);
 
     // Check eigenvectors
     CHECK(tci::order(ctx, eigenvecs) == 2);

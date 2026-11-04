@@ -33,6 +33,9 @@ TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {
   tci::transpose(context, h, {1, 0});
   Tensor v, w;
   tci::eigh(context, h, 1, w, v);
+  // eigh returns the {4, 4} diagonal lambda_mat; take its diagonal, so the
+  // exponential below maps the eigenvalues and not the off-diagonal zeros.
+  tci::diag(context, w);
 
   // Apply exponential to eigenvalues
   tci::for_each(context, w, [dt](Elem& elem) { elem = std::exp(-dt * elem); });
@@ -82,7 +85,9 @@ TEST_CASE("iTEBD Integration Test - Comprehensive TCI API Usage") {
     tci::trunc_svd(context, Theta, 2, GA_new, Lambda_new, GB_new, trunc_err,
                    static_cast<tci::bond_dim_t<Tensor>>(chi), 0.0);
 
-    // Update tensors
+    // Update tensors. Lambda keeps the singular values as a list, so take the
+    // diagonal of the {chi, chi} sigma trunc_svd returns.
+    tci::diag(context, Lambda_new);
     Gamma[A] = GA_new;
     Gamma[B] = GB_new;
     Lambda[A] = Lambda_new;

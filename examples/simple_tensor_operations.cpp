@@ -99,25 +99,28 @@ void linear_algebra_operations() {
 
   std::cout << "  SVD completed" << std::endl;
   std::cout << "    U shape: " << shape(ctx, U)[0] << "×" << shape(ctx, U)[1] << std::endl;
-  std::cout << "    S shape: " << shape(ctx, S)[0] << " (singular values)" << std::endl;
+  std::cout << "    S shape: " << shape(ctx, S)[0] << "×" << shape(ctx, S)[1]
+            << " (diagonal, singular values on the diagonal)" << std::endl;
   std::cout << "    V† shape: " << shape(ctx, V_dag)[0] << "×" << shape(ctx, V_dag)[1] << std::endl;
 
   // Print singular values
   std::cout << "  Singular values: ";
   for (size_t i = 0; i < shape(ctx, S)[0]; ++i) {
-    auto sv = get_elem(ctx, S, {static_cast<elem_coor_t<real_ten_t<Ten>>>(i)});
+    const auto c = static_cast<elem_coor_t<real_ten_t<Ten>>>(i);
+    auto sv = get_elem(ctx, S, {c, c});
     std::cout << std::setprecision(3) << sv << " ";
   }
   std::cout << std::endl;
 
   // Eigenvalue decomposition (for symmetric matrix)
-  real_ten_t<Ten> eigenvals;  // Eigenvalues are real
+  real_ten_t<Ten> eigenvals;  // Eigenvalues are real, on the diagonal of a {n, n} tensor
   Ten eigenvecs;
   eigh(ctx, A, 1, eigenvals, eigenvecs);
 
   std::cout << "  Eigenvalues: ";
   for (size_t i = 0; i < shape(ctx, eigenvals)[0]; ++i) {
-    auto ev = get_elem(ctx, eigenvals, {static_cast<elem_coor_t<real_ten_t<Ten>>>(i)});
+    const auto c = static_cast<elem_coor_t<real_ten_t<Ten>>>(i);
+    auto ev = get_elem(ctx, eigenvals, {c, c});
     std::cout << std::setprecision(3) << ev << " ";
   }
   std::cout << std::endl;

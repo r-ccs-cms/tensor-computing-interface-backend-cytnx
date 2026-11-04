@@ -781,8 +781,7 @@ namespace tci {
     // follows the input, so only a complex S needs converting — and the guard
     // has to be exactly that, because Storage::real() rejects non-complex
     // storage rather than passing it through.
-    cytnx::Tensor s_real =
-        cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
+    cytnx::Tensor s_real = cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
 
     // Reshape U
     shape_t<TenT> u_shape;
@@ -796,8 +795,9 @@ namespace tci {
     }
     u.backend = u_backend.reshape(u_cytnx_shape);
 
-    // Set S (as real tensor)
-    s_diag.backend = s_real;
+    // TCAPI V1: sigma is a real second-order diagonal tensor of shape {k, k}.
+    // It is stored densely, as eye and diag store theirs.
+    s_diag.backend = cytnx::linalg::Diag(s_real);
 
     // Reshape V†
     shape_t<TenT> v_shape;
@@ -1202,8 +1202,7 @@ namespace tci {
     }
 
     // Extract real singular values
-    cytnx::Tensor s_real =
-        cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
+    cytnx::Tensor s_real = cytnx::Type.is_complex(s_backend.dtype()) ? s_backend.real() : s_backend;
 
     // Reshape U
     shape_t<TenT> u_shape;
@@ -1217,8 +1216,9 @@ namespace tci {
     }
     u.backend = u_backend.reshape(u_cytnx_shape);
 
-    // Set S (as real tensor)
-    s_diag.backend = s_real;
+    // TCAPI V1: sigma is a real second-order diagonal tensor of shape {k, k}.
+    // It is stored densely, as eye and diag store theirs.
+    s_diag.backend = cytnx::linalg::Diag(s_real);
 
     // Reshape V†
     shape_t<TenT> v_shape;
@@ -1334,6 +1334,9 @@ namespace tci {
     if (w_diag.backend.dtype() != cytnx::Type.ComplexDouble) {
       w_diag.backend = w_diag.backend.astype(cytnx::Type.ComplexDouble);
     }
+    // TCAPI V1: lambda_mat is a complex second-order diagonal tensor of shape
+    // {I, I}, stored densely; eigvals keeps the first-order list.
+    w_diag.backend = cytnx::linalg::Diag(w_diag.backend);
 
     if (v.backend.shape().size() != 2) {
       v.backend.reshape_(
@@ -1375,6 +1378,9 @@ namespace tci {
     if (w_diag.backend.shape().size() != 1) {
       w_diag.backend.reshape_({static_cast<cytnx::cytnx_int64>(row_dim)});
     }
+    // TCAPI V1: lambda_mat is a real second-order diagonal tensor of shape
+    // {I, I}, stored densely; eigvalsh keeps the first-order list.
+    w_diag.backend = cytnx::linalg::Diag(w_diag.backend);
 
     if (v.backend.shape().size() != 2) {
       v.backend.reshape_(
