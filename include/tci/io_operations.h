@@ -59,10 +59,11 @@ namespace tci {
    * @tparam Storage Storage type (e.g., file path, memory buffer)
    * @param ctx Context handle for the tensor library
    * @param a Tensor to save
-   * @param strg Storage object to save to
+   * @param strg Storage object to save to; a temporary binds too, as the
+   * forwarding reference TCAPI V1 declares
    */
   template <typename TenT, typename Storage>
-  inline void save(context_handle_t<TenT>& ctx, const TenT& a, Storage& strg) {
+  inline void save(context_handle_t<TenT>& ctx, const TenT& a, Storage&& strg) {
     detail::storage_adapter<TenT, std::decay_t<Storage>>::save(ctx, a, strg);
   }
 

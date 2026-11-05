@@ -7,6 +7,7 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <thread>
 #include <type_traits>
@@ -25,8 +26,11 @@ namespace tci::detail {
 
     template <typename Storage> using storage_decay_t = std::decay_t<Storage>;
 
+    // TCAPI V1 requires accepting string-like inputs, std::string_view among
+    // them, which does not convert to std::string implicitly.
     template <typename Storage> inline constexpr bool is_path_storage_v
         = std::is_same_v<storage_decay_t<Storage>, std::filesystem::path>
+          || std::is_same_v<storage_decay_t<Storage>, std::string_view>
           || std::is_convertible_v<storage_decay_t<Storage>, std::string>;
 
     template <typename Storage> inline constexpr bool is_input_stream_v
@@ -48,6 +52,13 @@ namespace tci::detail {
     }
 
     inline std::filesystem::path to_path(const char* path) { return std::filesystem::path(path); }
+
+    // By value, so that for a std::string_view lvalue, const or not, this
+    // overload ties with the forwarding one below and wins as the
+    // non-template.
+    inline std::filesystem::path to_path(std::string_view path) {
+      return std::filesystem::path(path);
+    }
 
     template <typename Storage> inline std::filesystem::path to_path(Storage&& storage) {
       if constexpr (std::is_convertible_v<Storage, std::string>) {
