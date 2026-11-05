@@ -14,6 +14,8 @@
 #include <functional>
 #include <vector>
 
+#include "diagonal_check.h"
+
 TEST_CASE("Deprecated APIs produce warnings") {
   using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
   using Real = tci::real_t<Tensor>;
@@ -21,6 +23,35 @@ TEST_CASE("Deprecated APIs produce warnings") {
 
   tci::CytnxContextHandle ctx;
   tci::create_context(ctx);
+
+  // diag(1, 2), whose singular values 2 and 1 give epsilon(1) = 1 / 5. Every
+  // trunc_svd form below is called so that it keeps both: each reaches the
+  // spec's general form with chi_max of at least 2, chi_min = 1 and a target
+  // below 1 / 5. A forward passing them as chi_min, chi_max, target_trunc_err,
+  // s_min caps chi_max at 1 or discards both values, so the checks below also
+  // cover the forwards against that order.
+  auto diag_1_2 = [&ctx]() {
+    std::vector<Real> data = {1.0, 0.0, 0.0, 2.0};
+    auto coors2idx = [](const std::vector<tci::bond_dim_t<Tensor>>& coors) -> size_t {
+      return coors[0] * 2 + coors[1];
+    };
+    return tci::assign_from_range<Tensor>(ctx, {2, 2}, data.begin(), coors2idx);
+  };
+  auto check_both_kept
+      = [&ctx](const Tensor& u, const RealTensor& s_diag, const Tensor& v_dag, Real trunc_err) {
+          // CHECK rather than REQUIRE, so a wrong number of kept values leaves the later
+          // subcases running. A sigma that is not a square second-order tensor still fails
+          // require_diagonal's REQUIRE, which ends the test case, later subcases included.
+          const auto kept = require_diagonal(ctx, s_diag);
+          CHECK(kept.size() == 2);
+          if (kept.size() == 2) {
+            CHECK(kept[0] + kept[1] == doctest::Approx(3.0));
+            CHECK(kept[0] * kept[1] == doctest::Approx(2.0));
+          }
+          CHECK(tci::shape(ctx, u) == tci::shape_t<Tensor>{2, 2});
+          CHECK(tci::shape(ctx, v_dag) == tci::shape_t<Tensor>{2, 2});
+          CHECK(trunc_err == doctest::Approx(0.0));
+        };
 
   SUBCASE("deprecated: assign_from_container") {
     // This should produce a deprecation warning at compile time
@@ -61,12 +92,7 @@ TEST_CASE("Deprecated APIs produce warnings") {
   }
 
   SUBCASE("deprecated: trunc_svd old overload (1) - only s_min") {
-    // Create a simple 2x2 matrix
-    std::vector<Real> data = {1.0, 0.0, 0.0, 2.0};
-    auto coors2idx = [](const std::vector<tci::bond_dim_t<Tensor>>& coors) -> size_t {
-      return coors[0] * 2 + coors[1];
-    };
-    auto matrix = tci::assign_from_range<Tensor>(ctx, {2, 2}, data.begin(), coors2idx);
+    auto matrix = diag_1_2();
 
     Tensor u, v_dag;
     RealTensor s_diag;
@@ -75,16 +101,11 @@ TEST_CASE("Deprecated APIs produce warnings") {
     // Using deprecated API - should show warning (8 parameters)
     tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, 1e-10);
 
-    CHECK(tci::size(ctx, u) > 0);
+    check_both_kept(u, s_diag, v_dag, trunc_err);
   }
 
   SUBCASE("deprecated: trunc_svd old overload (2) - chi_max, target_trunc_err, s_min") {
-    // Create a simple 2x2 matrix
-    std::vector<Real> data = {1.0, 0.0, 0.0, 2.0};
-    auto coors2idx = [](const std::vector<tci::bond_dim_t<Tensor>>& coors) -> size_t {
-      return coors[0] * 2 + coors[1];
-    };
-    auto matrix = tci::assign_from_range<Tensor>(ctx, {2, 2}, data.begin(), coors2idx);
+    auto matrix = diag_1_2();
 
     Tensor u, v_dag;
     RealTensor s_diag;
@@ -94,16 +115,11 @@ TEST_CASE("Deprecated APIs produce warnings") {
     // s_min)
     tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, 2ULL, 1e-2, 1e-10);
 
-    CHECK(tci::size(ctx, u) > 0);
+    check_both_kept(u, s_diag, v_dag, trunc_err);
   }
 
   SUBCASE("deprecated: trunc_svd(target_trunc_err, s_min) - not a spec_v1 form") {
-    // Create a simple 2x2 matrix
-    std::vector<Real> data = {1.0, 0.0, 0.0, 2.0};
-    auto coors2idx = [](const std::vector<tci::bond_dim_t<Tensor>>& coors) -> size_t {
-      return coors[0] * 2 + coors[1];
-    };
-    auto matrix = tci::assign_from_range<Tensor>(ctx, {2, 2}, data.begin(), coors2idx);
+    auto matrix = diag_1_2();
 
     Tensor u, v_dag;
     RealTensor s_diag;
@@ -115,7 +131,23 @@ TEST_CASE("Deprecated APIs produce warnings") {
     // would come from that wrapper's own deprecation rather than this overload's.
     tci::trunc_svd<Tensor>(ctx, matrix, 1, u, s_diag, v_dag, trunc_err, 1e-2, 1e-10);
 
-    CHECK(tci::size(ctx, u) > 0);
+    check_both_kept(u, s_diag, v_dag, trunc_err);
+  }
+
+  SUBCASE("deprecated: ElemT trunc_svd - chi_max, s_min, chi_min, target_trunc_err") {
+    auto matrix = diag_1_2();
+
+    Tensor u, v_dag;
+    RealTensor s_diag;
+    Real trunc_err;
+
+    // Using deprecated API - should show warning. Left to deduction, the call picks the ElemT
+    // wrapper over the TenT form, as the subcase above notes.
+    tci::trunc_svd(ctx, matrix, 1, u, s_diag, v_dag, trunc_err,
+                   static_cast<tci::bond_dim_t<Tensor>>(2), static_cast<Real>(1e-10),
+                   static_cast<tci::bond_dim_t<Tensor>>(1), static_cast<Real>(1e-2));
+
+    check_both_kept(u, s_diag, v_dag, trunc_err);
   }
 
   // Note: get_elem void overload is not deprecated, it's reserved for future GPU support

@@ -949,17 +949,17 @@ namespace tci {
     // Call full version with chi_min=1, target_trunc_err=0
     constexpr bond_dim_t<TenT> chi_min = 1;
     constexpr real_t<TenT> target_trunc_err = 0.0;
-    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
-              target_trunc_err, s_min);
+    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_max, s_min, chi_min,
+              target_trunc_err);
   }
 
-  // Truncated SVD - (chi_min, chi_max, target_trunc_err, s_min). The spec's
+  // Truncated SVD - (chi_max, s_min, chi_min, target_trunc_err). The spec's
   // general truncation strategy; the (chi_max, s_min) form above delegates to it.
   template <typename TenT>
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
-                 const bond_dim_t<TenT> chi_min, const bond_dim_t<TenT> chi_max,
-                 const real_t<TenT> target_trunc_err, const real_t<TenT> s_min) {
+                 const bond_dim_t<TenT> chi_max, const real_t<TenT> s_min,
+                 const bond_dim_t<TenT> chi_min, const real_t<TenT> target_trunc_err) {
     // Get shape and compute matrix dimensions
     auto a_shape = shape(ctx, a);
     cytnx::cytnx_uint64 left_dim = 1;
