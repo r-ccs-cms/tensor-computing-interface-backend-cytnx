@@ -146,9 +146,9 @@ template <typename Ten> std::pair<cytnx::cytnx_uint64, tci::real_t<Ten>> trunc_s
   Ten u, v_dag;
   tci::real_ten_t<Ten> s_diag;
   tci::real_t<Ten> trunc_err;
-  tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(1),
-                 static_cast<tci::bond_dim_t<Ten>>(chi_max), static_cast<tci::real_t<Ten>>(target),
-                 static_cast<tci::real_t<Ten>>(0.0));
+  tci::trunc_svd(ctx, a, 1, u, s_diag, v_dag, trunc_err, static_cast<tci::bond_dim_t<Ten>>(chi_max),
+                 static_cast<tci::real_t<Ten>>(0.0), static_cast<tci::bond_dim_t<Ten>>(1),
+                 static_cast<tci::real_t<Ten>>(target));
   const auto kept = require_diagonal(ctx, s_diag);
   return {static_cast<cytnx::cytnx_uint64>(kept.size()), trunc_err};
 }

@@ -634,12 +634,12 @@ namespace tci {
                  const order_t<CytnxTensor<ElemT>> num_of_bds_as_row, CytnxTensor<ElemT>& u,
                  real_ten_t<CytnxTensor<ElemT>>& s_diag, CytnxTensor<ElemT>& v_dag,
                  real_t<CytnxTensor<ElemT>>& trunc_err,
-                 const bond_dim_t<CytnxTensor<ElemT>> chi_min,
                  const bond_dim_t<CytnxTensor<ElemT>> chi_max,
-                 const real_t<CytnxTensor<ElemT>> target_trunc_err,
-                 const real_t<CytnxTensor<ElemT>> s_min) {
-    trunc_svd<CytnxTensor<ElemT>>(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min,
-                                  chi_max, target_trunc_err, s_min);
+                 const real_t<CytnxTensor<ElemT>> s_min,
+                 const bond_dim_t<CytnxTensor<ElemT>> chi_min,
+                 const real_t<CytnxTensor<ElemT>> target_trunc_err) {
+    trunc_svd<CytnxTensor<ElemT>>(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_max,
+                                  s_min, chi_min, target_trunc_err);
   }
 
   // ElemT wrappers whose TenT counterpart is itself deprecated (old parameter orders, and forms
@@ -681,23 +681,23 @@ namespace tci {
   // Deprecated: Old trunc_svd overload (1) - only s_min
   template <typename TenT> [[deprecated(
       "Parameter order changed. Use trunc_svd(..., trunc_err, chi_max, s_min) or trunc_svd(..., "
-      "trunc_err, chi_min, chi_max, target_trunc_err, s_min). This API will be removed in the next "
+      "trunc_err, chi_max, s_min, chi_min, target_trunc_err). This API will be removed in the next "
       "major version")]]
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
                  const real_t<TenT> s_min) {
-    // Forward to spec_v1 overload (1) with chi_min=1, target_trunc_err=0
+    // Forward to spec_v1 overload (2) with chi_min=1, target_trunc_err=0
     constexpr bond_dim_t<TenT> chi_min = 1;
     constexpr real_t<TenT> target_trunc_err = 0.0;
-    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min,
-              static_cast<bond_dim_t<TenT>>(std::numeric_limits<std::uint64_t>::max()),
-              target_trunc_err, s_min);
+    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err,
+              static_cast<bond_dim_t<TenT>>(std::numeric_limits<std::uint64_t>::max()), s_min,
+              chi_min, target_trunc_err);
   }
 
   // Deprecated: Old trunc_svd overload (2) - chi_max, target_trunc_err, s_min
   template <typename TenT> [[deprecated(
       "Parameter order changed. Use trunc_svd(..., trunc_err, chi_max, s_min) or trunc_svd(..., "
-      "trunc_err, chi_min, chi_max, target_trunc_err, s_min). This API will be removed in the next "
+      "trunc_err, chi_max, s_min, chi_min, target_trunc_err). This API will be removed in the next "
       "major version")]]
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
@@ -705,25 +705,25 @@ namespace tci {
                  const real_t<TenT> s_min) {
     // Forward to spec_v1 overload (2) with chi_min=1
     constexpr bond_dim_t<TenT> chi_min = 1;
-    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
-              target_trunc_err, s_min);
+    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_max, s_min, chi_min,
+              target_trunc_err);
   }
 
   // Deprecated: trunc_svd(target_trunc_err, s_min) - not a spec_v1 form
   template <typename TenT> [[deprecated(
       "Not a TCI spec form. Its (target_trunc_err, s_min) tail collides with the spec's "
       "(chi_max, s_min) tail, so wherever both are declared the spec-shaped call is ambiguous "
-      "for an integer literal. Use trunc_svd(..., trunc_err, chi_min, chi_max, target_trunc_err, "
-      "s_min). This API will be removed in the next major version")]]
+      "for an integer literal. Use trunc_svd(..., trunc_err, chi_max, s_min, chi_min, "
+      "target_trunc_err). This API will be removed in the next major version")]]
   void trunc_svd(context_handle_t<TenT>& ctx, const TenT& a, const order_t<TenT> num_of_bds_as_row,
                  TenT& u, real_ten_t<TenT>& s_diag, TenT& v_dag, real_t<TenT>& trunc_err,
                  const real_t<TenT> target_trunc_err, const real_t<TenT> s_min) {
-    // Forward to the (chi_min, chi_max, target_trunc_err, s_min) form, capping chi_max at the
+    // Forward to the (chi_max, s_min, chi_min, target_trunc_err) form, capping chi_max at the
     // largest representable bond dimension rather than leaving it unconstrained.
     constexpr bond_dim_t<TenT> chi_min = 1;
     constexpr bond_dim_t<TenT> chi_max = std::numeric_limits<bond_dim_t<TenT>>::max();
-    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_min, chi_max,
-              target_trunc_err, s_min);
+    trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err, chi_max, s_min, chi_min,
+              target_trunc_err);
   }
 
   template <typename ElemT, std::enable_if_t<!detail::is_cytnx_tensor_v<ElemT>, int> = 0>

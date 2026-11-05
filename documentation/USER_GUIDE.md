@@ -344,11 +344,11 @@ using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
 Tensor U, V_dag;
 real_ten_t<Tensor> S;
 real_t<Tensor> trunc_error = 0.0;
-size_t chi_min = 1, chi_max = 64;
-double error_threshold = 1e-12;
+size_t chi_max = 64, chi_min = 1;
+double s_min = 1e-12, target_trunc_err = 1e-12;
 
 trunc_svd(ctx, large_tensor, 1, U, S, V_dag, trunc_error,
-          chi_min, chi_max, error_threshold, error_threshold);
+          chi_max, s_min, chi_min, target_trunc_err);
 
 std::cout << "Truncation error: " << trunc_error << std::endl;
 ```

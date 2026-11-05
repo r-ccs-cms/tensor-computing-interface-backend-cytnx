@@ -2,6 +2,7 @@
 
 #include <complex>
 #include <cytnx.hpp>
+#include <tuple>
 
 #include "tci/context_handle.h"
 #include "tci/cytnx_typed_tensor.h"
@@ -91,5 +92,15 @@ namespace tci {
 
     using context_handle_t = CytnxContextHandle;
   };
+
+  /**
+   * @brief The spec's compile-time catalog of this backend's tensor types
+   *
+   * The four element types CytnxTensor is built for, so every type's real_ten_t and cplx_ten_t
+   * is in the catalog too.
+   */
+  using supported_ten_types_t
+      = std::tuple<CytnxTensor<cytnx::cytnx_float>, CytnxTensor<cytnx::cytnx_double>,
+                   CytnxTensor<cytnx::cytnx_complex64>, CytnxTensor<cytnx::cytnx_complex128>>;
 
 }  // namespace tci
