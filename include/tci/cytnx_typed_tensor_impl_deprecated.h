@@ -690,8 +690,7 @@ namespace tci {
     constexpr bond_dim_t<TenT> chi_min = 1;
     constexpr real_t<TenT> target_trunc_err = 0.0;
     trunc_svd(ctx, a, num_of_bds_as_row, u, s_diag, v_dag, trunc_err,
-              static_cast<bond_dim_t<TenT>>(std::numeric_limits<std::uint64_t>::max()), s_min,
-              chi_min, target_trunc_err);
+              std::numeric_limits<bond_dim_t<TenT>>::max(), s_min, chi_min, target_trunc_err);
   }
 
   // Deprecated: Old trunc_svd overload (2) - chi_max, target_trunc_err, s_min
