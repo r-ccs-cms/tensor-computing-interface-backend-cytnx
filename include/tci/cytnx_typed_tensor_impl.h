@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cytnx.hpp>
 #include <iostream>
@@ -1400,26 +1401,24 @@ namespace tci {
       return false;
     }
 
-    // Calculate the difference between tensors
+    // TCAPI V1, which requires epsilon >= 0: the comparison succeeds iff the
+    // shapes match and max_i |a_i - b_i| <= epsilon, |.| the modulus for
+    // complex elements. Testing every element against epsilon, rather than
+    // taking a maximum first, also makes a NaN difference fail the comparison.
+    // The magnitudes are read through a host pointer, so they move to the CPU
+    // first, as svd's singular values do.
     cytnx::Tensor diff = detail::as_rank1(a.backend) - detail::as_rank1(b.backend);
-
-    // Calculate the Frobenius norm of the difference
-    auto norm_result = cytnx::linalg::Norm(diff);
-
-    // Extract the scalar value
-    double diff_norm;
-    if (norm_result.dtype() == cytnx::Type.Double) {
-      diff_norm = static_cast<double>(norm_result.at({0}).real());
-    } else if (norm_result.dtype() == cytnx::Type.ComplexDouble) {
-      diff_norm = static_cast<double>(norm_result.at({0}).real());
-    } else {
-      auto converted = norm_result.astype(cytnx::Type.Double);
-      diff_norm = static_cast<double>(converted.at({0}).real());
+    cytnx::Tensor magnitude
+        = cytnx::linalg::Abs(diff).astype(cytnx::Type.Double).to(cytnx::Device.cpu).contiguous();
+    const double eps_magnitude = std::abs(static_cast<double>(epsilon));
+    const auto count = static_cast<cytnx::cytnx_uint64>(magnitude.storage().size());
+    const auto* m = magnitude.storage().template data<double>();
+    for (cytnx::cytnx_uint64 i = 0; i < count; ++i) {
+      if (!(m[i] <= eps_magnitude)) {
+        return false;
+      }
     }
-
-    // Compare with epsilon tolerance
-    double eps_magnitude = std::abs(epsilon);
-    return diff_norm <= eps_magnitude;
+    return true;
   }
 
   // Tensor Manipulation functions - independent implementations needed

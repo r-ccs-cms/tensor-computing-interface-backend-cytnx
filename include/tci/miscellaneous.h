@@ -86,14 +86,14 @@ namespace tci {
    *
    * Returns true if two tensors a and b have the same shape and are close to each other
    * within the deviation epsilon for all the elements, and returns false otherwise.
-   * The deviation is measured by |A_ijk... - B_ijk...|, and epsilon should be a real positive
-   * number.
+   * The deviation is measured by |A_ijk... - B_ijk...|, the modulus for complex elements, and
+   * epsilon should be a real non-negative number.
    *
    * @tparam TenT Tensor type
    * @param ctx Context handle for the tensor library
    * @param a First tensor
    * @param b Second tensor
-   * @param epsilon Tolerance for comparison (real positive number)
+   * @param epsilon Tolerance for comparison (real non-negative number)
    * @return bool True if tensors are close within tolerance
    */
   template <typename TenT>

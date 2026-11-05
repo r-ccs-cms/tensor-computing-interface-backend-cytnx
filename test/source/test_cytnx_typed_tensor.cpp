@@ -3,6 +3,9 @@
 #include <complex>
 #include <cytnx.hpp>
 #include <filesystem>
+#include <limits>
+#include <string>
+#include <string_view>
 
 #include "diagonal_check.h"
 #include "tci/miscellaneous.h"
@@ -919,4 +922,67 @@ TEST_CASE("CytnxTensor - I/O Operations") {
     // Clean up
     std::filesystem::remove(test_file);
   }
+
+  SUBCASE("save and load - std::string_view and temporaries") {
+    // TCAPI V1 declares save's storage a forwarding reference and requires
+    // string-like inputs, std::string_view among them, to be accepted. The
+    // view below ends before its buffer does.
+    const std::string buffer = "test_cytnx_tensor_save_load_view.cytn.not_this_one";
+    const std::string_view path = std::string_view(buffer).substr(0, buffer.find(".not"));
+    Tensor original;
+    tci::allocate(ctx, {2}, original);
+    tci::set_elem(ctx, original, {0}, 1.5);
+    tci::set_elem(ctx, original, {1}, -2.5);
+
+    // Each save starts without the file, so a save that writes nothing fails.
+    auto check_saved = [&](auto&& save_storage) {
+      std::filesystem::remove(std::string(path));
+      tci::save(ctx, original, std::forward<decltype(save_storage)>(save_storage));
+      CHECK(std::filesystem::exists(std::string(path)));
+      Tensor loaded = tci::load<Tensor>(ctx, path);
+      CHECK(tci::get_elem(ctx, loaded, {0}) == 1.5);
+      CHECK(tci::get_elem(ctx, loaded, {1}) == -2.5);
+    };
+    check_saved(path);
+    check_saved(std::string_view(path));
+    check_saved(std::string(path));
+
+    std::filesystem::remove(std::string(path));
+  }
+}
+
+// TCAPI V1: close succeeds iff the shapes match and max_i |a_i - b_i| <=
+// epsilon, |.| the modulus for complex elements. Two differences of 0.375
+// against epsilon 0.5 pass, though their Frobenius norm, about 0.53, does not.
+TEST_CASE_TEMPLATE("CytnxTensor - close compares the largest difference", Tensor,
+                   tci::CytnxTensor<cytnx::cytnx_double>,
+                   tci::CytnxTensor<cytnx::cytnx_complex64>) {
+  using Elem = tci::elem_t<Tensor>;
+  tci::context_handle_t<Tensor> ctx;
+  tci::create_context(ctx);
+  auto zero = tci::zeros<Tensor>(ctx, {2});
+  auto other = tci::zeros<Tensor>(ctx, {2});
+  tci::set_elem(ctx, other, {0}, Elem(0.375));
+  tci::set_elem(ctx, other, {1}, Elem(0.375));
+  CHECK(tci::close(ctx, zero, other, 0.5));
+  CHECK_FALSE(tci::close(ctx, zero, other, 0.25));
+
+  // A difference equal to epsilon passes.
+  tci::set_elem(ctx, other, {1}, Elem(0.5));
+  CHECK(tci::close(ctx, zero, other, 0.5));
+  CHECK_FALSE(tci::close(ctx, zero, other, 0.4375));
+
+  tci::set_elem(ctx, other, {1}, Elem(std::numeric_limits<double>::quiet_NaN()));
+  CHECK_FALSE(tci::close(ctx, zero, other, 0.5));
+
+  // A complex difference is measured by its modulus: 0.375 + 0.5i has 0.625,
+  // above 0.6 though each part is below it, and below 0.7 though their sum
+  // is above it.
+  if constexpr (!std::is_floating_point_v<Elem>) {
+    tci::set_elem(ctx, other, {1}, Elem(0.375, 0.5));
+    tci::set_elem(ctx, other, {0}, Elem(0.0));
+    CHECK_FALSE(tci::close(ctx, zero, other, 0.6));
+    CHECK(tci::close(ctx, zero, other, 0.7));
+  }
+  tci::destroy_context(ctx);
 }
