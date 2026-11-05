@@ -39,7 +39,9 @@ TEST_CASE("Deprecated APIs produce warnings") {
   };
   auto check_both_kept
       = [&ctx](const Tensor& u, const RealTensor& s_diag, const Tensor& v_dag, Real trunc_err) {
-          // CHECK rather than REQUIRE, so a failure leaves the later subcases running.
+          // CHECK rather than REQUIRE, so a wrong number of kept values leaves the later
+          // subcases running. A sigma that is not a square second-order tensor still fails
+          // require_diagonal's REQUIRE, which ends the test case, later subcases included.
           const auto kept = require_diagonal(ctx, s_diag);
           CHECK(kept.size() == 2);
           if (kept.size() == 2) {
