@@ -1,6 +1,6 @@
 #pragma once
 
-namespace tci {
+namespace tcapi {
 
   // Forward declarations
   template <typename ContextHandleT> void create_context(ContextHandleT& ctx);
@@ -47,4 +47,4 @@ namespace tci {
     int get() const { return value_; }
   };
 
-}  // namespace tci
+}  // namespace tcapi

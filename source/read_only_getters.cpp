@@ -1,6 +1,6 @@
-#include "tci/read_only_getters.h"
+#include "tcapi/read_only_getters.h"
 
-namespace tci {
+namespace tcapi {
   // All cytnx::Tensor specializations removed
   // CytnxTensor<ElemT> implementations are in cytnx_typed_tensor_impl.h
-}  // namespace tci
+}  // namespace tcapi

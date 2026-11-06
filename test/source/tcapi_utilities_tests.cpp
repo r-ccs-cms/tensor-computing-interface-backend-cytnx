@@ -1,11 +1,11 @@
 #include <doctest/doctest.h>
-#include <tci/tci.h>
+#include <tcapi/tcapi.h>
 
 #include <complex>
 #include <vector>
 
-TEST_CASE("TCI_VERBOSE Environment Variable Support") {
-  using namespace tci::debug;
+TEST_CASE("TCAPI_VERBOSE Environment Variable Support") {
+  using namespace tcapi::debug;
 
   SUBCASE("Default verbose level (no environment variable)") {
     CHECK(get_verbose_level() >= 0);
@@ -31,9 +31,9 @@ TEST_CASE("TCI_VERBOSE Environment Variable Support") {
   }
 }
 
-TEST_CASE("Integration with TCI_VERBOSE") {
-  using Ten = tci::CytnxTensor<cytnx::cytnx_complex128>;
-  using namespace tci;
+TEST_CASE("Integration with TCAPI_VERBOSE") {
+  using Ten = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+  using namespace tcapi;
 
   context_handle_t<Ten> ctx;
   create_context(ctx);

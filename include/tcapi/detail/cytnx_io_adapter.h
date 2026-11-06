@@ -13,14 +13,14 @@
 #include <type_traits>
 #include <utility>
 
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/tensor_traits.h"
+#include "tcapi/cytnx_tensor_traits.h"
+#include "tcapi/tensor_traits.h"
 
-namespace tci {
+namespace tcapi {
   template <typename ElemT> class CytnxTensor;
 }
 
-namespace tci::detail {
+namespace tcapi::detail {
 
   namespace {
 
@@ -74,7 +74,7 @@ namespace tci::detail {
         std::error_code ec;
         std::filesystem::create_directories(parent, ec);
         if (ec) {
-          throw std::runtime_error("tci::save failed to create directories: " + ec.message());
+          throw std::runtime_error("tcapi::save failed to create directories: " + ec.message());
         }
       }
     }
@@ -93,7 +93,7 @@ namespace tci::detail {
         ec.clear();
         std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing, ec);
         if (ec) {
-          throw std::runtime_error("tci::save failed to finalize file move: " + ec.message());
+          throw std::runtime_error("tcapi::save failed to finalize file move: " + ec.message());
         }
         remove_file_silent(from);
       }
@@ -101,7 +101,7 @@ namespace tci::detail {
 
     inline std::filesystem::path make_temp_cytn_file() {
       auto base = std::filesystem::temp_directory_path()
-                  / ("tci-io-"
+                  / ("tcapi-io-"
                      + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id())));
       base.replace_extension(".cytn");
       return base;
@@ -110,11 +110,11 @@ namespace tci::detail {
     inline void copy_stream_to_file(std::istream& in, const std::filesystem::path& path) {
       std::ofstream out(path, std::ios::binary | std::ios::trunc);
       if (!out.is_open()) {
-        throw std::runtime_error("tci::load failed to open temporary file for writing");
+        throw std::runtime_error("tcapi::load failed to open temporary file for writing");
       }
       out << in.rdbuf();
       if (!out) {
-        throw std::runtime_error("tci::load failed while writing to temporary file");
+        throw std::runtime_error("tcapi::load failed while writing to temporary file");
       }
       out.close();
     }
@@ -122,18 +122,18 @@ namespace tci::detail {
     inline void copy_file_to_stream(const std::filesystem::path& path, std::ostream& out) {
       std::ifstream in(path, std::ios::binary);
       if (!in.is_open()) {
-        throw std::runtime_error("tci::save failed to open temporary file for reading");
+        throw std::runtime_error("tcapi::save failed to open temporary file for reading");
       }
       out << in.rdbuf();
       if (!out) {
-        throw std::runtime_error("tci::save failed while streaming tensor contents");
+        throw std::runtime_error("tcapi::save failed while streaming tensor contents");
       }
     }
 
     inline void load_from_path(const std::filesystem::path& path, cytnx::Tensor& a) {
       std::error_code ec;
       if (!std::filesystem::exists(path, ec)) {
-        throw std::runtime_error("tci::load could not find file: " + path.string());
+        throw std::runtime_error("tcapi::load could not find file: " + path.string());
       }
 
       auto loaded = cytnx::Tensor::Load(path.string());
@@ -221,7 +221,7 @@ namespace tci::detail {
     template <typename StorageLike> static void save(context_handle_t<CytnxTensor<ElemT>>&,
                                                      const CytnxTensor<ElemT>&, StorageLike&) {
       static_assert(dependent_false_v<StorageLike>,
-                    "tci::save does not support input stream storage types");
+                    "tcapi::save does not support input stream storage types");
     }
   };
 
@@ -232,13 +232,13 @@ namespace tci::detail {
     template <typename StorageLike>
     static void load(context_handle_t<CytnxTensor<ElemT>>&, StorageLike&&, CytnxTensor<ElemT>&) {
       static_assert(dependent_false_v<StorageLike>,
-                    "tci::load does not support output stream storage types");
+                    "tcapi::load does not support output stream storage types");
     }
 
     template <typename StorageLike>
     static CytnxTensor<ElemT> load_out(context_handle_t<CytnxTensor<ElemT>>&, StorageLike&&) {
       static_assert(dependent_false_v<StorageLike>,
-                    "tci::load does not support output stream storage types");
+                    "tcapi::load does not support output stream storage types");
     }
 
     template <typename StorageLike> static void save(context_handle_t<CytnxTensor<ElemT>>& ctx,
@@ -257,4 +257,4 @@ namespace tci::detail {
     }
   };
 
-}  // namespace tci::detail
+}  // namespace tcapi::detail

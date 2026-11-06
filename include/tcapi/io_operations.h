@@ -3,9 +3,9 @@
 #include <type_traits>
 #include <utility>
 
-#include "tci/tensor_traits.h"
+#include "tcapi/tensor_traits.h"
 
-namespace tci {
+namespace tcapi {
 
   namespace detail {
 
@@ -18,7 +18,7 @@ namespace tci {
       template <typename StorageLike>
       static void load(context_handle_t<TenT>&, StorageLike&&, TenT&) {
         static_assert(dependent_false_v<TenT, StorageLike>,
-                      "Unsupported storage type for tci::load");
+                      "Unsupported storage type for tcapi::load");
       }
 
       template <typename StorageLike>
@@ -31,7 +31,7 @@ namespace tci {
       template <typename StorageLike>
       static void save(context_handle_t<TenT>&, const TenT&, StorageLike&) {
         static_assert(dependent_false_v<TenT, StorageLike>,
-                      "Unsupported storage type for tci::save");
+                      "Unsupported storage type for tcapi::save");
       }
     };
 
@@ -67,6 +67,6 @@ namespace tci {
     detail::storage_adapter<TenT, std::decay_t<Storage>>::save(ctx, a, strg);
   }
 
-}  // namespace tci
+}  // namespace tcapi
 
-#include "tci/detail/cytnx_io_adapter.h"
+#include "tcapi/detail/cytnx_io_adapter.h"

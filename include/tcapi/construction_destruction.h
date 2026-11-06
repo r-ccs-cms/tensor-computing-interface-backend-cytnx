@@ -5,12 +5,12 @@
 #include <type_traits>
 #include <utility>
 
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/read_only_getters.h"
-#include "tci/tensor_manipulation.h"
-#include "tci/tensor_traits.h"
+#include "tcapi/cytnx_tensor_traits.h"
+#include "tcapi/read_only_getters.h"
+#include "tcapi/tensor_manipulation.h"
+#include "tcapi/tensor_traits.h"
 
-namespace tci {
+namespace tcapi {
 
   /**
    * @brief Allocate memory for a tensor with given shape
@@ -189,4 +189,4 @@ namespace tci {
    */
   template <typename TenT> void clear(context_handle_t<TenT>& ctx, TenT& a);
 
-}  // namespace tci
+}  // namespace tcapi

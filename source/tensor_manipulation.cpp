@@ -1,6 +1,6 @@
-#include "tci/tensor_manipulation.h"
+#include "tcapi/tensor_manipulation.h"
 
-namespace tci {
+namespace tcapi {
   // All cytnx::Tensor specializations removed
   // CytnxTensor<ElemT> implementations are in cytnx_typed_tensor_impl.h
-}  // namespace tci
+}  // namespace tcapi

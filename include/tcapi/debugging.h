@@ -4,11 +4,11 @@
 #include <iostream>
 #include <string>
 
-namespace tci {
+namespace tcapi {
   namespace debug {
 
     /**
-     * @brief Get the current TCI_VERBOSE level from environment variable
+     * @brief Get the current TCAPI_VERBOSE level from environment variable
      *
      * @return int Verbose level: 0 = no output, 1 = function calls, 2 = timing info
      */
@@ -45,22 +45,22 @@ namespace tci {
     };
 
 /**
- * @brief Macro for automatic function timing when TCI_VERBOSE >= 2
+ * @brief Macro for automatic function timing when TCAPI_VERBOSE >= 2
  */
-#define TCI_TIME_FUNCTION(name)             \
-  tci::debug::Timer timer(name);            \
-  if (tci::debug::is_verbose(1)) {          \
-    tci::debug::print_function_entry(name); \
+#define TCAPI_TIME_FUNCTION(name)             \
+  tcapi::debug::Timer timer(name);            \
+  if (tcapi::debug::is_verbose(1)) {          \
+    tcapi::debug::print_function_entry(name); \
   }
 
 /**
  * @brief Macro for timing with tensor information
  */
-#define TCI_TIME_FUNCTION_WITH_INFO(name, info)   \
-  tci::debug::Timer timer(name);                  \
-  if (tci::debug::is_verbose(1)) {                \
-    tci::debug::print_function_entry(name, info); \
+#define TCAPI_TIME_FUNCTION_WITH_INFO(name, info)   \
+  tcapi::debug::Timer timer(name);                  \
+  if (tcapi::debug::is_verbose(1)) {                \
+    tcapi::debug::print_function_entry(name, info); \
   }
 
   }  // namespace debug
-}  // namespace tci
+}  // namespace tcapi

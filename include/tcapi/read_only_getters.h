@@ -2,10 +2,10 @@
 
 #include <cytnx.hpp>
 
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/tensor_traits.h"
+#include "tcapi/cytnx_tensor_traits.h"
+#include "tcapi/tensor_traits.h"
 
-namespace tci {
+namespace tcapi {
 
   /**
    * @brief Get the order (number of dimensions) of a tensor
@@ -71,4 +71,4 @@ namespace tci {
   template <typename TenT> elem_t<TenT> get_elem(context_handle_t<TenT>& ctx, const TenT& a,
                                                  const elem_coors_t<TenT>& coors);
 
-}  // namespace tci
+}  // namespace tcapi

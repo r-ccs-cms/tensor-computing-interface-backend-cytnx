@@ -1,4 +1,4 @@
-# Linux + Intel oneAPI toolchain for TCI project
+# Linux + Intel oneAPI toolchain for TCAPI project
 # Uses environment variables set by 'module load intel/oneapi' or similar
 # Requires: CC=icx, CXX=icpx, MKLROOT to be set in environment
 

@@ -1,11 +1,11 @@
-# TCI (Tensor Computing Interface) - Cytnx Backend
+# TCAPI (Tensor Computing Application Programming Interface) - Cytnx Backend
 
-[TCI (Tensor Computing Interface)](https://arxiv.org/abs/2512.23917) is a universal C++ interface for tensor computing libraries. This repository provides the Cytnx backend implementation, allowing TCI APIs to work with the [Cytnx](https://github.com/Cytnx-dev/Cytnx) tensor library.
+[TCAPI (Tensor Computing Application Programming Interface)](https://arxiv.org/abs/2512.23917) is a universal C++ interface for tensor computing libraries. This repository provides the Cytnx backend implementation, allowing TCAPI APIs to work with the [Cytnx](https://github.com/Cytnx-dev/Cytnx) tensor library.
 
 ## C++ Standard Requirements
 
 - **Public API**: C++17 compatible — no C++20 features leak into user-facing headers
-- **TCI build**: C++20 (required by Cytnx headers)
+- **TCAPI build**: C++20 (required by Cytnx headers)
 
 ## Dependencies
 
@@ -26,8 +26,8 @@
 ### 1. Clone with Submodules
 
 ```bash
-git clone --recursive https://github.com/r-ccs-cms/tensor-computing-interface-backend-cytnx.git
-cd tensor-computing-interface-backend-cytnx
+git clone --recursive https://github.com/r-ccs-cms/tcapi-backend-cytnx.git
+cd tcapi-backend-cytnx
 ```
 
 ### 2. Install Dependencies
@@ -81,7 +81,7 @@ cmake -S . -B build \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_STANDARD=20 \
   -DBUILD_PYTHON=OFF \
-  -DTCI_BUILD_TESTS=ON
+  -DTCAPI_BUILD_TESTS=ON
 
 cmake --build build --parallel 8
 ```
@@ -90,25 +90,25 @@ cmake --build build --parallel 8
 
 ```bash
 # All tests
-./build-debug/test/TCITests
+./build-debug/test/TCAPITests
 
 # Specific test cases
-./build-debug/test/TCITests --test-case="*template*"
+./build-debug/test/TCAPITests --test-case="*template*"
 ```
 
 ## Disabling the Deprecated API
 
-Define `TCI_NO_DEPRECATED_API` to suppress deprecated `template <typename ElemT>` overloads:
+Define `TCAPI_NO_DEPRECATED_API` to suppress deprecated `template <typename ElemT>` overloads:
 
 ```cpp
-#define TCI_NO_DEPRECATED_API
-#include "tci/tci.h"
+#define TCAPI_NO_DEPRECATED_API
+#include "tcapi/tcapi.h"
 ```
 
 Or via CMake:
 
 ```bash
-target_compile_definitions(your_target PRIVATE TCI_NO_DEPRECATED_API)
+target_compile_definitions(your_target PRIVATE TCAPI_NO_DEPRECATED_API)
 ```
 
 ## Usage Example
@@ -116,24 +116,24 @@ target_compile_definitions(your_target PRIVATE TCI_NO_DEPRECATED_API)
 ### Basic Usage with CytnxTensor
 
 ```cpp
-#include "tci/tci.h"
+#include "tcapi/tcapi.h"
 
 int main() {
-    using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+    using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
 
-    tci::context_handle_t<Tensor> ctx;
-    tci::create_context(ctx);
+    tcapi::context_handle_t<Tensor> ctx;
+    tcapi::create_context(ctx);
 
-    Tensor a = tci::zeros<Tensor>(ctx, {3, 4});
-    Tensor b = tci::eye<Tensor>(ctx, 3);
+    Tensor a = tcapi::zeros<Tensor>(ctx, {3, 4});
+    Tensor b = tcapi::eye<Tensor>(ctx, 3);
 
     Tensor c;
-    tci::copy(ctx, a, c);
-    auto norm_val = tci::norm(ctx, b);
+    tcapi::copy(ctx, a, c);
+    auto norm_val = tcapi::norm(ctx, b);
 
-    tci::show(ctx, b);
+    tcapi::show(ctx, b);
 
-    tci::destroy_context(ctx);
+    tcapi::destroy_context(ctx);
     return 0;
 }
 ```
@@ -141,35 +141,35 @@ int main() {
 ### Element-wise Arithmetic
 
 ```cpp
-#include "tci/tci.h"
+#include "tcapi/tcapi.h"
 
 int main() {
-    using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-    using Elem = tci::elem_t<Tensor>;  // std::complex<double>
+    using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+    using Elem = tcapi::elem_t<Tensor>;  // std::complex<double>
 
-    tci::context_handle_t<Tensor> ctx;
-    tci::create_context(ctx);
+    tcapi::context_handle_t<Tensor> ctx;
+    tcapi::create_context(ctx);
 
     Tensor tensor;
-    tci::allocate(ctx, {100, 100}, tensor);
+    tcapi::allocate(ctx, {100, 100}, tensor);
 
-    tci::for_each(ctx, tensor, [](Elem& elem) {
+    tcapi::for_each(ctx, tensor, [](Elem& elem) {
         elem = std::sqrt(elem) * 2.0;
         elem = elem / std::abs(elem);
     });
 
-    tci::destroy_context(ctx);
+    tcapi::destroy_context(ctx);
     return 0;
 }
 ```
 
-- `CytnxTensor<ElemT>` fixes the element type at compile time, so `tci::elem_t<Tensor>` resolves to `ElemT` and supports direct arithmetic.
+- `CytnxTensor<ElemT>` fixes the element type at compile time, so `tcapi::elem_t<Tensor>` resolves to `ElemT` and supports direct arithmetic.
 - The wrapper exposes the underlying Cytnx tensor via `Tensor::backend` when lower-level Cytnx APIs are required.
 
 ### Compiling User Code (C++17)
 
 ```bash
-g++ -std=c++17 -I<tci-install>/include your_code.cpp -lTCI -lcytnx
+g++ -std=c++17 -I<tcapi-install>/include your_code.cpp -lTCAPI -lcytnx
 ```
 
 ## Documentation

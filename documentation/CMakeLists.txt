@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14...3.22)
 
-project(TCIDocs)
+project(TCAPIDocs)
 
 # ---- Dependencies ----
 
@@ -11,7 +11,7 @@ CPMAddPackage("gh:mosra/m.css#a0d292ec311b97fefd21e93cdefb60f88d19ede6")
 # ---- Doxygen variables ----
 
 # set Doxyfile variables
-set(DOXYGEN_PROJECT_NAME "TCI (Tensor Computing Interface) - Cytnx Backend")
+set(DOXYGEN_PROJECT_NAME "TCAPI (Tensor Computing Application Programming Interface) - Cytnx Backend")
 set(DOXYGEN_PROJECT_VERSION "1.0")
 set(DOXYGEN_PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}/..")
 set(DOXYGEN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/doxygen")

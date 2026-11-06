@@ -2,15 +2,15 @@
 #include <iostream>
 #include <random>
 
-#include "tci/tci.h"
+#include "tcapi/tcapi.h"
 
 int main() {
-  std::cout << "TCI SVD Example\n";
+  std::cout << "TCAPI SVD Example\n";
   std::cout << "===============\n\n";
 
   // Create context
-  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
-  tci::create_context(ctx);
+  tcapi::context_handle_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>> ctx;
+  tcapi::create_context(ctx);
 
   try {
     // Create random number generator
@@ -20,10 +20,10 @@ int main() {
 
     // Create a random tensor for SVD: shape [3, 4, 12]
     std::cout << "Creating random tensor with shape [3, 4, 12]...\n";
-    auto A = tci::random<tci::CytnxTensor<cytnx::cytnx_complex128>>(ctx, {3, 4, 12}, rand_gen);
+    auto A = tcapi::random<tcapi::CytnxTensor<cytnx::cytnx_complex128>>(ctx, {3, 4, 12}, rand_gen);
 
     std::cout << "Original tensor shape: ";
-    auto shape = tci::shape(ctx, A);
+    auto shape = tcapi::shape(ctx, A);
     for (size_t i = 0; i < shape.size(); ++i) {
       std::cout << shape[i];
       if (i < shape.size() - 1) std::cout << " x ";
@@ -32,16 +32,16 @@ int main() {
 
     // Perform SVD: treat first 2 bonds as rows, last bond as columns
     std::cout << "\nPerforming SVD (first 2 bonds as rows)...\n";
-    tci::CytnxTensor<cytnx::cytnx_complex128> U, V_dag;
+    tcapi::CytnxTensor<cytnx::cytnx_complex128> U, V_dag;
     // Singular values are real; S_diag is the square diagonal tensor holding them
-    tci::CytnxTensor<cytnx::cytnx_double> S_diag;
+    tcapi::CytnxTensor<cytnx::cytnx_double> S_diag;
 
-    tci::svd(ctx, A, 2, U, S_diag, V_dag);
+    tcapi::svd(ctx, A, 2, U, S_diag, V_dag);
 
     // Check shapes
-    auto U_shape = tci::shape(ctx, U);
-    auto S_shape = tci::shape(ctx, S_diag);
-    auto V_shape = tci::shape(ctx, V_dag);
+    auto U_shape = tcapi::shape(ctx, U);
+    auto S_shape = tcapi::shape(ctx, S_diag);
+    auto V_shape = tcapi::shape(ctx, V_dag);
 
     std::cout << "U shape: ";
     for (size_t i = 0; i < U_shape.size(); ++i) {
@@ -67,14 +67,14 @@ int main() {
     // Show some singular values
     std::cout << "\nFirst few singular values:\n";
     for (int i = 0; i < std::min(5, static_cast<int>(S_shape[0])); ++i) {
-      const auto c = static_cast<tci::elem_coor_t<tci::CytnxTensor<cytnx::cytnx_double>>>(i);
-      auto sv = tci::get_elem(ctx, S_diag, {c, c});
+      const auto c = static_cast<tcapi::elem_coor_t<tcapi::CytnxTensor<cytnx::cytnx_double>>>(i);
+      auto sv = tcapi::get_elem(ctx, S_diag, {c, c});
       std::cout << "S[" << i << "] = " << sv << "\n";
     }
 
     // Calculate norms for verification
-    auto norm_A = tci::norm(ctx, A);
-    auto norm_S = tci::norm(ctx, S_diag);
+    auto norm_A = tcapi::norm(ctx, A);
+    auto norm_S = tcapi::norm(ctx, S_diag);
 
     std::cout << "\nOriginal tensor norm: " << norm_A << "\n";
     std::cout << "Singular values norm: " << norm_S << "\n";
@@ -85,7 +85,7 @@ int main() {
   }
 
   // Cleanup
-  tci::destroy_context(ctx);
+  tcapi::destroy_context(ctx);
 
   std::cout << "\nSVD example completed successfully!\n";
   return 0;

@@ -2,7 +2,7 @@
 
 #include <cytnx.hpp>
 
-namespace tci {
+namespace tcapi {
 
   /**
    * @brief Typed wrapper for cytnx::Tensor to provide compile-time element type information
@@ -11,16 +11,16 @@ namespace tci {
    *
    * This wrapper enables compile-time type safety for Cytnx tensors, which are
    * dynamically typed at runtime. It provides a TenT type that can be used with
-   * tci::tensor_traits, similar to other statically-typed tensor backends.
+   * tcapi::tensor_traits, similar to other statically-typed tensor backends.
    *
    * Usage:
    * @code
-   * using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-   * using Elem = tci::tensor_traits<Tensor>::elem_t;  // = std::complex<double>
+   * using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+   * using Elem = tcapi::tensor_traits<Tensor>::elem_t;  // = std::complex<double>
    *
    * Tensor t;
-   * tci::allocate(ctx, {3, 3}, t);
-   * Elem elem = tci::get_elem(ctx, t, {0, 0});
+   * tcapi::allocate(ctx, {3, 3}, t);
+   * Elem elem = tcapi::get_elem(ctx, t, {0, 0});
    * auto result = elem / 2.0;  // Standard C++ operators work
    * @endcode
    */
@@ -53,4 +53,4 @@ namespace tci {
     ~CytnxTensor() = default;
   };
 
-}  // namespace tci
+}  // namespace tcapi
