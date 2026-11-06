@@ -1,4 +1,4 @@
-# macOS + Homebrew toolchain for TCI project
+# macOS + Homebrew toolchain for TCAPI project
 # Automatically configures keg-only dependencies in CMAKE_PREFIX_PATH and PKG_CONFIG_PATH
 # Eliminates the need for manual environment variable exports
 

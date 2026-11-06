@@ -3,11 +3,11 @@
 #include <cytnx.hpp>
 #include <sstream>
 
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/cytnx_typed_tensor.h"
-#include "tci/debugging.h"
+#include "tcapi/cytnx_tensor_traits.h"
+#include "tcapi/cytnx_typed_tensor.h"
+#include "tcapi/debugging.h"
 
-namespace tci {
+namespace tcapi {
 
   namespace detail {
     // Helper function to get Cytnx type ID from C++ type
@@ -77,7 +77,7 @@ namespace tci {
          << " -> ElemT2=" << cytnx::Type_class::getname(detail::get_cytnx_type_id<ElemT2>())
          << ", ctx1=" << ctx1 << " -> ctx2=" << ctx2;
 
-    TCI_TIME_FUNCTION_WITH_INFO("tci::convert", info.str());
+    TCAPI_TIME_FUNCTION_WITH_INFO("tcapi::convert", info.str());
 
     // If same type, clone to ensure deep copy
     cytnx::Tensor converted;
@@ -101,4 +101,4 @@ namespace tci {
     t2.backend = std::move(converted);
   }
 
-}  // namespace tci
+}  // namespace tcapi

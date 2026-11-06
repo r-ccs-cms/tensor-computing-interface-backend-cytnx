@@ -1,8 +1,8 @@
-#include "tci/miscellaneous.h"
+#include "tcapi/miscellaneous.h"
 
 #include <cytnx.hpp>
 
-namespace tci {
+namespace tcapi {
 
   // Context management for CytnxContextHandle
   template <> void create_context(CytnxContextHandle& ctx) {
@@ -35,4 +35,4 @@ namespace tci {
   // All cytnx::Tensor specializations removed
   // CytnxTensor<ElemT> implementations are in cytnx_typed_tensor_impl.h
 
-}  // namespace tci
+}  // namespace tcapi

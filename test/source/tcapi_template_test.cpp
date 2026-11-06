@@ -1,13 +1,13 @@
 #include <doctest/doctest.h>
-#include <tci/tci.h>
+#include <tcapi/tcapi.h>
 
 #include <complex>
 #include <vector>
 
-using Ten = tci::CytnxTensor<cytnx::cytnx_double>;
+using Ten = tcapi::CytnxTensor<cytnx::cytnx_double>;
 
 TEST_CASE("Template Function const Type Issues") {
-  using namespace tci;
+  using namespace tcapi;
 
   // Setup context
   context_handle_t<Ten> ctx;
@@ -47,7 +47,7 @@ TEST_CASE("Template Function const Type Issues") {
     CHECK_NOTHROW(random(ctx, shape, half_gen, a));
 
     // Verify the tensor was created with correct shape
-    auto result_shape = tci::shape(ctx, a);
+    auto result_shape = tcapi::shape(ctx, a);
     CHECK(result_shape[0] == 2);
     CHECK(result_shape[1] == 2);
   }
@@ -72,7 +72,7 @@ TEST_CASE("Template Function const Type Issues") {
 }
 
 TEST_CASE("CytnxTensor Element Type Conversion") {
-  using namespace tci;
+  using namespace tcapi;
 
   // Setup context
   context_handle_t<CytnxTensor<cytnx::cytnx_double>> ctx;
@@ -96,8 +96,8 @@ TEST_CASE("CytnxTensor Element Type Conversion") {
     CHECK_NOTHROW(convert(ctx, real_tensor, ctx_cplx, cplx_tensor));
 
     // Verify shape is preserved
-    auto real_shape = tci::shape(ctx, real_tensor);
-    auto cplx_shape = tci::shape(ctx_cplx, cplx_tensor);
+    auto real_shape = tcapi::shape(ctx, real_tensor);
+    auto cplx_shape = tcapi::shape(ctx_cplx, cplx_tensor);
     CHECK(real_shape == cplx_shape);
 
     // Verify values are preserved

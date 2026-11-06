@@ -2,27 +2,27 @@
 
 #include <cytnx.hpp>
 
-#include "tci/tci.h"
+#include "tcapi/tcapi.h"
 
-using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;
-using ContextHandle = tci::context_handle_t<Tensor>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_double>;
+using ContextHandle = tcapi::context_handle_t<Tensor>;
 
 TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
   ContextHandle context;
-  tci::create_context(context);
+  tcapi::create_context(context);
 
-  // Named (lvalue) so it binds to tci::random's RandNumGen& parameter (TCI v1 spec).
+  // Named (lvalue) so it binds to tcapi::random's RandNumGen& parameter (TCAPI v1 spec).
   auto ones_gen = []() { return 1.0; };
 
   SUBCASE("Simple 2D contract test") {
     // Test basic contract behavior
-    auto A = tci::random<Tensor>(context, tci::shape_t<Tensor>{3, 4}, ones_gen);
-    auto B = tci::random<Tensor>(context, tci::shape_t<Tensor>{4, 5}, ones_gen);
+    auto A = tcapi::random<Tensor>(context, tcapi::shape_t<Tensor>{3, 4}, ones_gen);
+    auto B = tcapi::random<Tensor>(context, tcapi::shape_t<Tensor>{4, 5}, ones_gen);
 
     Tensor C;
-    tci::contract(context, A, {0, -1}, B, {-1, 1}, C, {0, 1});
+    tcapi::contract(context, A, {0, -1}, B, {-1, 1}, C, {0, 1});
 
-    auto C_shape = tci::shape(context, C);
+    auto C_shape = tcapi::shape(context, C);
     CHECK(C_shape.size() == 2);
     CHECK(C_shape[0] == 3);
     CHECK(C_shape[1] == 5);
@@ -34,11 +34,11 @@ TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
     std::cout << "\n=== 4D Time Evolution Contract Test ===" << std::endl;
 
     // Create tensors with exact same shapes as in iTEBD test
-    auto theta = tci::random<Tensor>(context, tci::shape_t<Tensor>{5, 2, 2, 5}, ones_gen);
-    auto u = tci::random<Tensor>(context, tci::shape_t<Tensor>{2, 2, 2, 2}, ones_gen);
+    auto theta = tcapi::random<Tensor>(context, tcapi::shape_t<Tensor>{5, 2, 2, 5}, ones_gen);
+    auto u = tcapi::random<Tensor>(context, tcapi::shape_t<Tensor>{2, 2, 2, 2}, ones_gen);
 
-    auto theta_shape = tci::shape(context, theta);
-    auto u_shape = tci::shape(context, u);
+    auto theta_shape = tcapi::shape(context, theta);
+    auto u_shape = tcapi::shape(context, u);
 
     std::cout << "Input shapes:" << std::endl;
     std::cout << "theta: ";
@@ -54,9 +54,9 @@ TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
               << std::endl;
 
     Tensor result;
-    tci::contract(context, theta, {0, -1, -2, 3}, u, {-1, -2, 1, 2}, result, {0, 1, 2, 3});
+    tcapi::contract(context, theta, {0, -1, -2, 3}, u, {-1, -2, 1, 2}, result, {0, 1, 2, 3});
 
-    auto result_shape = tci::shape(context, result);
+    auto result_shape = tcapi::shape(context, result);
     std::cout << "Actual result: ";
     for (auto dim : result_shape) std::cout << dim << " ";
     std::cout << std::endl;
@@ -86,15 +86,15 @@ TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
     std::cout << "\n=== Step-by-step Axis Analysis ===" << std::endl;
 
     // Simpler test to understand axis mapping
-    auto A = tci::random<Tensor>(context, tci::shape_t<Tensor>{2, 3}, ones_gen);
-    auto B = tci::random<Tensor>(context, tci::shape_t<Tensor>{3, 4}, ones_gen);
+    auto A = tcapi::random<Tensor>(context, tcapi::shape_t<Tensor>{2, 3}, ones_gen);
+    auto B = tcapi::random<Tensor>(context, tcapi::shape_t<Tensor>{3, 4}, ones_gen);
 
     std::cout << "Test 1: A{0, -1} × B{-1, 1} = C{0, 1}" << std::endl;
     std::cout << "A(2,3) × B(3,4) should give C(2,4)" << std::endl;
 
     Tensor C1;
-    tci::contract(context, A, {0, -1}, B, {-1, 1}, C1, {0, 1});
-    auto C1_shape = tci::shape(context, C1);
+    tcapi::contract(context, A, {0, -1}, B, {-1, 1}, C1, {0, 1});
+    auto C1_shape = tcapi::shape(context, C1);
 
     std::cout << "Result: ";
     for (auto dim : C1_shape) std::cout << dim << " ";
@@ -108,8 +108,8 @@ TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
     std::cout << "A(2,3) × B(3,4) should give C(4,2)" << std::endl;
 
     Tensor C2;
-    tci::contract(context, A, {0, -1}, B, {-1, 1}, C2, {1, 0});
-    auto C2_shape = tci::shape(context, C2);
+    tcapi::contract(context, A, {0, -1}, B, {-1, 1}, C2, {1, 0});
+    auto C2_shape = tcapi::shape(context, C2);
 
     std::cout << "Result: ";
     for (auto dim : C2_shape) std::cout << dim << " ";
@@ -120,5 +120,5 @@ TEST_CASE("Contract Axis Mapping Debug - NCON notation") {
     CHECK(C2_shape[1] == 2);
   }
 
-  tci::destroy_context(context);
+  tcapi::destroy_context(context);
 }

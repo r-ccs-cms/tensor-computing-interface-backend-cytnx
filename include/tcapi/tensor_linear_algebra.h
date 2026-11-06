@@ -8,14 +8,13 @@
 #include <sstream>
 #include <string_view>
 
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/tensor_traits.h"
+#include "tcapi/cytnx_tensor_traits.h"
+#include "tcapi/tensor_traits.h"
 
-namespace tci {
+namespace tcapi {
 
-  // Linear algebra functions are implemented as CytnxTensor<ElemT> specializations
-  // in cytnx_typed_tensor_impl.h. See spec/tci_function_signatures-tensor-linear-algebra.md
-  // for API documentation.
+  // The linear algebra functions are defined in cytnx_typed_tensor_impl.h, as
+  // function templates over TenT.
 
   // Implementation details for contract (moved from .cpp for template visibility)
   namespace detail {
@@ -40,7 +39,7 @@ namespace tci {
             std::ostringstream oss;
             oss << "contract: repeated label '" << label << "' within " << tensor_name
                 << " (spec v1 prohibits repeating labels within a single operand; "
-                << "use tci::trace first if needed)";
+                << "use tcapi::trace first if needed)";
             throw std::invalid_argument(oss.str());
           }
           seen.insert(label);
@@ -140,4 +139,4 @@ namespace tci {
     };
   }  // namespace detail
 
-}  // namespace tci
+}  // namespace tcapi

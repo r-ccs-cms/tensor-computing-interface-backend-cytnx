@@ -1,5 +1,5 @@
 #include <doctest/doctest.h>
-#include <tci/tci.h>
+#include <tcapi/tcapi.h>
 
 #include <cmath>
 #include <cytnx.hpp>
@@ -8,187 +8,189 @@
 // FIXME: Trace operations cause AddressSanitizer container-overflow in Cytnx internal code
 // This appears to be a bug in the Cytnx library itself (UniTensor::UniTensor constructor)
 // Skip this entire test case until the Cytnx library issue is resolved
-TEST_CASE("TCI Trace Operations" * doctest::skip()) {
-  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
-  tci::create_context(ctx);
+TEST_CASE("TCAPI Trace Operations" * doctest::skip()) {
+  tcapi::context_handle_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>> ctx;
+  tcapi::create_context(ctx);
 
   SUBCASE("Matrix trace calculation") {
-    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
-    tci::CytnxTensor<cytnx::cytnx_complex128> matrix;
-    tci::zeros(ctx, shape, matrix);
+    tcapi::shape_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>> shape = {3, 3};
+    tcapi::CytnxTensor<cytnx::cytnx_complex128> matrix;
+    tcapi::zeros(ctx, shape, matrix);
 
-    tci::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
-    tci::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(3.0, 0.0));
-    tci::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(4.0, 0.0));
-    tci::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(5.0, 0.0));
-    tci::set_elem(ctx, matrix, {1, 2}, cytnx::cytnx_complex128(6.0, 0.0));
+    tcapi::set_elem(ctx, matrix, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tcapi::set_elem(ctx, matrix, {1, 1}, cytnx::cytnx_complex128(3.0, 0.0));
+    tcapi::set_elem(ctx, matrix, {2, 2}, cytnx::cytnx_complex128(4.0, 0.0));
+    tcapi::set_elem(ctx, matrix, {0, 1}, cytnx::cytnx_complex128(5.0, 0.0));
+    tcapi::set_elem(ctx, matrix, {1, 2}, cytnx::cytnx_complex128(6.0, 0.0));
 
-    tci::bond_idx_pairs_t<tci::CytnxTensor<cytnx::cytnx_complex128>> pairs = {{0, 1}};
-    tci::trace(ctx, matrix, pairs);
+    tcapi::bond_idx_pairs_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>> pairs = {{0, 1}};
+    tcapi::trace(ctx, matrix, pairs);
 
-    CHECK(tci::order(ctx, matrix) == 0);
-    CHECK(std::abs(tci::real(tci::get_elem(ctx, matrix, {})) - 9.0) < 1e-10);
+    CHECK(tcapi::order(ctx, matrix) == 0);
+    CHECK(std::abs(tcapi::real(tcapi::get_elem(ctx, matrix, {})) - 9.0) < 1e-10);
   }
 
-  tci::destroy_context(ctx);
+  tcapi::destroy_context(ctx);
 }
 
-TEST_CASE("TCI Contract - duplicate label validation") {
-  tci::context_handle_t<tci::CytnxTensor<cytnx::cytnx_complex128>> ctx;
-  tci::create_context(ctx);
+TEST_CASE("TCAPI Contract - duplicate label validation") {
+  tcapi::context_handle_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>> ctx;
+  tcapi::create_context(ctx);
 
   SUBCASE("Duplicate labels within single tensor should throw") {
-    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_a = {3, 3, 4};
-    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_b = {5};
-    tci::CytnxTensor<cytnx::cytnx_complex128> a, b, c;
-    tci::zeros(ctx, shape_a, a);
-    tci::zeros(ctx, shape_b, b);
+    tcapi::shape_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>> shape_a = {3, 3, 4};
+    tcapi::shape_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>> shape_b = {5};
+    tcapi::CytnxTensor<cytnx::cytnx_complex128> a, b, c;
+    tcapi::zeros(ctx, shape_a, a);
+    tcapi::zeros(ctx, shape_b, b);
 
-    CHECK_THROWS_AS(tci::contract(ctx, a, "iij", b, "k", c, "jk"), std::invalid_argument);
+    CHECK_THROWS_AS(tcapi::contract(ctx, a, "iij", b, "k", c, "jk"), std::invalid_argument);
 
-    tci::shape_t<tci::CytnxTensor<cytnx::cytnx_complex128>> shape_b2 = {5, 5};
-    tci::CytnxTensor<cytnx::cytnx_complex128> b2;
-    tci::zeros(ctx, shape_b2, b2);
-    CHECK_THROWS_AS(tci::contract(ctx, a, "ijk", b2, "kk", c, "ij"), std::invalid_argument);
+    tcapi::shape_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>> shape_b2 = {5, 5};
+    tcapi::CytnxTensor<cytnx::cytnx_complex128> b2;
+    tcapi::zeros(ctx, shape_b2, b2);
+    CHECK_THROWS_AS(tcapi::contract(ctx, a, "ijk", b2, "kk", c, "ij"), std::invalid_argument);
 
-    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_a_dup
+    tcapi::List<tcapi::bond_label_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_a_dup
         = {1, 1, 2};
-    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_b_single = {3};
-    tci::List<tci::bond_label_t<tci::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_c_out = {2, 3};
-    CHECK_THROWS_AS(tci::contract(ctx, a, bd_labs_a_dup, b, bd_labs_b_single, c, bd_labs_c_out),
+    tcapi::List<tcapi::bond_label_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_b_single
+        = {3};
+    tcapi::List<tcapi::bond_label_t<tcapi::CytnxTensor<cytnx::cytnx_complex128>>> bd_labs_c_out
+        = {2, 3};
+    CHECK_THROWS_AS(tcapi::contract(ctx, a, bd_labs_a_dup, b, bd_labs_b_single, c, bd_labs_c_out),
                     std::invalid_argument);
   }
 
-  tci::destroy_context(ctx);
+  tcapi::destroy_context(ctx);
 }
 
-TEST_CASE("TCI linear_combine - zeroth-order inputs") {
-  using Ten = tci::CytnxTensor<cytnx::cytnx_complex128>;
+TEST_CASE("TCAPI linear_combine - zeroth-order inputs") {
+  using Ten = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
   using Elem = cytnx::cytnx_complex128;
-  tci::context_handle_t<Ten> ctx;
-  tci::create_context(ctx);
+  tcapi::context_handle_t<Ten> ctx;
+  tcapi::create_context(ctx);
 
-  auto s = tci::fill<Ten>(ctx, {}, Elem(2.0, -1.0));
-  auto t = tci::fill<Ten>(ctx, {}, Elem(0.5, 3.0));
+  auto s = tcapi::fill<Ten>(ctx, {}, Elem(2.0, -1.0));
+  auto t = tcapi::fill<Ten>(ctx, {}, Elem(0.5, 3.0));
 
   SUBCASE("Zeroth-order inputs combine into a zeroth-order result") {
-    auto sum = tci::linear_combine<Ten>(ctx, {std::cref(s), std::cref(t)});
-    CHECK(tci::order(ctx, sum) == 0);
-    CHECK(tci::get_elem(ctx, sum, {}) == Elem(2.5, 2.0));
+    auto sum = tcapi::linear_combine<Ten>(ctx, {std::cref(s), std::cref(t)});
+    CHECK(tcapi::order(ctx, sum) == 0);
+    CHECK(tcapi::get_elem(ctx, sum, {}) == Elem(2.5, 2.0));
 
-    auto weighted
-        = tci::linear_combine<Ten>(ctx, {std::cref(s), std::cref(t)}, {Elem(0.0, 1.0), Elem(2.0)});
-    CHECK(tci::order(ctx, weighted) == 0);
-    CHECK(tci::get_elem(ctx, weighted, {}) == Elem(0.0, 1.0) * Elem(2.0, -1.0) + Elem(1.0, 6.0));
+    auto weighted = tcapi::linear_combine<Ten>(ctx, {std::cref(s), std::cref(t)},
+                                               {Elem(0.0, 1.0), Elem(2.0)});
+    CHECK(tcapi::order(ctx, weighted) == 0);
+    CHECK(tcapi::get_elem(ctx, weighted, {}) == Elem(0.0, 1.0) * Elem(2.0, -1.0) + Elem(1.0, 6.0));
   }
 
   SUBCASE("A zeroth-order input beside another shape is rejected") {
-    auto one = tci::fill<Ten>(ctx, {1}, Elem(2.0, -1.0));
-    auto three = tci::fill<Ten>(ctx, {3}, Elem(1.0));
+    auto one = tcapi::fill<Ten>(ctx, {1}, Elem(2.0, -1.0));
+    auto three = tcapi::fill<Ten>(ctx, {3}, Elem(1.0));
     Ten empty;
-    CHECK_THROWS_AS(tci::linear_combine<Ten>(ctx, {std::cref(s), std::cref(one)}),
+    CHECK_THROWS_AS(tcapi::linear_combine<Ten>(ctx, {std::cref(s), std::cref(one)}),
                     std::invalid_argument);
-    CHECK_THROWS_AS(tci::linear_combine<Ten>(ctx, {std::cref(three), std::cref(s)}),
+    CHECK_THROWS_AS(tcapi::linear_combine<Ten>(ctx, {std::cref(three), std::cref(s)}),
                     std::invalid_argument);
     CHECK_THROWS_AS(
-        tci::linear_combine<Ten>(ctx, {std::cref(s), std::cref(empty)}, {Elem(1.0), Elem(1.0)}),
+        tcapi::linear_combine<Ten>(ctx, {std::cref(s), std::cref(empty)}, {Elem(1.0), Elem(1.0)}),
         std::invalid_argument);
   }
 
-  tci::destroy_context(ctx);
+  tcapi::destroy_context(ctx);
 }
 
-TEST_CASE("TCI Stack Operations") {
-  using Ten = tci::CytnxTensor<cytnx::cytnx_complex128>;
-  tci::context_handle_t<Ten> ctx;
-  tci::create_context(ctx);
+TEST_CASE("TCAPI Stack Operations") {
+  using Ten = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+  tcapi::context_handle_t<Ten> ctx;
+  tcapi::create_context(ctx);
 
   SUBCASE("Stack three 2x4 tensors along axis 1") {
-    tci::shape_t<Ten> shape = {2, 4};
+    tcapi::shape_t<Ten> shape = {2, 4};
     Ten a, b, c;
-    tci::zeros(ctx, shape, a);
-    tci::zeros(ctx, shape, b);
-    tci::zeros(ctx, shape, c);
+    tcapi::zeros(ctx, shape, a);
+    tcapi::zeros(ctx, shape, b);
+    tcapi::zeros(ctx, shape, c);
 
-    tci::set_elem(ctx, a, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
-    tci::set_elem(ctx, b, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
-    tci::set_elem(ctx, c, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
+    tcapi::set_elem(ctx, a, {0, 0}, cytnx::cytnx_complex128(1.0, 0.0));
+    tcapi::set_elem(ctx, b, {0, 0}, cytnx::cytnx_complex128(2.0, 0.0));
+    tcapi::set_elem(ctx, c, {0, 0}, cytnx::cytnx_complex128(3.0, 0.0));
 
-    auto d = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b), std::cref(c)}, 1);
+    auto d = tcapi::stack<Ten>(ctx, {std::cref(a), std::cref(b), std::cref(c)}, 1);
 
-    auto result_shape = tci::shape(ctx, d);
+    auto result_shape = tcapi::shape(ctx, d);
     CHECK(result_shape.size() == 3);
     CHECK(result_shape[0] == 2);
     CHECK(result_shape[1] == 3);
     CHECK(result_shape[2] == 4);
 
-    auto el_a = tci::get_elem(ctx, a, {0, 0});
-    auto el_d_a = tci::get_elem(ctx, d, {0, 0, 0});
-    CHECK(std::abs(tci::real(el_a) - tci::real(el_d_a)) < 1e-10);
+    auto el_a = tcapi::get_elem(ctx, a, {0, 0});
+    auto el_d_a = tcapi::get_elem(ctx, d, {0, 0, 0});
+    CHECK(std::abs(tcapi::real(el_a) - tcapi::real(el_d_a)) < 1e-10);
 
-    auto el_b = tci::get_elem(ctx, b, {0, 0});
-    auto el_d_b = tci::get_elem(ctx, d, {0, 1, 0});
-    CHECK(std::abs(tci::real(el_b) - tci::real(el_d_b)) < 1e-10);
+    auto el_b = tcapi::get_elem(ctx, b, {0, 0});
+    auto el_d_b = tcapi::get_elem(ctx, d, {0, 1, 0});
+    CHECK(std::abs(tcapi::real(el_b) - tcapi::real(el_d_b)) < 1e-10);
   }
 
   SUBCASE("Stack two 3x3 tensors along axis 0") {
-    tci::shape_t<Ten> shape = {3, 3};
+    tcapi::shape_t<Ten> shape = {3, 3};
     Ten a, b;
-    tci::zeros(ctx, shape, a);
-    tci::zeros(ctx, shape, b);
+    tcapi::zeros(ctx, shape, a);
+    tcapi::zeros(ctx, shape, b);
 
-    tci::set_elem(ctx, a, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
-    tci::set_elem(ctx, b, {2, 2}, cytnx::cytnx_complex128(6.0, 0.0));
+    tcapi::set_elem(ctx, a, {1, 1}, cytnx::cytnx_complex128(5.0, 0.0));
+    tcapi::set_elem(ctx, b, {2, 2}, cytnx::cytnx_complex128(6.0, 0.0));
 
-    auto result = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 0);
+    auto result = tcapi::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 0);
 
-    auto result_shape = tci::shape(ctx, result);
+    auto result_shape = tcapi::shape(ctx, result);
     CHECK(result_shape.size() == 3);
     CHECK(result_shape[0] == 2);
     CHECK(result_shape[1] == 3);
     CHECK(result_shape[2] == 3);
 
-    auto el_a11 = tci::get_elem(ctx, result, {0, 1, 1});
-    auto el_b22 = tci::get_elem(ctx, result, {1, 2, 2});
-    CHECK(std::abs(tci::real(el_a11) - 5.0) < 1e-10);
-    CHECK(std::abs(tci::real(el_b22) - 6.0) < 1e-10);
+    auto el_a11 = tcapi::get_elem(ctx, result, {0, 1, 1});
+    auto el_b22 = tcapi::get_elem(ctx, result, {1, 2, 2});
+    CHECK(std::abs(tcapi::real(el_a11) - 5.0) < 1e-10);
+    CHECK(std::abs(tcapi::real(el_b22) - 6.0) < 1e-10);
   }
 
   SUBCASE("Stack along last dimension (axis 2)") {
-    tci::shape_t<Ten> shape = {2, 3};
+    tcapi::shape_t<Ten> shape = {2, 3};
     Ten a, b;
-    tci::zeros(ctx, shape, a);
-    tci::zeros(ctx, shape, b);
+    tcapi::zeros(ctx, shape, a);
+    tcapi::zeros(ctx, shape, b);
 
-    tci::set_elem(ctx, a, {1, 2}, cytnx::cytnx_complex128(7.0, 0.0));
-    tci::set_elem(ctx, b, {1, 2}, cytnx::cytnx_complex128(8.0, 0.0));
+    tcapi::set_elem(ctx, a, {1, 2}, cytnx::cytnx_complex128(7.0, 0.0));
+    tcapi::set_elem(ctx, b, {1, 2}, cytnx::cytnx_complex128(8.0, 0.0));
 
-    auto result = tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 2);
+    auto result = tcapi::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 2);
 
-    auto result_shape = tci::shape(ctx, result);
+    auto result_shape = tcapi::shape(ctx, result);
     CHECK(result_shape.size() == 3);
     CHECK(result_shape[0] == 2);
     CHECK(result_shape[1] == 3);
     CHECK(result_shape[2] == 2);
 
-    auto el_a = tci::get_elem(ctx, result, {1, 2, 0});
-    auto el_b = tci::get_elem(ctx, result, {1, 2, 1});
-    CHECK(std::abs(tci::real(el_a) - 7.0) < 1e-10);
-    CHECK(std::abs(tci::real(el_b) - 8.0) < 1e-10);
+    auto el_a = tcapi::get_elem(ctx, result, {1, 2, 0});
+    auto el_b = tcapi::get_elem(ctx, result, {1, 2, 1});
+    CHECK(std::abs(tcapi::real(el_a) - 7.0) < 1e-10);
+    CHECK(std::abs(tcapi::real(el_b) - 8.0) < 1e-10);
   }
 
   SUBCASE("Error handling: empty tensor list") {
-    tci::List<tci::CRef<Ten>> empty_tensors = {};
-    CHECK_THROWS_AS(tci::stack(ctx, empty_tensors, 0), std::invalid_argument);
+    tcapi::List<tcapi::CRef<Ten>> empty_tensors = {};
+    CHECK_THROWS_AS(tcapi::stack(ctx, empty_tensors, 0), std::invalid_argument);
   }
 
   SUBCASE("Error handling: mismatched tensor shapes") {
     Ten a, b;
-    tci::zeros(ctx, {2, 3}, a);
-    tci::zeros(ctx, {2, 4}, b);
+    tcapi::zeros(ctx, {2, 3}, a);
+    tcapi::zeros(ctx, {2, 4}, b);
 
-    CHECK_THROWS_AS(tci::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 0), std::invalid_argument);
+    CHECK_THROWS_AS(tcapi::stack<Ten>(ctx, {std::cref(a), std::cref(b)}, 0), std::invalid_argument);
   }
 
-  tci::destroy_context(ctx);
+  tcapi::destroy_context(ctx);
 }

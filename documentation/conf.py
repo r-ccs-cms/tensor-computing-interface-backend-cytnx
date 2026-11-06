@@ -10,10 +10,10 @@ LINKS_NAVBAR1 = [
 
 # LINKS_NAVBAR1 = [
 #     (None, 'pages', [(None, 'about')]),
-#     (None, 'namespaces', [(None, 'namespacetci')]),
+#     (None, 'namespaces', [(None, 'namespacetcapi')]),
 # ]
 #
 # LINKS_NAVBAR2 = [
-#     (None, 'annotated', [(None, 'classtci_1_1_tensor')]),
-#     (None, 'files', [(None, 'tci_8h')]),
+#     (None, 'annotated', [(None, 'classtcapi_1_1_tensor')]),
+#     (None, 'files', [(None, 'tcapi_8h')]),
 # ]

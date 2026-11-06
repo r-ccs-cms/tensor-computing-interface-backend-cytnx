@@ -1,5 +1,5 @@
 /**
- * @file tci_placeholder_detection.cpp.disabled
+ * @file tcapi_placeholder_detection.cpp.disabled
  * @brief Tests to detect placeholder implementations (DISABLED)
  *
  * This file is disabled because placeholder implementations have been removed.
@@ -7,25 +7,25 @@
  */
 
 #include <doctest/doctest.h>
-#include <tci/tci.h>
+#include <tcapi/tcapi.h>
 #include <cytnx.hpp>
 #include <cmath>
 
 TEST_CASE("Placeholder Detection Tests") {
-    tci::context_handle_t<cytnx::Tensor> ctx;
-    tci::create_context(ctx);
+    tcapi::context_handle_t<cytnx::Tensor> ctx;
+    tcapi::create_context(ctx);
 
     SUBCASE("EQ Function Placeholder Detection") {
         // Create two different tensors with same shape but different values
-        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        tcapi::shape_t<cytnx::Tensor> shape = {2, 2};
         cytnx::Tensor zeros, ones;
 
-        tci::zeros(ctx, shape, zeros);
-        tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), ones);
+        tcapi::zeros(ctx, shape, zeros);
+        tcapi::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), ones);
 
         // These tensors have same shape but different values
         // A proper eq function should return false
-        bool are_equal = tci::eq(ctx, zeros, ones);
+        bool are_equal = tcapi::eq(ctx, zeros, ones);
 
         // If eq is a placeholder (only checks shapes), this will fail
         INFO("EQ function should return false for tensors with different values");
@@ -34,25 +34,25 @@ TEST_CASE("Placeholder Detection Tests") {
 
         // Test with identical tensors
         cytnx::Tensor zeros2;
-        tci::zeros(ctx, shape, zeros2);
-        bool are_identical = tci::eq(ctx, zeros, zeros2);
+        tcapi::zeros(ctx, shape, zeros2);
+        bool are_identical = tcapi::eq(ctx, zeros, zeros2);
         CHECK(are_identical == true);
     }
 
     SUBCASE("SVD Function Placeholder Detection") {
         // Create a simple 2x2 identity matrix
         cytnx::Tensor identity;
-        tci::eye(ctx, 2, identity);
+        tcapi::eye(ctx, 2, identity);
 
         cytnx::Tensor u, v_dag;
-        tci::real_ten_t<cytnx::Tensor> s_diag;
+        tcapi::real_ten_t<cytnx::Tensor> s_diag;
 
-        tci::svd(ctx, identity, 1, u, s_diag, v_dag);
+        tcapi::svd(ctx, identity, 1, u, s_diag, v_dag);
 
         // Check if all outputs are identical to input (placeholder behavior)
-        bool u_same_as_input = tci::eq(ctx, u, identity);
-        bool s_same_as_input = tci::eq(ctx, s_diag, identity);
-        bool v_same_as_input = tci::eq(ctx, v_dag, identity);
+        bool u_same_as_input = tcapi::eq(ctx, u, identity);
+        bool s_same_as_input = tcapi::eq(ctx, s_diag, identity);
+        bool v_same_as_input = tcapi::eq(ctx, v_dag, identity);
 
         INFO("SVD outputs should be different from input matrix");
         INFO("If all outputs are identical to input, SVD is likely a placeholder");
@@ -64,44 +64,44 @@ TEST_CASE("Placeholder Detection Tests") {
 
     SUBCASE("Norm Function Behavior Verification") {
         // Test norm of zeros matrix (should be 0)
-        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        tcapi::shape_t<cytnx::Tensor> shape = {2, 2};
         cytnx::Tensor zeros;
-        tci::zeros(ctx, shape, zeros);
+        tcapi::zeros(ctx, shape, zeros);
 
-        auto norm_zeros = tci::norm(ctx, zeros);
+        auto norm_zeros = tcapi::norm(ctx, zeros);
         INFO("Norm of zeros matrix should be 0.0");
         CHECK(std::abs(norm_zeros) < 1e-10);
 
         // Test norm of ones matrix (should be 2.0 for 2x2)
         cytnx::Tensor ones;
-        tci::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), ones);
+        tcapi::fill(ctx, shape, cytnx::cytnx_complex128(1.0, 0.0), ones);
 
-        auto norm_ones = tci::norm(ctx, ones);
+        auto norm_ones = tcapi::norm(ctx, ones);
         INFO("Norm of 2x2 ones matrix should be 2.0");
         CHECK(std::abs(norm_ones - 2.0) < 1e-10);
 
         // Test norm of identity matrix (should be sqrt(2) for 2x2)
         cytnx::Tensor identity;
-        tci::eye(ctx, 2, identity);
+        tcapi::eye(ctx, 2, identity);
 
-        auto norm_identity = tci::norm(ctx, identity);
+        auto norm_identity = tcapi::norm(ctx, identity);
         INFO("Norm of 2x2 identity matrix should be sqrt(2)");
         CHECK(std::abs(norm_identity - std::sqrt(2.0)) < 1e-10);
     }
 
     SUBCASE("Get Element Function Verification") {
         // Create a 2x2 zeros matrix and set specific values
-        tci::shape_t<cytnx::Tensor> shape = {2, 2};
+        tcapi::shape_t<cytnx::Tensor> shape = {2, 2};
         cytnx::Tensor tensor;
-        tci::zeros(ctx, shape, tensor);
+        tcapi::zeros(ctx, shape, tensor);
 
         // Set element (0,0) to (2.5, 1.5)
-        tci::elem_coors_t<cytnx::Tensor> coord_00 = {0, 0};
+        tcapi::elem_coors_t<cytnx::Tensor> coord_00 = {0, 0};
         cytnx::cytnx_complex128 test_value(2.5, 1.5);
-        tci::set_elem(ctx, tensor, coord_00, test_value);
+        tcapi::set_elem(ctx, tensor, coord_00, test_value);
 
         // Get element back
-        auto retrieved_value = tci::get_elem(ctx, tensor, coord_00);
+        auto retrieved_value = tcapi::get_elem(ctx, tensor, coord_00);
 
         INFO("Get_elem should return the exact value that was set");
         INFO("If this fails with (1.0, 0.0), get_elem is likely a placeholder");
@@ -109,11 +109,11 @@ TEST_CASE("Placeholder Detection Tests") {
         CHECK(std::abs(retrieved_value.imag() - 1.5) < 1e-10);
 
         // Test another coordinate to ensure it's still zero
-        tci::elem_coors_t<cytnx::Tensor> coord_01 = {0, 1};
-        auto zero_value = tci::get_elem(ctx, tensor, coord_01);
+        tcapi::elem_coors_t<cytnx::Tensor> coord_01 = {0, 1};
+        auto zero_value = tcapi::get_elem(ctx, tensor, coord_01);
         CHECK(std::abs(zero_value.real() - 0.0) < 1e-10);
         CHECK(std::abs(zero_value.imag() - 0.0) < 1e-10);
     }
 
-    tci::destroy_context(ctx);
+    tcapi::destroy_context(ctx);
 }

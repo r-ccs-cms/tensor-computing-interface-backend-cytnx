@@ -4,7 +4,7 @@
     {
       "name": "brew-test",
       "displayName": "Test configuration (Homebrew)",
-      "description": "Configure TCITests using the Homebrew toolchain",
+      "description": "Configure TCAPITests using the Homebrew toolchain",
       "generator": "Ninja",
       "binaryDir": "build",
       "cacheVariables": {

@@ -1,6 +1,6 @@
-#include "tci/construction_destruction.h"
+#include "tcapi/construction_destruction.h"
 
-namespace tci {
+namespace tcapi {
   // All cytnx::Tensor specializations removed
   // CytnxTensor<ElemT> implementations are in cytnx_typed_tensor_impl.h
-}  // namespace tci
+}  // namespace tcapi

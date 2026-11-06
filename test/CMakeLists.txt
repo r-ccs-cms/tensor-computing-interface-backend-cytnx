@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(TCITests LANGUAGES CXX)
+project(TCAPITests LANGUAGES CXX)
 
 # ---- Options ----
 
@@ -28,11 +28,11 @@ if (doctest_ADDED)
   add_library(doctest::doctest ALIAS doctest)
 endif()
 
-if(NOT TARGET TCI::TCI)
+if(NOT TARGET TCAPI::TCAPI)
   if(TEST_INSTALLED_VERSION)
-    find_package(TCI REQUIRED)
+    find_package(TCAPI REQUIRED)
   else()
-    CPMAddPackage(NAME TCI SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
+    CPMAddPackage(NAME TCAPI SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
   endif()
 endif()
 
@@ -41,8 +41,8 @@ endif()
 file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
 message(STATUS "Test sources found: ${sources}")
 add_executable(${PROJECT_NAME} ${sources})
-target_link_libraries(${PROJECT_NAME} doctest::doctest TCI::TCI)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../external/tcict/include)
+target_link_libraries(${PROJECT_NAME} doctest::doctest TCAPI::TCAPI)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../external/tcapict/include)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 message(STATUS "Created test executable: ${PROJECT_NAME}")
 
@@ -54,14 +54,14 @@ add_custom_target(
 # enable compiler warnings (temporarily disable -Werror for deprecated warnings)
 if(NOT TEST_INSTALLED_VERSION)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_compile_options(TCI PUBLIC -Wall -Wpedantic -Wextra -Wno-error=deprecated-declarations)
+    target_compile_options(TCAPI PUBLIC -Wall -Wpedantic -Wextra -Wno-error=deprecated-declarations)
   elseif(MSVC)
-    target_compile_options(TCI PUBLIC /W4 /WX)
+    target_compile_options(TCAPI PUBLIC /W4 /WX)
     target_compile_definitions(${PROJECT_NAME} PUBLIC DOCTEST_CONFIG_USE_STD_HEADERS)
   endif()
 endif()
 
-# ---- Add TCITests ----
+# ---- Add TCAPITests ----
 
 enable_testing()
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
@@ -90,6 +90,6 @@ endif()
 # ---- code coverage ----
 
 if(ENABLE_TEST_COVERAGE)
-  target_compile_options(TCI PUBLIC -O0 -g -fprofile-arcs -ftest-coverage)
-  target_link_options(TCI PUBLIC -fprofile-arcs -ftest-coverage)
+  target_compile_options(TCAPI PUBLIC -O0 -g -fprofile-arcs -ftest-coverage)
+  target_link_options(TCAPI PUBLIC -fprofile-arcs -ftest-coverage)
 endif()

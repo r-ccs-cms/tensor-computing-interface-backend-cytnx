@@ -1,4 +1,4 @@
-# TCI User Guide
+# TCAPI User Guide
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@
 
 ## Introduction
 
-The Tensor Computing Interface (TCI) provides a unified, high-level API for tensor computations that can work with different backend tensor libraries. This implementation uses Cytnx as the backend, providing GPU acceleration and optimized numerical algorithms.
+The Tensor Computing Application Programming Interface (TCAPI) provides a unified, high-level API for tensor computations that can work with different backend tensor libraries. This implementation uses Cytnx as the backend, providing GPU acceleration and optimized numerical algorithms.
 
 ### Key Features
 
@@ -28,20 +28,20 @@ The Tensor Computing Interface (TCI) provides a unified, high-level API for tens
 ### Basic Setup
 
 ```cpp
-#include <tci/tci.h>
+#include <tcapi/tcapi.h>
 
 // Use CytnxTensor for type-safe operations
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tcapi::elem_t<Tensor>;  // = std::complex<double>
 
 int main() {
     // Create context (CPU only in current implementation)
-    tci::context_handle_t<Tensor> ctx;
-    tci::create_context(ctx);
+    tcapi::context_handle_t<Tensor> ctx;
+    tcapi::create_context(ctx);
 
     // Your tensor operations here
 
-    tci::destroy_context(ctx);
+    tcapi::destroy_context(ctx);
     return 0;
 }
 ```
@@ -52,45 +52,45 @@ Set these before running your program:
 
 ```bash
 # Enable debug output
-export TCI_VERBOSE=1  # Function calls only
-export TCI_VERBOSE=2  # Function calls + timing
+export TCAPI_VERBOSE=1  # Function calls only
+export TCAPI_VERBOSE=2  # Function calls + timing
 ```
 
 ## Core Concepts
 
 ### Contexts
 
-TCI operations require a context handle. In the Cytnx backend implementation, the context is simply an integer representing the device ID (CPU=-1, GPU=0,1,2...).
+TCAPI operations require a context handle. In the Cytnx backend implementation, the context is simply an integer representing the device ID (CPU=-1, GPU=0,1,2...).
 
 **Note:** The current implementation only supports CPU context. GPU context creation is not yet implemented.
 
 ```cpp
 // Create CPU context (specify backend tensor type)
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-tci::context_handle_t<Tensor> ctx;
-tci::create_context(ctx);
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+tcapi::context_handle_t<Tensor> ctx;
+tcapi::create_context(ctx);
 
 // Use ctx for all operations
 // (In current implementation, ctx is rarely used by functions)
 
-tci::destroy_context(ctx);
+tcapi::destroy_context(ctx);
 ```
 
 ### Type System
 
-TCI uses a trait-based type system that automatically extracts type information:
+TCAPI uses a trait-based type system that automatically extracts type information:
 
 ```cpp
 // These types are automatically deduced from your tensor type
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-using elem_t = tci::elem_t<Tensor>;                  // Element type (complex<double>)
-using shape_t = tci::shape_t<Tensor>;                // Shape type (vector<size_t>)
-using context_handle_t = tci::context_handle_t<Tensor>;  // Context type
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+using elem_t = tcapi::elem_t<Tensor>;                  // Element type (complex<double>)
+using shape_t = tcapi::shape_t<Tensor>;                // Shape type (vector<size_t>)
+using context_handle_t = tcapi::context_handle_t<Tensor>;  // Context type
 ```
 
 ### CytnxTensor: Type-Safe Tensor Wrapper
 
-TCI provides `CytnxTensor<ElemT>`, a type-safe wrapper around Cytnx tensors that enables direct arithmetic operations on elements.
+TCAPI provides `CytnxTensor<ElemT>`, a type-safe wrapper around Cytnx tensors that enables direct arithmetic operations on elements.
 
 #### Key Features
 
@@ -101,18 +101,18 @@ TCI provides `CytnxTensor<ElemT>`, a type-safe wrapper around Cytnx tensors that
 #### Basic Usage
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-using Elem = tci::elem_t<Tensor>;  // = std::complex<double>
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tcapi::elem_t<Tensor>;  // = std::complex<double>
 
-tci::context_handle_t<Tensor> ctx;
-tci::create_context(ctx);
+tcapi::context_handle_t<Tensor> ctx;
+tcapi::create_context(ctx);
 
 // Create and allocate tensor
 Tensor tensor;
-tci::allocate(ctx, {100, 100}, tensor);
+tcapi::allocate(ctx, {100, 100}, tensor);
 
 // Direct element access
-auto elem = tci::get_elem(ctx, tensor, {0, 0});
+auto elem = tcapi::get_elem(ctx, tensor, {0, 0});
 // elem is std::complex<double>, can use directly!
 elem = elem * 2.0 + Elem{1.0, 0.0};
 ```
@@ -121,14 +121,14 @@ elem = elem * 2.0 + Elem{1.0, 0.0};
 
 ```cpp
 // Apply mathematical functions to all elements
-tci::for_each(ctx, tensor, [](Elem& elem) {
+tcapi::for_each(ctx, tensor, [](Elem& elem) {
     elem = std::sqrt(elem) * 2.0;
     elem = elem + Elem{1.0, 0.5};
     elem = elem / std::abs(elem);  // Normalize
 });
 
 // Conditional operations
-tci::for_each(ctx, tensor, [](Elem& elem) {
+tcapi::for_each(ctx, tensor, [](Elem& elem) {
     double magnitude = std::abs(elem);
     if (magnitude > 1e-10) {
         elem = elem / magnitude;  // Normalize non-zero elements
@@ -142,24 +142,24 @@ tci::for_each(ctx, tensor, [](Elem& elem) {
 
 ```cpp
 // Double precision complex (recommended)
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;  // std::complex<double>
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;  // std::complex<double>
 
 // Single precision complex
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex64>;   // std::complex<float>
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex64>;   // std::complex<float>
 
 // Double precision real
-using Tensor = tci::CytnxTensor<cytnx::cytnx_double>;      // double
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_double>;      // double
 
 // Single precision real
-using Tensor = tci::CytnxTensor<cytnx::cytnx_float>;       // float
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_float>;       // float
 ```
 
 ### Memory Management
 
-TCI provides both in-place and out-of-place versions of most operations:
+TCAPI provides both in-place and out-of-place versions of most operations:
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
 
 // Out-of-place (creates new tensor)
 Tensor result = zeros<Tensor>(ctx, {3, 4});
@@ -174,30 +174,30 @@ normalize(ctx, tensor); // Modifies tensor in-place
 ### Tensor Creation
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-tci::context_handle_t<Tensor> ctx;
-tci::create_context(ctx);
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+tcapi::context_handle_t<Tensor> ctx;
+tcapi::create_context(ctx);
 
 // Allocate tensor with shape
 Tensor tensor;
-tci::allocate(ctx, {3, 4, 5}, tensor);
+tcapi::allocate(ctx, {3, 4, 5}, tensor);
 
 // Or use the return-value version
-auto tensor2 = tci::allocate<Tensor>(ctx, {2, 3});
+auto tensor2 = tcapi::allocate<Tensor>(ctx, {2, 3});
 ```
 
 ### Information and Access
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-using Elem = tci::elem_t<Tensor>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tcapi::elem_t<Tensor>;
 
 // Tensor properties (via backend)
 auto shape = tensor.backend.shape();  // Get shape
 auto rank = shape.size();             // Number of dimensions
 
-// Element access through TCI
-auto element = tci::get_elem(ctx, tensor, {1, 2, 0});  // Read element
+// Element access through TCAPI
+auto element = tcapi::get_elem(ctx, tensor, {1, 2, 0});  // Read element
 // element is Elem (std::complex<double>), can use directly!
 
 // Direct backend access for setting
@@ -207,7 +207,7 @@ tensor.backend.at<Elem>({1, 2, 0}) = Elem{3.14, 0.0};
 ### Linear Algebra
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
 
 // Basic operations
 auto tensor_norm = norm(ctx, tensor);
@@ -232,7 +232,7 @@ contract(ctx, A, "ij", B, "jk", result, "ik");        // Einstein notation
 ### Tensor Manipulation
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
 
 // Shape operations
 Tensor reshaped = reshape(ctx, tensor, {6, 4});
@@ -246,7 +246,7 @@ Tensor sub_tensor = extract_sub(ctx, tensor, {{0, 2}, {1, 3}});  // Extract subt
 ### I/O Operations
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
 
 // Save and load tensors
 save(ctx, tensor, "data/tensor.dat");
@@ -256,7 +256,7 @@ Tensor loaded = load<Tensor>(ctx, "data/tensor.dat");
 ### Utility Functions
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
 
 // Display tensor
 show(ctx, tensor);  // Print to stdout
@@ -280,7 +280,7 @@ convert(ctx_cpu, cpu_tensor, ctx_gpu, gpu_tensor);
 When using `to_container` or `assign_from_container`, you need to provide a coordinate mapping function:
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
 
 // Row-major mapping for 3D tensor with shape [A, B, C]
 auto row_major = [B, C](const elem_coors_t<Tensor>& coors) -> std::ptrdiff_t {
@@ -296,38 +296,38 @@ auto col_major = [A, B](const elem_coors_t<Tensor>& coors) -> std::ptrdiff_t {
 ### Working with Complex Numbers
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-using Elem = tci::elem_t<Tensor>;
-tci::context_handle_t<Tensor> ctx;
-tci::create_context(ctx);
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tcapi::elem_t<Tensor>;
+tcapi::context_handle_t<Tensor> ctx;
+tcapi::create_context(ctx);
 
 // Create complex tensor
 Tensor complex_tensor;
-tci::allocate(ctx, {2, 2}, complex_tensor);
+tcapi::allocate(ctx, {2, 2}, complex_tensor);
 
 // Set complex values using Elem type alias (recommended)
 complex_tensor.backend.at<Elem>({0, 0}) = Elem{1.0, 2.0};
 
 // Extract real/imaginary parts
-auto real_part = tci::real(ctx, complex_tensor);
-auto imag_part = tci::imag(ctx, complex_tensor);
+auto real_part = tcapi::real(ctx, complex_tensor);
+auto imag_part = tcapi::imag(ctx, complex_tensor);
 
 // Convert real to complex
-using RealTensor = tci::real_ten_t<Tensor>;
-RealTensor real_tensor = tci::ones<RealTensor>(ctx, {2, 2});
-Tensor as_complex = tci::to_cplx(ctx, real_tensor);
+using RealTensor = tcapi::real_ten_t<Tensor>;
+RealTensor real_tensor = tcapi::ones<RealTensor>(ctx, {2, 2});
+Tensor as_complex = tcapi::to_cplx(ctx, real_tensor);
 ```
 
 ### Error Handling
 
-TCI functions may throw exceptions for invalid operations:
+TCAPI functions may throw exceptions for invalid operations:
 
 ```cpp
 try {
     // This will throw if shapes don't match
     auto result = contract(ctx, A, {0}, B, {1}, C, {0, 1});
 } catch (const std::exception& e) {
-    std::cerr << "TCI Error: " << e.what() << std::endl;
+    std::cerr << "TCAPI Error: " << e.what() << std::endl;
 }
 ```
 
@@ -338,7 +338,7 @@ try {
 For tensor network algorithms, managing bond dimensions is crucial:
 
 ```cpp
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
 
 // Use truncated SVD to control bond dimensions
 Tensor U, V_dag;
@@ -369,7 +369,7 @@ std::cout << "Memory usage: " << memory_usage / 1024 / 1024 << " MB" << std::end
 
 ### GPU Acceleration
 
-**Note:** GPU support is not yet implemented in the current version of TCI with Cytnx backend.
+**Note:** GPU support is not yet implemented in the current version of TCAPI with Cytnx backend.
 
 - `create_context()` always returns CPU context (-1)
 - GPU context creation is planned for future releases
@@ -379,20 +379,20 @@ std::cout << "Memory usage: " << memory_usage / 1024 / 1024 << " MB" << std::end
 
 ### Verbose Output
 
-Set `TCI_VERBOSE` environment variable:
+Set `TCAPI_VERBOSE` environment variable:
 
 ```bash
 # Show function calls only
-TCI_VERBOSE=1 ./my_program
+TCAPI_VERBOSE=1 ./my_program
 
 # Show function calls and timing information
-TCI_VERBOSE=2 ./my_program
+TCAPI_VERBOSE=2 ./my_program
 ```
 
 Example output:
 ```
-[TCI] tci::svd - shape=[100,50], dtype=10
-[TCI] tci::svd took 15.234 ms
+[TCAPI] tcapi::svd - shape=[100,50], dtype=10
+[TCAPI] tcapi::svd took 15.234 ms
 ```
 
 ### Manual Timing
@@ -402,7 +402,7 @@ Example output:
 
 auto start = std::chrono::high_resolution_clock::now();
 
-// Your TCI operations here
+// Your TCAPI operations here
 auto result = contract(ctx, A, {1}, B, {0}, C, {0, 1});
 
 auto end = std::chrono::high_resolution_clock::now();
@@ -437,20 +437,20 @@ std::cout << "Peak memory usage: " << max_memory / 1024 / 1024 << " MB" << std::
 ### Complete Example: Element-wise Operations
 
 ```cpp
-#include <tci/tci.h>
+#include <tcapi/tcapi.h>
 #include <iostream>
 #include <cmath>
 
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-using Elem = tci::elem_t<Tensor>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tcapi::elem_t<Tensor>;
 
 int main() {
-    tci::context_handle_t<Tensor> ctx;
-    tci::create_context(ctx);
+    tcapi::context_handle_t<Tensor> ctx;
+    tcapi::create_context(ctx);
 
     // Create tensor
     Tensor tensor;
-    tci::allocate(ctx, {100, 100}, tensor);
+    tcapi::allocate(ctx, {100, 100}, tensor);
 
     // Initialize with random-like values
     for (size_t i = 0; i < 100; ++i) {
@@ -463,7 +463,7 @@ int main() {
     std::cout << "Applying element-wise operations..." << std::endl;
 
     // Apply mathematical transformations
-    tci::for_each(ctx, tensor, [](Elem& elem) {
+    tcapi::for_each(ctx, tensor, [](Elem& elem) {
         // Square root
         elem = std::sqrt(elem);
         // Scale
@@ -473,7 +473,7 @@ int main() {
     });
 
     // Normalize all elements
-    tci::for_each(ctx, tensor, [](Elem& elem) {
+    tcapi::for_each(ctx, tensor, [](Elem& elem) {
         double mag = std::abs(elem);
         if (mag > 1e-10) {
             elem = elem / mag;
@@ -482,7 +482,7 @@ int main() {
 
     std::cout << "Operations completed!" << std::endl;
 
-    tci::destroy_context(ctx);
+    tcapi::destroy_context(ctx);
     return 0;
 }
 ```
@@ -490,19 +490,19 @@ int main() {
 ### Complete Example: Conditional Processing
 
 ```cpp
-#include <tci/tci.h>
+#include <tcapi/tcapi.h>
 #include <iostream>
 
-using Tensor = tci::CytnxTensor<cytnx::cytnx_complex128>;
-using Elem = tci::elem_t<Tensor>;
+using Tensor = tcapi::CytnxTensor<cytnx::cytnx_complex128>;
+using Elem = tcapi::elem_t<Tensor>;
 
 int main() {
-    tci::context_handle_t<Tensor> ctx;
-    tci::create_context(ctx);
+    tcapi::context_handle_t<Tensor> ctx;
+    tcapi::create_context(ctx);
 
     // Create and initialize tensor
     Tensor data;
-    tci::allocate(ctx, {1000}, data);
+    tcapi::allocate(ctx, {1000}, data);
 
     // Fill with varying values
     for (size_t i = 0; i < 1000; ++i) {
@@ -515,7 +515,7 @@ int main() {
     // Count elements by category
     size_t small_count = 0, medium_count = 0, large_count = 0;
 
-    tci::for_each(ctx, static_cast<const Tensor&>(data),
+    tcapi::for_each(ctx, static_cast<const Tensor&>(data),
                   [&](const Elem& elem) {
         double magnitude = std::abs(elem);
         if (magnitude < 1.0) {
@@ -532,7 +532,7 @@ int main() {
     std::cout << "Large magnitude: " << large_count << std::endl;
 
     // Clip extreme values
-    tci::for_each(ctx, data, [](Elem& elem) {
+    tcapi::for_each(ctx, data, [](Elem& elem) {
         double magnitude = std::abs(elem);
         if (magnitude > 10.0) {
             elem = elem / magnitude * 10.0;  // Clip to magnitude 10
@@ -541,7 +541,7 @@ int main() {
 
     std::cout << "Clipped extreme values" << std::endl;
 
-    tci::destroy_context(ctx);
+    tcapi::destroy_context(ctx);
     return 0;
 }
 ```
@@ -559,7 +559,7 @@ cmake --build build --parallel 4
 ./build/examples/simple_tensor_operations
 
 # Run with verbose output
-TCI_VERBOSE=2 ./build/examples/simple_tensor_operations
+TCAPI_VERBOSE=2 ./build/examples/simple_tensor_operations
 ```
 
 ## Troubleshooting
@@ -574,9 +574,9 @@ TCI_VERBOSE=2 ./build/examples/simple_tensor_operations
 ### Getting Help
 
 1. Check the error message for specific function and parameter information
-2. Enable `TCI_VERBOSE=2` to see detailed function call information
-3. Verify tensor shapes using `tci::shape()` before operations
-4. Use `tci::show()` to inspect tensor contents
+2. Enable `TCAPI_VERBOSE=2` to see detailed function call information
+3. Verify tensor shapes using `tcapi::shape()` before operations
+4. Use `tcapi::show()` to inspect tensor contents
 
 For more examples and advanced usage patterns, see the `test/` directory in the source code, particularly the iTEBD integration test which demonstrates a complete real-world application.
 

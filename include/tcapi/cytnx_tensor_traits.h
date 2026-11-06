@@ -4,18 +4,18 @@
 #include <cytnx.hpp>
 #include <tuple>
 
-#include "tci/context_handle.h"
-#include "tci/cytnx_typed_tensor.h"
-#include "tci/tensor_traits.h"
+#include "tcapi/context_handle.h"
+#include "tcapi/cytnx_typed_tensor.h"
+#include "tcapi/tensor_traits.h"
 
-namespace tci {
+namespace tcapi {
 
   /**
    * @brief Specialization of tensor_traits for CytnxTensor<ElemT>
    *
    * This specialization provides compile-time type information for typed Cytnx tensors.
    * Unlike cytnx::Tensor, CytnxTensor<ElemT> has a fixed element type determined at
-   * compile time, making it compatible with TCI's type system expectations.
+   * compile time, making it compatible with TCAPI's type system expectations.
    *
    * @tparam ElemT Element type (cytnx::cytnx_double, cytnx::cytnx_complex128, etc.)
    */
@@ -29,7 +29,7 @@ namespace tci {
     using bond_label_t = cytnx::cytnx_int64;
     using ten_size_t = cytnx::cytnx_uint64;
 
-    // Element type is fixed at compile time (TCI spec compliant)
+    // Element type is fixed at compile time (TCAPI spec compliant)
     using elem_t = ElemT;
 
     using elem_coor_t = cytnx::cytnx_uint64;
@@ -70,7 +70,7 @@ namespace tci {
     using bond_label_t = cytnx::cytnx_int64;
     using ten_size_t = cytnx::cytnx_uint64;
 
-    // Element type is fixed at compile time (TCI spec compliant)
+    // Element type is fixed at compile time (TCAPI spec compliant)
     using elem_t = ElemT;
 
     using elem_coor_t = cytnx::cytnx_uint64;
@@ -103,4 +103,4 @@ namespace tci {
       = std::tuple<CytnxTensor<cytnx::cytnx_float>, CytnxTensor<cytnx::cytnx_double>,
                    CytnxTensor<cytnx::cytnx_complex64>, CytnxTensor<cytnx::cytnx_complex128>>;
 
-}  // namespace tci
+}  // namespace tcapi

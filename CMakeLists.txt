@@ -10,20 +10,20 @@ endif()
 # ---- Project ----
 
 if(USE_CUDA)
-  set(TCI_LANGUAGES CXX CUDA)
+  set(TCAPI_LANGUAGES CXX CUDA)
 else()
-  set(TCI_LANGUAGES CXX)
+  set(TCAPI_LANGUAGES CXX)
 endif()
 
 project(
-  TCI
+  TCAPI
   VERSION 0.2.0
-  LANGUAGES ${TCI_LANGUAGES}
+  LANGUAGES ${TCAPI_LANGUAGES}
 )
 
 # ---- Version Information ----
 
-set(TCI_SPEC_VERSION "1.0-rc.1")
+set(TCAPI_SPEC_VERSION "1.0-rc.1")
 
 # ---- Build Options ----
 
@@ -117,7 +117,7 @@ if(BLAS_FOUND AND LAPACK_FOUND)
   endif()
 endif()
 
-# ---- SVD fast-path capability (TCICYTNX_USE_GESDD) ----
+# ---- SVD fast-path capability (TCAPICYTNX_USE_GESDD) ----
 # trunc_svd can use the gesdd (divide-and-conquer) path, which is ~2x faster
 # for large matrices but, on failure, behaves differently per BLAS backend:
 # OpenBLAS/MKL return a nonzero LAPACK info (surfaced as a catchable C++
@@ -127,14 +127,14 @@ endif()
 # We therefore opt into gesdd only for vendors known to report failures
 # catchably, and default to the always-stable gesvd path everywhere else
 # (ARMPL and any unrecognized vendor). This keeps the vendor name out of the
-# C++ algorithm code: the source only sees the neutral TCICYTNX_USE_GESDD capability.
-# Users can override the auto-decision explicitly with -DTCICYTNX_USE_GESDD=ON/OFF.
+# C++ algorithm code: the source only sees the neutral TCAPICYTNX_USE_GESDD capability.
+# Users can override the auto-decision explicitly with -DTCAPICYTNX_USE_GESDD=ON/OFF.
 set(_gesdd_default OFF)
 if(BLA_VENDOR MATCHES "OpenBLAS" OR BLA_VENDOR MATCHES "Intel")
   set(_gesdd_default ON)
 endif()
-option(TCICYTNX_USE_GESDD "Use the gesdd divide-and-conquer SVD fast path in trunc_svd" ${_gesdd_default})
-message(STATUS "TCICYTNX_USE_GESDD (gesdd SVD fast path): ${TCICYTNX_USE_GESDD} (BLA_VENDOR=${BLA_VENDOR})")
+option(TCAPICYTNX_USE_GESDD "Use the gesdd divide-and-conquer SVD fast path in trunc_svd" ${_gesdd_default})
+message(STATUS "TCAPICYTNX_USE_GESDD (gesdd SVD fast path): ${TCAPICYTNX_USE_GESDD} (BLA_VENDOR=${BLA_VENDOR})")
 
 # Warn only in the unverified-risky quadrant: the fast path is enabled for a
 # vendor not on the known-catchable list.  This is the one combination where the
@@ -142,12 +142,12 @@ message(STATUS "TCICYTNX_USE_GESDD (gesdd SVD fast path): ${TCICYTNX_USE_GESDD} 
 # a BLA_VENDOR switch (option() does not re-evaluate the default on reconfigure).
 # Known-good vendors stay silent (no warning fatigue); the safe OFF default
 # (ARMPL / unknown) has nothing to warn about.
-if(TCICYTNX_USE_GESDD AND NOT (BLA_VENDOR MATCHES "OpenBLAS" OR BLA_VENDOR MATCHES "Intel"))
+if(TCAPICYTNX_USE_GESDD AND NOT (BLA_VENDOR MATCHES "OpenBLAS" OR BLA_VENDOR MATCHES "Intel"))
   message(WARNING
-    "TCICYTNX_USE_GESDD=ON for unverified BLAS vendor '${BLA_VENDOR}': if its gesdd "
+    "TCAPICYTNX_USE_GESDD=ON for unverified BLAS vendor '${BLA_VENDOR}': if its gesdd "
     "aborts on failure instead of returning a nonzero info, the svd/trunc_svd try-catch "
     "fallback cannot recover (an abort is a signal, not a C++ exception). "
-    "Set -DTCICYTNX_USE_GESDD=OFF if unsure.")
+    "Set -DTCAPICYTNX_USE_GESDD=OFF if unsure.")
 endif()
 
 if(USE_CUDA)
@@ -175,7 +175,7 @@ endif()
 # Intel compilers produce LLVM IR bitcode with LTO, which causes linker errors
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
 
-# Disable Python bindings for Cytnx (not needed for TCI)
+# Disable Python bindings for Cytnx (not needed for TCAPI)
 set(BUILD_PYTHON OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(external/Cytnx)
@@ -254,14 +254,14 @@ endif()
 # ---- Generate version header ----
 
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/tci/version.h.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/include/tci/version.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/tcapi/version.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/include/tcapi/version.h"
   @ONLY
 )
 
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/tci/detail/version_impl.h.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/include/tci/detail/version_impl.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/tcapi/detail/version_impl.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/include/tcapi/detail/version_impl.h"
   @ONLY
 )
 
@@ -327,7 +327,7 @@ function(configure_asan_odr_detection target)
       # must be attached to the registered test name (not the executable
       # target). Library targets and unregistered executables fall through
       # without any environment change; the call site that wants the env
-      # is the test/ subdirectory where TCITests is add_test'd.
+      # is the test/ subdirectory where TCAPITests is add_test'd.
       #
       # detect_container_overflow=0 suppresses an ASan false positive raised
       # at std::vector<std::vector<...>> destruction inside Cytnx's bulk
@@ -372,11 +372,11 @@ target_link_libraries(${PROJECT_NAME} PUBLIC cytnx)
 # Propagate the gesdd fast-path decision to the templates in
 # cytnx_typed_tensor_impl.h.  PUBLIC so downstream consumers that instantiate
 # trunc_svd see the same capability as the library itself.
-if(TCICYTNX_USE_GESDD)
-  target_compile_definitions(${PROJECT_NAME} PUBLIC TCICYTNX_USE_GESDD)
+if(TCAPICYTNX_USE_GESDD)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC TCAPICYTNX_USE_GESDD)
 endif()
 
-# If ARPACK was built as an imported target, link it directly to TCI
+# If ARPACK was built as an imported target, link it directly to TCAPI
 # This ensures that ARPACK's INTERFACE_LINK_LIBRARIES (including ifcore) are properly propagated
 if(TARGET ARPACK::ARPACK)
   target_link_libraries(${PROJECT_NAME} PUBLIC ARPACK::ARPACK)
@@ -388,15 +388,15 @@ endif()
 # Consider:
 # 1. Whether this is still needed after IPO/LTO fixes
 # 2. If CMake's native transitive dependency handling is sufficient
-# Since TCI is a static library, we need to explicitly propagate all of Cytnx's
-# INTERFACE_LINK_LIBRARIES to TCI's own INTERFACE_LINK_LIBRARIES.
+# Since TCAPI is a static library, we need to explicitly propagate all of Cytnx's
+# INTERFACE_LINK_LIBRARIES to TCAPI's own INTERFACE_LINK_LIBRARIES.
 # This ensures that downstream targets (examples, tests) get all necessary libraries.
 get_target_property(CYTNX_INTERFACE_LIBS cytnx INTERFACE_LINK_LIBRARIES)
 if(CYTNX_INTERFACE_LIBS)
   # Remove any incomplete "-lifcore" entries, but keep full paths
   list(FILTER CYTNX_INTERFACE_LIBS EXCLUDE REGEX "^-lifcore$")
 
-  # Add libraries to TCI's interface, but skip CMake target names (like Boost::boost)
+  # Add libraries to TCAPI's interface, but skip CMake target names (like Boost::boost)
   # Only add actual library files or linker flags
   foreach(lib ${CYTNX_INTERFACE_LIBS})
     # Check if lib is an actual file path or linker flag, not a target name
@@ -407,7 +407,7 @@ if(CYTNX_INTERFACE_LIBS)
 endif()
 
 # Create a flag boundary: Remove Cytnx's -w flag from INTERFACE propagation
-# This allows TCI's tests and examples to show deprecation warnings
+# This allows TCAPI's tests and examples to show deprecation warnings
 # Note: Cytnx itself will still compile with -w, but it won't propagate to downstream targets
 get_target_property(CYTNX_INTERFACE_COMPILE_OPTIONS cytnx INTERFACE_COMPILE_OPTIONS)
 if(CYTNX_INTERFACE_COMPILE_OPTIONS)
@@ -432,7 +432,7 @@ if(BUILD_EXAMPLES)
 endif()
 
 # ---- Optional test suite ----
-option(TCI_BUILD_TESTS "Build the TCI test suite" OFF)
-if(TCI_BUILD_TESTS)
+option(TCAPI_BUILD_TESTS "Build the TCAPI test suite" OFF)
+if(TCAPI_BUILD_TESTS)
   add_subdirectory(test)
 endif()

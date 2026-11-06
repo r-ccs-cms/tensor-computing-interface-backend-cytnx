@@ -4,11 +4,11 @@
 #include <cytnx.hpp>
 #include <type_traits>
 
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/read_only_getters.h"
-#include "tci/tensor_traits.h"
+#include "tcapi/cytnx_tensor_traits.h"
+#include "tcapi/read_only_getters.h"
+#include "tcapi/tensor_traits.h"
 
-namespace tci {
+namespace tcapi {
 
   // Helper functions for elem_t (scalar values) - for backward compatibility
   // These work with elem_t which is no longer a variant
@@ -371,4 +371,4 @@ namespace tci {
   template <typename TenT, typename Func>
   void for_each_with_coors(context_handle_t<TenT>& ctx, const TenT& in, Func&& f);
 
-}  // namespace tci
+}  // namespace tcapi

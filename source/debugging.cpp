@@ -1,16 +1,16 @@
-#include "tci/debugging.h"
+#include "tcapi/debugging.h"
 
 #include <cstdlib>
 #include <iomanip>
 
-namespace tci {
+namespace tcapi {
   namespace debug {
 
     int get_verbose_level() {
       static int verbose_level = -1;  // Cache the result
 
       if (verbose_level == -1) {
-        const char* env_var = std::getenv("TCI_VERBOSE");
+        const char* env_var = std::getenv("TCAPI_VERBOSE");
         if (env_var) {
           verbose_level = std::atoi(env_var);
           // Clamp to valid range [0, 2]
@@ -29,7 +29,7 @@ namespace tci {
     void print_function_entry(const std::string& function_name, const std::string& tensor_info) {
       if (!is_verbose(1)) return;
 
-      std::cout << "[TCI] " << function_name;
+      std::cout << "[TCAPI] " << function_name;
       if (!tensor_info.empty()) {
         std::cout << " - " << tensor_info;
       }
@@ -45,10 +45,10 @@ namespace tci {
         auto duration
             = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time_);
 
-        std::cout << "[TCI] " << name_ << " took " << std::fixed << std::setprecision(3)
+        std::cout << "[TCAPI] " << name_ << " took " << std::fixed << std::setprecision(3)
                   << duration.count() / 1000.0 << " ms" << std::endl;
       }
     }
 
   }  // namespace debug
-}  // namespace tci
+}  // namespace tcapi

@@ -10,13 +10,13 @@
 #include <string>
 #include <vector>
 
-#include "tci/construction_destruction.h"
-#include "tci/cytnx_tensor_traits.h"
-#include "tci/cytnx_typed_tensor.h"
-#include "tci/tensor_linear_algebra.h"
-#include "tci/tensor_traits.h"
+#include "tcapi/construction_destruction.h"
+#include "tcapi/cytnx_tensor_traits.h"
+#include "tcapi/cytnx_typed_tensor.h"
+#include "tcapi/tensor_linear_algebra.h"
+#include "tcapi/tensor_traits.h"
 
-namespace tci {
+namespace tcapi {
 
   // Helper: Convert elem_t<TenT> to cytnx::Type
   namespace detail {
@@ -98,7 +98,7 @@ namespace tci {
   }  // namespace detail
 
   // Template function declarations (non-specialized)
-  // These are separate from the main TCI header declarations to avoid conflicts
+  // These are separate from the main TCAPI header declarations to avoid conflicts
 
   // Read-only getter functions for TenT
   template <typename TenT> void get_elem(context_handle_t<TenT>& ctx, const TenT& a,
@@ -133,15 +133,15 @@ namespace tci {
     static bool warned = false;
     if (!warned) {
       // Check suppression flag
-      const char* suppress = std::getenv("TCI_SUPPRESS_FUTURE_API_WARNING");
+      const char* suppress = std::getenv("TCAPI_SUPPRESS_FUTURE_API_WARNING");
 
       // Show warning by default, unless explicitly suppressed
       if (!suppress || std::atoi(suppress) == 0) {
         std::cerr
-            << "[TCI Warning] tci::get_elem void overload is reserved for future GPU support.\n"
+            << "[TCAPI Warning] tcapi::get_elem void overload is reserved for future GPU support.\n"
             << "  This call is currently forwarded to the return-value version.\n"
-            << "  Recommended migration: auto elem = tci::get_elem(ctx, a, coors);\n"
-            << "  To suppress this warning: export TCI_SUPPRESS_FUTURE_API_WARNING=1\n";
+            << "  Recommended migration: auto elem = tcapi::get_elem(ctx, a, coors);\n"
+            << "  To suppress this warning: export TCAPI_SUPPRESS_FUTURE_API_WARNING=1\n";
       }
       warned = true;
     }
@@ -466,7 +466,7 @@ namespace tci {
       cytnx::cytnx_uint64 curr_idx2 = std::distance(axis_map.begin(), it2);
 
       // Debug output
-      if (std::getenv("TCI_VERBOSE")) {
+      if (std::getenv("TCAPI_VERBOSE")) {
         std::cerr << "trace: orig(" << orig_idx1 << "," << orig_idx2 << ") -> curr(" << curr_idx1
                   << "," << curr_idx2 << ") rank=" << result.shape().size() << std::endl;
       }
@@ -749,12 +749,12 @@ namespace tci {
     // (notably ARMPL) call abort() inside the routine.  An abort is a signal,
     // not an exception, so the try/catch fallback below cannot recover from it.
     //
-    // TCICYTNX_USE_GESDD therefore gates the gesdd path; it is decided at build time
+    // TCAPICYTNX_USE_GESDD therefore gates the gesdd path; it is decided at build time
     // from the BLAS vendor (see CMakeLists.txt), mirroring trunc_svd.  Gesvd
     // (gesvd, QR iteration) is always stable and is the default everywhere else.
     // Both return {S, U, V†} in the same order.
     std::vector<cytnx::Tensor> svd_result;
-#ifdef TCICYTNX_USE_GESDD
+#ifdef TCAPICYTNX_USE_GESDD
     // For small matrices the speed difference is negligible and the try/catch
     // overhead is proportionally large, so use the stable path directly.
     constexpr cytnx::cytnx_uint64 kGesddMinDim = 64;
@@ -984,7 +984,7 @@ namespace tci {
     // (notably ARMPL) call abort() inside the routine.  An abort is a signal,
     // not an exception, so the try/catch fallback below cannot recover from it.
     //
-    // TCICYTNX_USE_GESDD is therefore opted into only for backends known to report
+    // TCAPICYTNX_USE_GESDD is therefore opted into only for backends known to report
     // failures catchably.  The decision is made at build time (see
     // CMakeLists.txt) from the BLAS vendor, so the abort-prone vendor name
     // never leaks into this algorithm code.  Gesvd_truncate (gesvd, QR
@@ -998,7 +998,7 @@ namespace tci {
     // discarded weight derived by subtracting a double-accumulated sum from it
     // is that rounding once the real weight falls below it.
     std::vector<cytnx::Tensor> svd_result;
-#ifdef TCICYTNX_USE_GESDD
+#ifdef TCAPICYTNX_USE_GESDD
     // For small matrices the speed difference is negligible and the try/catch
     // overhead is proportionally large, so use the stable path directly.  The
     // threshold is chosen so that gesdd's asymptotic advantage (~2x for large
@@ -1199,7 +1199,7 @@ namespace tci {
       bond_dim = new_bond_dim;
     }
 
-    // Calculate truncation error per TCI spec:
+    // Calculate truncation error per TCAPI spec:
     //
     //   epsilon = sum(s_discarded^2) / sum(s_all^2)
     //
@@ -1717,12 +1717,12 @@ namespace tci {
         // Base case: apply function to element at current coordinates
         auto& elem = tensor.backend.template at<elem_t<TenT>>(coords);
         // Convert coords to elem_coors_t<TenT>
-        elem_coors_t<TenT> tci_coords;
-        tci_coords.reserve(coords.size());
+        elem_coors_t<TenT> tcapi_coords;
+        tcapi_coords.reserve(coords.size());
         for (const auto& coord : coords) {
-          tci_coords.push_back(static_cast<elem_coor_t<TenT>>(coord));
+          tcapi_coords.push_back(static_cast<elem_coor_t<TenT>>(coord));
         }
-        std::invoke(f, elem, tci_coords);
+        std::invoke(f, elem, tcapi_coords);
       } else {
         // Recursive case: iterate through current dimension
         for (cytnx::cytnx_uint64 i = 0; i < shape[dim]; ++i) {
@@ -1742,12 +1742,12 @@ namespace tci {
         // Base case: apply function to element at current coordinates
         const auto& elem = tensor.backend.template at<elem_t<TenT>>(coords);
         // Convert coords to elem_coors_t<TenT>
-        elem_coors_t<TenT> tci_coords;
-        tci_coords.reserve(coords.size());
+        elem_coors_t<TenT> tcapi_coords;
+        tcapi_coords.reserve(coords.size());
         for (const auto& coord : coords) {
-          tci_coords.push_back(static_cast<elem_coor_t<TenT>>(coord));
+          tcapi_coords.push_back(static_cast<elem_coor_t<TenT>>(coord));
         }
-        std::invoke(f, elem, tci_coords);
+        std::invoke(f, elem, tcapi_coords);
       } else {
         // Recursive case: iterate through current dimension
         for (cytnx::cytnx_uint64 i = 0; i < shape[dim]; ++i) {
@@ -2260,4 +2260,4 @@ namespace tci {
     // No-op for Cytnx
   }
 
-}  // namespace tci
+}  // namespace tcapi
